@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build and Production
+.next/
+out/
+build/
+dist/
+
+# Environment and Secrets (Protect your Telegram token!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+bot_config.json
+
+# Operating System Files
+.DS_Store
+*.pem
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.log

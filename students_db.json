@@ -1,0 +1,36 @@
+{
+  "admin_chat_id": "7957347033",
+  "groups": [
+    {
+      "id": "grp_group_a",
+      "name": "Group A",
+      "code": "GRP-A",
+      "schedule": "SAT Preparation Cohort",
+      "teacher_id": "7957347033",
+      "teacher_name": "Ahrorbek Mamazokirov",
+      "created_at": "2026-09-30T14:35:00.000000"
+    }
+  ],
+  "students": {
+    "6789834037": {
+      "telegram_id": 6789834037,
+      "student_id": "TG6789834037",
+      "name": "Cristiano Ronaldo",
+      "username": "ahrorbek_9937",
+      "class": "Group A",
+      "registered_at": "2026-09-30T15:41:51.590712",
+      "last_active": "2026-09-30T15:41:51.590776"
+    }
+  },
+  "teachers": {
+    "7957347033": {
+      "telegram_id": 7957347033,
+      "name": "Ahrorbek Mamazokirov",
+      "organization": "SAT Prep",
+      "group": "Group A",
+      "registered_at": "2026-09-28T14:58:40.584299",
+      "last_active": "2026-09-30T14:35:00.000000"
+    }
+  },
+  "reports": []
+}

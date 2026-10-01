@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ApplyPilot - AI-Powered Job Application Assistant for Students, Graduates, and Professionals. Apply smarter for every job.">
+  <title>ApplyPilot — Apply smarter for every job</title>
+
+  <!-- Tailwind CSS CDN for modern utility styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Design System -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col min-h-screen">
+
+  <!-- Top Navigation Header -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo-badge" onclick="window.applypilot.navigate(window.applypilot.store.isLoggedIn() ? 'dashboard' : 'landing')">
+        <div class="logo-icon">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+          </svg>
+        </div>
+        <span class="tracking-tight text-white">Apply<span class="text-blue-500">Pilot</span></span>
+      </div>
+
+      <!-- Dynamic Navigation Links & User Menu -->
+      <div id="nav-user-actions"></div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main id="app-main" class="flex-grow"></main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950/80 py-8 px-4 sm:px-6 text-center text-xs text-slate-400">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-white">ApplyPilot</span>
+        <span>— Turn your existing CV into a job-specific application in minutes.</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <span>Zero-Fabrication Guarantee</span>
+        <span>ATS-Friendly Formatting</span>
+        <button onclick="window.applypilot.store.resetToDemo('student'); window.applypilot.showToast('Reset data');" class="text-blue-400 hover:underline">
+          Reset Demo Data
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Generic Auth Modal Container -->
+  <div id="auth-modal" class="modal-overlay hidden">
+    <div id="auth-modal-content" class="glass-panel w-full max-w-md rounded-2xl border border-slate-700 shadow-2xl overflow-hidden animate-fade-in"></div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-notification" class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium text-xs shadow-2xl border border-blue-400/30 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none">
+    Notification
+  </div>
+
+  <!-- Core Scripts & Modules -->
+  <script src="assets/js/demo-data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/parser.js"></script>
+  <script src="assets/js/analyzer.js"></script>
+  <script src="assets/js/tailor.js"></script>
+  <script src="assets/js/coverletter.js"></script>
+  <script src="assets/js/answers.js"></script>
+  <script src="assets/js/interview.js"></script>
+  <script src="assets/js/templates.js"></script>
+  <script src="assets/js/research.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
