@@ -31,7 +31,7 @@ DEFAULT_CONFIG = {
     "bot_username": "Ahrorbek_SAT_bot",
     "admin_chat_id": "7957347033",
     "admin_password": "satmaster2026",
-    "web_app_url": "http://127.0.0.1:8000/index.html"
+    "web_app_url": "https://satmaster-w58j.vercel.app/index.html"
 }
 
 def load_config():
@@ -304,7 +304,7 @@ def ask_student_group_buttons(bot, chat_id, name, db, username=None):
     return True
 
 def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False):
-    base_url = config.get("web_app_url", "http://127.0.0.1:8000/index.html")
+    base_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
     name = student_record.get("name", "Student")
     student_id = student_record.get("student_id", f"TG{chat_id}")
     class_name = student_record.get("class", "Group A")
@@ -335,7 +335,7 @@ def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False
 
 def send_admin_hub(bot, chat_id, config, db):
     admin_link = generate_teacher_link(
-        config.get("web_app_url", "http://127.0.0.1:8000/index.html"),
+        config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html"),
         "SAT Admin (Owner)"
     ) + "&admin=true"
     groups = db.get("groups", [])
@@ -389,7 +389,7 @@ def send_teacher_hub(bot, chat_id, teacher_record, config, db):
     teacher_name = teacher_record.get("name", "SAT Instructor")
     assigned_group = teacher_record.get("group")
     teacher_link = generate_teacher_link(
-        config.get("web_app_url", "http://127.0.0.1:8000/index.html"),
+        config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html"),
         teacher_name
     )
     all_students = db.get("students", {})
