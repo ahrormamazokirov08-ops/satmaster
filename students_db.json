@@ -20,6 +20,15 @@
       "class": "Group A",
       "registered_at": "2026-09-30T15:41:51.590712",
       "last_active": "2026-09-30T15:41:51.590776"
+    },
+    "5209814338": {
+      "telegram_id": 5209814338,
+      "student_id": "TG5209814338",
+      "name": "Saidkamolov Saidxon",
+      "username": "kanatavfx",
+      "class": "Group A",
+      "registered_at": "2026-10-02T11:54:51.830962",
+      "last_active": "2026-10-02T11:54:51.831041"
     }
   },
   "teachers": {

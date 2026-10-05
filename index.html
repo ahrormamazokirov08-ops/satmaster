@@ -41,11 +41,12 @@
       <button onclick="switchTab('creator')" id="nav-creator" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-400 hover:text-white">
         ➕ Create Homework
       </button>
-      <button onclick="switchTab('bank')" id="nav-bank" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-400 hover:text-white">
-        📖 Question Bank
-      </button>
       <button onclick="switchTab('vocab')" id="nav-vocab" class="px-3.5 py-1.5 rounded-lg transition-all text-purple-400 hover:text-purple-300">
         📚 SAT Vocab
+      </button>
+      <button onclick="switchTab('qbank')" id="nav-qbank" class="px-3.5 py-1.5 rounded-lg transition-all text-sky-400 hover:text-sky-300 flex items-center gap-1.5">
+        <span>📖</span><span>Question Bank</span>
+        <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full">Draft</span>
       </button>
       <button onclick="switchTab('student')" id="nav-student" class="px-3.5 py-1.5 rounded-lg transition-all text-emerald-400 hover:text-emerald-300">
         📝 Student Portal
@@ -251,14 +252,409 @@
       </div>
     </section>
 
-    <!-- TAB 4: SAT QUESTION BANK -->
-    <section id="tab-bank" class="hidden space-y-6">
-      <h2 class="text-lg font-bold text-white">SAT Question Bank (16 Questions)</h2>
-      <div class="p-4 rounded-xl border border-slate-800 bg-slate-900 text-xs space-y-2">
-        <span class="text-blue-400 font-bold">Q1. Algebra:</span> If 4(2x - 3) + 5 = 3(x + 6) - 1, what is the value of x?
-        <div class="text-emerald-400 font-bold">Answer: B (5)</div>
+    <!-- TAB 4: SAT QUESTION BANK (DRAFT & PREVIEW SYSTEM) -->
+    <section id="tab-qbank" class="hidden space-y-8">
+      
+      <!-- TEACHER DRAFT CONTROLS BAR (Hidden for Students) -->
+      <div id="qbank-teacher-controls" class="p-4 sm:p-5 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-start gap-3">
+          <div class="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold shrink-0 text-lg">
+            🚧
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Teacher Control Panel</span>
+              <span id="teacher-status-pill" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50">🟡 DRAFT (HIDDEN FROM STUDENTS)</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-0.5">
+              Only teachers can see and test this Question Bank right now. Test the questions and analytics below. Once confirmed, click "Publish" to unlock it for all students!
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 self-end md:self-auto shrink-0">
+          <button type="button" onclick="openAddQuestionModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all">
+            <span>➕</span><span>Add Custom Question</span>
+          </button>
+          <button type="button" id="btn-toggle-publish" onclick="togglePublishQBank()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-95">
+            <span>🚀</span><span id="btn-publish-label">Publish to Students</span>
+          </button>
+        </div>
       </div>
+
+      <!-- VIEW 1: MAIN QUESTION BANK HUB -->
+      <div id="qbank-hub-view" class="space-y-8">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300 shadow-sm text-lg">
+              🗃️
+            </div>
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Question Bank</h1>
+              <p class="text-xs text-slate-400">Official Digital SAT style practice with real-time accuracy and performance tracking.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="resetQBankProgress()" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Reset Stats</button>
+          </div>
+        </div>
+
+        <!-- TWO LARGE CATEGORY CARDS (READING & WRITING + MATH) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Card 1: Reading & Writing (Pink/Violet Gradient) -->
+          <div class="relative overflow-hidden rounded-3xl p-7 bg-gradient-to-tr from-[#9d2477] via-[#c23387] to-[#e04595] text-white shadow-2xl shadow-pink-900/20 flex flex-col justify-between min-h-[220px] group transition-all">
+            <!-- Background Decorative Illustration -->
+            <div class="absolute right-3 -bottom-4 w-44 h-44 opacity-25 pointer-events-none group-hover:scale-105 transition-transform duration-500">
+              <svg viewBox="0 0 200 200" fill="none" class="w-full h-full text-white">
+                <path d="M40 50 C40 40, 70 30, 100 45 C130 30, 160 40, 160 50 L160 150 C130 140, 100 150, 100 150 C100 150, 70 140, 40 150 Z" stroke="currentColor" stroke-width="5" fill="none" />
+                <path d="M100 45 L100 150" stroke="currentColor" stroke-width="4" />
+                <path d="M130 65 L170 25 L180 35 L140 75 Z" fill="currentColor" opacity="0.6"/>
+              </svg>
+            </div>
+
+            <div class="relative z-10 space-y-4">
+              <div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Reading &amp; Writing</h2>
+                <div class="flex items-center justify-between text-xs font-semibold text-pink-100 mt-2">
+                  <span id="rw-stat-label">41 of 1,492 solved</span>
+                  <span id="rw-stat-pct" class="font-bold">3%</span>
+                </div>
+                <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
+                  <div id="rw-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 3%"></div>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button type="button" onclick="startQBankPractice('rw')" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <span>Open</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Math (Vibrant Blue/Cyan Gradient) -->
+          <div class="relative overflow-hidden rounded-3xl p-7 bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-[#38bdf8] text-white shadow-2xl shadow-sky-900/20 flex flex-col justify-between min-h-[220px] group transition-all">
+            <!-- Background Decorative Illustration -->
+            <div class="absolute right-3 -bottom-4 w-44 h-44 opacity-25 pointer-events-none group-hover:scale-105 transition-transform duration-500">
+              <svg viewBox="0 0 200 200" fill="none" class="w-full h-full text-white">
+                <circle cx="100" cy="100" r="60" stroke="currentColor" stroke-width="4" stroke-dasharray="8 8" />
+                <path d="M100 30 L100 170 M30 100 L170 100" stroke="currentColor" stroke-width="3" />
+                <path d="M60 140 L140 60" stroke="currentColor" stroke-width="4" />
+                <polygon points="100,50 140,120 60,120" stroke="currentColor" stroke-width="3" fill="none" />
+              </svg>
+            </div>
+
+            <div class="relative z-10 space-y-4">
+              <div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Math</h2>
+                <div class="flex items-center justify-between text-xs font-semibold text-sky-100 mt-2">
+                  <span id="math-stat-label">0 of 2,390 solved</span>
+                  <span id="math-stat-pct" class="font-bold">0%</span>
+                </div>
+                <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
+                  <div id="math-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button type="button" onclick="startQBankPractice('math')" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                  <span>Open</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- QUESTION ANALYTICS SECTION -->
+        <div class="space-y-4 pt-2">
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="text-xl">📊</span>
+              <h3 class="text-xl font-bold text-white tracking-tight">Question Analytics</h3>
+            </div>
+            <button type="button" onclick="showAllAnalyticsModal()" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1 transition-colors">
+              <span>View all analytics</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+
+          <!-- 4 METRIC CARDS -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            
+            <!-- 1. Questions Attempted -->
+            <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <span class="text-xs font-medium text-slate-400 block">Questions Attempted</span>
+              <span id="qa-attempted-num" class="text-3xl font-black text-white block mt-1">56</span>
+              <div class="absolute right-4 bottom-3 opacity-20 text-slate-400 pointer-events-none">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+            </div>
+
+            <!-- 2. Current Accuracy -->
+            <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <span class="text-xs font-medium text-slate-400 block">Current Accuracy</span>
+              <span id="qa-accuracy-num" class="text-3xl font-black text-white block mt-1">73%</span>
+              <div class="absolute right-4 bottom-3 opacity-20 text-slate-400 pointer-events-none">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              </div>
+            </div>
+
+            <!-- 3. Saved Questions -->
+            <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-400 block">Saved Questions</span>
+                <button type="button" onclick="viewSavedQuestionsModal()" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">View</button>
+              </div>
+              <span id="qa-saved-num" class="text-3xl font-black text-white block mt-1">0</span>
+              <div class="absolute right-4 bottom-3 opacity-20 text-slate-400 pointer-events-none">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+              </div>
+            </div>
+
+            <!-- 4. Study Streak -->
+            <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <span class="text-xs font-medium text-slate-400 block">Study Streak</span>
+              <div class="flex items-baseline gap-1 mt-1">
+                <span id="qa-streak-num" class="text-3xl font-black text-white block">1</span>
+                <span class="text-xs font-semibold text-slate-400">days</span>
+              </div>
+              <div class="absolute right-4 bottom-3 opacity-20 text-amber-500 pointer-events-none">
+                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 23c-4.97 0-9-3.8-9-8.5 0-3.1 1.7-5.9 4-7.3.3-.2.7-.1.9.2.2.3.1.7-.2.9-1.9 1.2-3.2 3.5-3.2 6.2 0 4.1 3.4 7.5 7.5 7.5s7.5-3.4 7.5-7.5c0-3.3-1.9-6.3-4.8-7.7-.3-.1-.5-.5-.4-.8.1-.3.5-.5.8-.4 3.4 1.7 5.7 5.2 5.7 9 0 4.7-4.03 8.6-8.8 8.9z"/></svg>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ACTIVITY TREND CARD -->
+          <div class="p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-5">
+            <div>
+              <h4 class="text-lg font-bold text-white tracking-tight">Activity trend</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Wrong in red, correct in green. Harder questions look darker and sit below easier ones in each color.</p>
+            </div>
+
+            <!-- Stat Badges -->
+            <div class="flex items-center gap-5 text-xs font-bold">
+              <span class="inline-flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[10px] font-black">✓</span>
+                <span class="text-white"><strong id="trend-correct-badge">41</strong> Correct</span>
+              </span>
+              <span class="inline-flex items-center gap-2 text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-full border border-rose-500/20">
+                <span class="w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-black">✕</span>
+                <span class="text-white"><strong id="trend-wrong-badge">15</strong> Wrong</span>
+              </span>
+              <span class="text-slate-500 text-xs ml-auto hidden sm:inline">Average 19 per day</span>
+            </div>
+
+            <!-- Visual Bar Chart -->
+            <div class="pt-3 border-t border-slate-800/80">
+              <div id="qbank-activity-bars" class="flex items-end justify-between gap-1.5 sm:gap-3 h-36 px-2">
+                <!-- Dynamic Activity Bars -->
+              </div>
+              <div class="flex justify-between text-[10px] font-semibold text-slate-500 pt-2 px-2 border-t border-slate-800/50 mt-2">
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+                <span class="text-sky-400 font-bold">Today</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- VIEW 2: INTERACTIVE PRACTICE SOLVER SCREEN -->
+      <div id="qbank-solver-view" class="hidden space-y-6">
+        
+        <!-- Solver Top Navigation & Progress Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="exitQBankSolver()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+              <span>Back to Question Bank</span>
+            </button>
+            <span id="solver-subject-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30">
+              Reading &amp; Writing
+            </span>
+            <span id="solver-domain-badge" class="hidden md:inline px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+              Craft &amp; Structure
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3 self-end sm:self-auto">
+            <span id="solver-difficulty-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              Medium
+            </span>
+            <span id="solver-qindex-badge" class="text-xs font-mono text-slate-400">
+              Question 1 of 10
+            </span>
+            <button type="button" id="btn-save-question" onclick="toggleSaveCurrentQuestion()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700" title="Bookmark / Save Question">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Question Content Container -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Left Column: Passage / Stimulus (for Reading & Writing) -->
+          <div id="solver-passage-container" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span>📄</span><span>Passage / Context</span>
+              </span>
+              <span id="solver-passage-source" class="text-[11px] text-slate-500 italic">Historical / Science Literature</span>
+            </div>
+            <div id="solver-passage-text" class="text-sm text-slate-200 leading-relaxed font-serif space-y-3">
+              <!-- Dynamic Passage Text -->
+            </div>
+          </div>
+
+          <!-- Right Column: Question Stem & Options -->
+          <div id="solver-question-container" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+            
+            <!-- Question Prompt -->
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-sky-400 block mb-1.5" id="solver-prompt-domain">Question Prompt</span>
+              <h3 id="solver-question-prompt" class="text-base sm:text-lg font-bold text-white leading-snug">
+                <!-- Dynamic Question Prompt -->
+              </h3>
+            </div>
+
+            <!-- Choice Options (A, B, C, D) -->
+            <div id="solver-options-list" class="space-y-3">
+              <!-- Dynamically populated options -->
+            </div>
+
+            <!-- Action Buttons: Check Answer & Next -->
+            <div class="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
+              <button type="button" id="btn-check-answer" onclick="checkQBankAnswer()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                Check Answer
+              </button>
+              <button type="button" id="btn-next-question" onclick="nextQBankQuestion()" class="hidden px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5">
+                <span>Next Question</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+
+            <!-- Instant Feedback & Explanation Card (Hidden initially) -->
+            <div id="solver-feedback-card" class="hidden p-5 rounded-2xl border space-y-3 transition-all">
+              <div class="flex items-center gap-2">
+                <span id="feedback-icon" class="text-lg">✅</span>
+                <h4 id="feedback-title" class="text-sm font-bold text-white">Correct!</h4>
+              </div>
+              <p id="feedback-explanation" class="text-xs text-slate-300 leading-relaxed">
+                <!-- Dynamic explanation -->
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
     </section>
+
+    <!-- TEACHER ADD QUESTION MODAL -->
+    <div id="modal-add-question" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-7 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">✍️</span>
+            <h3 class="text-lg font-bold text-white">Add Question to Question Bank</h3>
+          </div>
+          <button type="button" onclick="closeAddQuestionModal()" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <form id="form-add-question" onsubmit="handleSaveCustomQuestion(event)" class="space-y-4 text-xs">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Subject</label>
+              <select id="new-q-subject" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
+                <option value="rw">Reading &amp; Writing</option>
+                <option value="math">Math</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Difficulty</label>
+              <select id="new-q-diff" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
+                <option value="Easy">Easy</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-slate-300 font-semibold block mb-1">Domain / Topic</label>
+            <input type="text" id="new-q-domain" placeholder="e.g. Craft & Structure, Algebra, Words in Context" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" required>
+          </div>
+
+          <div id="new-q-passage-field">
+            <label class="text-slate-300 font-semibold block mb-1">Passage / Stimulus Context (Optional for Math)</label>
+            <textarea id="new-q-passage" rows="3" placeholder="Enter reading passage or context..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white"></textarea>
+          </div>
+
+          <div>
+            <label class="text-slate-300 font-semibold block mb-1">Question Prompt</label>
+            <textarea id="new-q-prompt" rows="2" placeholder="e.g. Which choice best describes the function of the underlined sentence?" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" required></textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-slate-300 font-semibold block">Answer Options</label>
+            <div class="flex items-center gap-2">
+              <span class="w-6 text-center font-bold text-slate-400">A</span>
+              <input type="text" id="new-q-opt-a" placeholder="Option A text" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" required>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-6 text-center font-bold text-slate-400">B</span>
+              <input type="text" id="new-q-opt-b" placeholder="Option B text" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" required>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-6 text-center font-bold text-slate-400">C</span>
+              <input type="text" id="new-q-opt-c" placeholder="Option C text" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" required>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-6 text-center font-bold text-slate-400">D</span>
+              <input type="text" id="new-q-opt-d" placeholder="Option D text" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" required>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Correct Answer</label>
+              <select id="new-q-correct" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-emerald-400 font-bold">
+                <option value="A">Option A</option>
+                <option value="B">Option B</option>
+                <option value="C">Option C</option>
+                <option value="D">Option D</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-slate-300 font-semibold block mb-1">Explanation / Rationale</label>
+            <textarea id="new-q-expl" rows="2" placeholder="Explain why the answer is correct..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white"></textarea>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800 flex justify-end gap-2">
+            <button type="button" onclick="closeAddQuestionModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold">Cancel</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg">Save Question</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- TAB 5: STUDENT PORTAL -->
     <section id="tab-student" class="hidden space-y-6 max-w-xl mx-auto">
@@ -1374,6 +1770,11 @@
       const startTestCard = document.getElementById('card-start-unit-test');
       const pillReports = document.getElementById('vocab-pill-reports');
 
+      const navQBank = document.getElementById('nav-qbank');
+      const qbankDraftTag = document.getElementById('qbank-draft-tag');
+      const teacherControls = document.getElementById('qbank-teacher-controls');
+      const qbankPublished = isQBankPublished();
+
       if (isLoggedIn) {
         if (logoutBtn) logoutBtn.classList.remove('hidden');
 
@@ -1389,6 +1790,15 @@
           if (testBanner) testBanner.classList.remove('hidden');
           if (startTestCard) startTestCard.classList.remove('hidden');
           if (pillReports) pillReports.innerHTML = '<span>📝</span><span>Unit Test & Reports</span>';
+
+          // Question Bank: Hidden if in Draft mode!
+          if (teacherControls) teacherControls.classList.add('hidden');
+          if (qbankPublished) {
+            if (navQBank) navQBank.classList.remove('hidden');
+            if (qbankDraftTag) qbankDraftTag.classList.add('hidden');
+          } else {
+            if (navQBank) navQBank.classList.add('hidden');
+          }
         } else {
           // Teachers / Admins have full management access
           teacherTabs.forEach(id => {
@@ -1401,6 +1811,21 @@
           if (testBanner) testBanner.classList.add('hidden');
           if (startTestCard) startTestCard.classList.add('hidden');
           if (pillReports) pillReports.innerHTML = '<span>📊</span><span>Student Submissions</span>';
+
+          // Teachers ALWAYS see Question Bank in navbar with Draft/Live status
+          if (navQBank) navQBank.classList.remove('hidden');
+          if (qbankDraftTag) {
+            qbankDraftTag.classList.remove('hidden');
+            if (qbankPublished) {
+              qbankDraftTag.innerText = 'Live';
+              qbankDraftTag.className = 'text-[9px] uppercase tracking-wider font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded-full';
+            } else {
+              qbankDraftTag.innerText = 'Draft';
+              qbankDraftTag.className = 'text-[9px] uppercase tracking-wider font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full';
+            }
+          }
+          if (teacherControls) teacherControls.classList.remove('hidden');
+          updateTeacherPublishControlsUI();
         }
       } else {
         if (logoutBtn) logoutBtn.classList.add('hidden');
@@ -1409,6 +1834,8 @@
           if (el) el.classList.add('hidden');
         });
         if (studentNavBtn) studentNavBtn.classList.add('hidden');
+        if (navQBank) navQBank.classList.add('hidden');
+        if (teacherControls) teacherControls.classList.add('hidden');
       }
     }
 
@@ -1800,17 +2227,23 @@
     }
 
     function switchTab(tabName) {
-      if (currentUserRole === 'student' && (tabName === 'classes' || tabName === 'dashboard' || tabName === 'creator' || tabName === 'bank')) {
-        showToast("🔒 Access Denied", "Students are strictly blocked from entering the Teacher Portal.", "error");
-        return;
+      if (currentUserRole === 'student') {
+        if (tabName === 'classes' || tabName === 'dashboard' || tabName === 'creator' || tabName === 'bank') {
+          showToast("🔒 Access Denied", "Students are strictly blocked from entering the Teacher Portal.", "error");
+          return;
+        }
+        if (tabName === 'qbank' && !isQBankPublished()) {
+          showToast("🚧 Draft Under Review", "The Question Bank is currently in draft mode and undergoing review by your instructor.", "info");
+          return;
+        }
       }
 
-      ['gateway', 'entry', 'classes', 'dashboard', 'creator', 'bank', 'student', 'vocab'].forEach(t => {
+      ['gateway', 'entry', 'classes', 'dashboard', 'creator', 'bank', 'student', 'vocab', 'qbank'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.add('hidden');
         const navBtn = document.getElementById('nav-' + t);
         if (navBtn) {
-          navBtn.classList.remove('text-blue-400', 'bg-blue-600/15', 'border', 'border-blue-500/30');
+          navBtn.classList.remove('text-blue-400', 'bg-blue-600/15', 'border', 'border-blue-500/30', 'text-sky-400');
           navBtn.classList.add('text-slate-400');
         }
       });
@@ -1834,6 +2267,10 @@
 
       if (tabName === 'dashboard') {
         renderDashboardVocabReports();
+      }
+
+      if (tabName === 'qbank') {
+        initQBankView();
       }
     }
 
@@ -4407,6 +4844,671 @@
         }
       })
       .catch(err => console.warn("Telegram direct dispatch error:", err));
+    }
+
+    // =========================================================
+    // DIGITAL SAT QUESTION BANK & DRAFT/PREVIEW ENGINE
+    // =========================================================
+
+    const DEFAULT_QBANK = {
+      rw: [
+        {
+          id: 'rw_1',
+          domain: 'Craft and Structure',
+          skill: 'Words in Context',
+          difficulty: 'Medium',
+          source: 'Digital Communication History',
+          passage: 'In 1971, computer scientist Ray Tomlinson implemented the first practical email system on the ARPANET network. To designate where messages should be directed, Tomlinson selected the "@" symbol to separate the individual user name from the receiving machine name, a convention that remains ______ across contemporary electronic messaging platforms worldwide.',
+          prompt: 'Which choice completes the text with the most logical and precise word or phrase?',
+          options: {
+            A: 'archaic',
+            B: 'ubiquitous',
+            C: 'provisional',
+            D: 'contentious'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. "Ubiquitous" means present, appearing, or found everywhere. The text states that Tomlinson selected the "@" symbol in 1971 and that this practice remains widespread across modern electronic messaging platforms worldwide. Choice A ("archaic") means obsolete, which contradicts "remains across contemporary platforms". Choice C ("provisional") means temporary, and Choice D ("contentious") means controversial.'
+        },
+        {
+          id: 'rw_2',
+          domain: 'Information and Ideas',
+          skill: 'Command of Evidence',
+          difficulty: 'Hard',
+          source: 'Urban Ecology Research',
+          passage: 'Ecologist Dr. Elena Vance and her team investigated whether mature urban tree canopies mitigate the microclimatic impact of urban heat islands. Measuring surface and ambient air temperatures across fifty commercial corridors over three consecutive summers, the researchers noted that corridors shaded by broadleaf deciduous canopies registered midday temperatures up to 7.2°C cooler than adjacent, unshaded asphalt thoroughfares. Crucially, the cooling effect was most pronounced during late afternoon heat waves when thermal radiation from concrete typically peaks.',
+          prompt: 'Which finding from the study, if true, best supports the researchers\' conclusion regarding the cooling mitigation of urban tree canopies?',
+          options: {
+            A: 'Unshaded asphalt corridors had higher pedestrian and vehicular volume than tree-lined streets.',
+            B: 'Broadleaf canopy corridors consistently recorded significantly lower peak afternoon temperatures compared to unshaded areas.',
+            C: 'Deciduous trees lost their foliage during autumn months, allowing ground-level solar absorption.',
+            D: 'Urban heat islands are primarily exacerbated by industrial air conditioning exhaust units.'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. The conclusion is that mature urban tree canopies directly mitigate urban heat islands. Finding that tree-shaded corridors consistently recorded significantly lower peak afternoon temperatures compared to unshaded areas provides direct empirical evidence supporting that claim. Other choices discuss traffic, seasonal leaf loss, or air conditioning, which do not test canopy cooling.'
+        },
+        {
+          id: 'rw_3',
+          domain: 'Standard English Conventions',
+          skill: 'Boundaries & Sentence Structure',
+          difficulty: 'Medium',
+          source: 'Astrophysics & Exoplanetology',
+          passage: 'Astrophysicists analyzing initial spectroscopic transmissions from exoplanet WASP-96b hypothesized an atmosphere dense with suspended clouds of water ______ newly calibrated infrared data captured by the James Webb Space Telescope revealed distinct signatures of hazy aerosols and potassium silicate dust.',
+          prompt: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+          options: {
+            A: 'vapor, however,',
+            B: 'vapor; however,',
+            C: 'vapor however,',
+            D: 'vapor; however'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. The sentence connects two independent clauses: the first describes initial hypotheses about water vapor, and the second describes the newly calibrated data from JWST. A semicolon followed by the transitional adverb "however" and a comma is the standard, grammatically correct boundary convention to join two independent clauses.'
+        },
+        {
+          id: 'rw_4',
+          domain: 'Expression of Ideas',
+          skill: 'Rhetorical Synthesis',
+          difficulty: 'Medium',
+          source: 'Archaeological Field Notes',
+          passage: 'While researching a topic, a student has taken the following notes:\n• The Nazca Lines are enormous geoglyphs carved into the desert floor of southern Peru.\n• Created between 500 BCE and 500 CE by the pre-Inca Nazca culture.\n• Biomorphic glyphs depict fauna such as condors, spiders, hummingbirds, and monkeys.\n• Geometric glyphs comprise extensive trapezoids, straight spirals, and interconnected triangles.\n• The archaeological significance and ceremonial purpose of the glyphs remain widely debated.',
+          prompt: 'The student wants to emphasize the wide diversity of imagery represented across the Nazca Lines. Which choice most effectively uses the relevant information from the notes to accomplish this goal?',
+          options: {
+            A: 'Constructed between 500 BCE and 500 CE in southern Peru, the Nazca Lines remain an archaeological mystery.',
+            B: 'The Nazca Lines encompass a diverse spectrum of motifs, spanning biological figures like monkeys and condors as well as complex geometric spirals and trapezoids.',
+            C: 'Pre-Inca artisans designed biomorphic animal figures across the desert floor for ceremonial gatherings.',
+            D: 'Geometric patterns including straight triangles and trapezoids were etched into the southern Peruvian plains.'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct because it directly satisfies the rhetorical goal: it explicitly highlights the wide diversity of imagery by contrasting both biological fauna (monkeys, condors) and geometric formations (spirals, trapezoids). Other choices focus solely on date/location, ceremony, or geometry without highlighting diversity.'
+        }
+      ],
+      math: [
+        {
+          id: 'math_1',
+          domain: 'Algebra',
+          skill: 'Linear Equations in One Variable',
+          difficulty: 'Easy',
+          source: 'SAT Core Algebra',
+          passage: 'Consider the linear equation:\n3(2x - 4) = 5x + 7',
+          prompt: 'What value of x satisfies the given equation?',
+          options: {
+            A: '11',
+            B: '15',
+            C: '19',
+            D: '23'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. Expanding the left side gives 6x - 12 = 5x + 7. Subtracting 5x from both sides gives x - 12 = 7. Adding 12 to both sides gives x = 19. Check: 3(2(19) - 4) = 3(38 - 4) = 3(34) = 102. Right side: 5(19) + 7 = 95 + 7 = 102. Both sides equal 102.'
+        },
+        {
+          id: 'math_2',
+          domain: 'Advanced Math',
+          skill: 'Nonlinear Functions & Quadratics',
+          difficulty: 'Medium',
+          source: 'SAT Polynomial Functions',
+          passage: 'A quadratic function is defined by f(x) = (x - 3)(x + 7).',
+          prompt: 'For which values of x is f(x) = 0?',
+          options: {
+            A: 'x = -3 and x = 7',
+            B: 'x = 3 and x = -7',
+            C: 'x = -3 and x = -7',
+            D: 'x = 3 and x = 7'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. By the zero product property, if (x - 3)(x + 7) = 0, then either x - 3 = 0 (which gives x = 3) or x + 7 = 0 (which gives x = -7). Thus, the zeros occur at x = 3 and x = -7.'
+        },
+        {
+          id: 'math_3',
+          domain: 'Problem-Solving and Data Analysis',
+          skill: 'Linear Rate Modeling',
+          difficulty: 'Medium',
+          source: 'Applied Chemistry Modeling',
+          passage: 'A chemical solution in a laboratory calorimeter starts at an initial temperature of 24°C and cools uniformly at a constant rate of 1.5°C per minute.',
+          prompt: 'Which equation correctly models the temperature T, in degrees Celsius, of the solution m minutes after the cooling process initiates?',
+          options: {
+            A: 'T = 24 - 1.5m',
+            B: 'T = 24 + 1.5m',
+            C: 'T = 1.5 - 24m',
+            D: 'T = 1.5m - 24'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. The initial temperature at m = 0 is 24°C (the y-intercept). Because the temperature cools uniformly at 1.5°C per minute, the temperature decreases by 1.5m after m minutes. Thus, T = 24 - 1.5m.'
+        },
+        {
+          id: 'math_4',
+          domain: 'Geometry and Trigonometry',
+          skill: 'Right Triangle Trigonometry',
+          difficulty: 'Hard',
+          source: 'SAT Trigonometric Relations',
+          passage: 'In right triangle ABC, angle C measures 90°. If sin(A) = 4/5, what is the value of cos(B)?',
+          prompt: 'What is the value of cos(B)?',
+          options: {
+            A: '3/5',
+            B: '4/5',
+            C: '3/4',
+            D: '5/4'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. In any right triangle where angle C is 90°, acute angles A and B are complementary (A + B = 90°). By the cofunction identity, sin(A) = cos(90° - A) = cos(B). Since sin(A) = 4/5, cos(B) must also equal 4/5.'
+        }
+      ]
+    };
+
+    let activeQBankSubject = 'rw';
+    let currentQBankQuestions = [];
+    let currentQBankIndex = 0;
+    let selectedOptionLetter = null;
+    let isCurrentAnswerChecked = false;
+
+    // DRAFT / PUBLISH MANAGEMENT
+    function isQBankPublished() {
+      return localStorage.getItem('satmaster_qbank_published') === 'true';
+    }
+
+    function togglePublishQBank() {
+      const nowPublished = !isQBankPublished();
+      localStorage.setItem('satmaster_qbank_published', nowPublished ? 'true' : 'false');
+      
+      updateTeacherPublishControlsUI();
+      updateNavigationUI();
+
+      if (nowPublished) {
+        showToast("🚀 Published Live!", "The Question Bank is now LIVE and fully accessible by all students!", "success");
+      } else {
+        showToast("🔒 Draft Active", "Question Bank returned to Draft Mode. It is now HIDDEN from students.", "info");
+      }
+    }
+
+    function updateTeacherPublishControlsUI() {
+      const isPub = isQBankPublished();
+      const pill = document.getElementById('teacher-status-pill');
+      const btn = document.getElementById('btn-toggle-publish');
+      const label = document.getElementById('btn-publish-label');
+
+      if (pill) {
+        if (isPub) {
+          pill.innerText = '🟢 LIVE (VISIBLE TO STUDENTS)';
+          pill.className = 'text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/50';
+        } else {
+          pill.innerText = '🟡 DRAFT (HIDDEN FROM STUDENTS)';
+          pill.className = 'text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50';
+        }
+      }
+
+      if (btn && label) {
+        if (isPub) {
+          btn.className = 'px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold border border-amber-500/40 shadow-sm flex items-center gap-1.5 transition-all';
+          label.innerText = 'Unpublish (Return to Draft)';
+        } else {
+          btn.className = 'px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-95';
+          label.innerText = 'Publish to Students';
+        }
+      }
+    }
+
+    // STATS & STORAGE ENGINE
+    function getQBankStats() {
+      const DEFAULT_STATS = {
+        attempted: 56,
+        correct: 41,
+        wrong: 15,
+        saved: [],
+        streak: 1,
+        rwSolved: 41,
+        mathSolved: 0,
+        history: [
+          { day: 'Mon', correct: 6, wrong: 2, total: 8 },
+          { day: 'Tue', correct: 8, wrong: 3, total: 11 },
+          { day: 'Wed', correct: 5, wrong: 1, total: 6 },
+          { day: 'Thu', correct: 7, wrong: 4, total: 11 },
+          { day: 'Fri', correct: 9, wrong: 2, total: 11 },
+          { day: 'Sat', correct: 4, wrong: 2, total: 6 },
+          { day: 'Today', correct: 2, wrong: 1, total: 3 }
+        ]
+      };
+
+      const stored = localStorage.getItem('satmaster_qbank_stats');
+      if (stored) {
+        try {
+          return { ...DEFAULT_STATS, ...JSON.parse(stored) };
+        } catch(e) {}
+      }
+      return DEFAULT_STATS;
+    }
+
+    function saveQBankStats(stats) {
+      localStorage.setItem('satmaster_qbank_stats', JSON.stringify(stats));
+    }
+
+    function resetQBankProgress() {
+      if (!confirm("Are you sure you want to reset your Question Bank practice statistics?")) return;
+      const cleanStats = {
+        attempted: 0,
+        correct: 0,
+        wrong: 0,
+        saved: [],
+        streak: 1,
+        rwSolved: 0,
+        mathSolved: 0,
+        history: [
+          { day: 'Mon', correct: 0, wrong: 0, total: 0 },
+          { day: 'Tue', correct: 0, wrong: 0, total: 0 },
+          { day: 'Wed', correct: 0, wrong: 0, total: 0 },
+          { day: 'Thu', correct: 0, wrong: 0, total: 0 },
+          { day: 'Fri', correct: 0, wrong: 0, total: 0 },
+          { day: 'Sat', correct: 0, wrong: 0, total: 0 },
+          { day: 'Today', correct: 0, wrong: 0, total: 0 }
+        ]
+      };
+      saveQBankStats(cleanStats);
+      initQBankView();
+      showToast("🔄 Stats Reset", "Practice statistics have been reset to zero.", "info");
+    }
+
+    function getAllQuestionsForSubject(subject) {
+      const base = DEFAULT_QBANK[subject] || [];
+      const customRaw = localStorage.getItem('satmaster_custom_qbank');
+      if (customRaw) {
+        try {
+          const custom = JSON.parse(customRaw);
+          const filtered = custom.filter(q => q.subject === subject);
+          return [...base, ...filtered];
+        } catch(e) {}
+      }
+      return base;
+    }
+
+    // HUB VIEW RENDERING (MATCHING SCREENSHOT)
+    function initQBankView() {
+      const stats = getQBankStats();
+
+      // 1. Reading & Writing Card Progress
+      const rwTotal = 1492;
+      const rwSolved = stats.rwSolved || 0;
+      const rwPct = Math.round((rwSolved / rwTotal) * 100);
+      const rwLabel = document.getElementById('rw-stat-label');
+      const rwPctEl = document.getElementById('rw-stat-pct');
+      const rwBar = document.getElementById('rw-stat-bar');
+      if (rwLabel) rwLabel.innerText = `${rwSolved.toLocaleString()} of ${rwTotal.toLocaleString()} solved`;
+      if (rwPctEl) rwPctEl.innerText = `${rwPct}%`;
+      if (rwBar) rwBar.style.width = `${Math.max(rwPct, 2)}%`;
+
+      // 2. Math Card Progress
+      const mathTotal = 2390;
+      const mathSolved = stats.mathSolved || 0;
+      const mathPct = Math.round((mathSolved / mathTotal) * 100);
+      const mathLabel = document.getElementById('math-stat-label');
+      const mathPctEl = document.getElementById('math-stat-pct');
+      const mathBar = document.getElementById('math-stat-bar');
+      if (mathLabel) mathLabel.innerText = `${mathSolved.toLocaleString()} of ${mathTotal.toLocaleString()} solved`;
+      if (mathPctEl) mathPctEl.innerText = `${mathPct}%`;
+      if (mathBar) mathBar.style.width = `${Math.max(mathPct, 0)}%`;
+
+      // 3. 4-Metric Boxes
+      const elAtt = document.getElementById('qa-attempted-num');
+      const elAcc = document.getElementById('qa-accuracy-num');
+      const elSav = document.getElementById('qa-saved-num');
+      const elStr = document.getElementById('qa-streak-num');
+
+      const accuracy = stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0;
+      if (elAtt) elAtt.innerText = stats.attempted;
+      if (elAcc) elAcc.innerText = `${accuracy}%`;
+      if (elSav) elSav.innerText = stats.saved ? stats.saved.length : 0;
+      if (elStr) elStr.innerText = stats.streak || 1;
+
+      // 4. Activity Trend Badges
+      const elCorrect = document.getElementById('trend-correct-badge');
+      const elWrong = document.getElementById('trend-wrong-badge');
+      if (elCorrect) elCorrect.innerText = stats.correct;
+      if (elWrong) elWrong.innerText = stats.wrong;
+
+      // 5. Visual Activity Bars
+      renderActivityBars(stats);
+      updateTeacherPublishControlsUI();
+    }
+
+    function renderActivityBars(stats) {
+      const container = document.getElementById('qbank-activity-bars');
+      if (!container) return;
+
+      const history = stats.history || [];
+      const maxTotal = Math.max(...history.map(h => h.total), 14);
+
+      container.innerHTML = history.map(item => {
+        const total = item.total;
+        const correct = item.correct;
+        const wrong = item.wrong;
+
+        const totalHeightPct = total > 0 ? Math.min(100, Math.round((total / maxTotal) * 100)) : 6;
+        const correctPct = total > 0 ? (correct / total) * 100 : 0;
+        const wrongPct = total > 0 ? (wrong / total) * 100 : 0;
+
+        return `
+          <div class="flex-1 flex flex-col items-center justify-end h-full group relative">
+            <!-- Tooltip -->
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-[10px] text-white whitespace-nowrap z-20 pointer-events-none shadow-lg">
+              ${item.day}: ${correct} correct, ${wrong} wrong
+            </div>
+            <!-- Bar Column -->
+            <div class="w-full max-w-[28px] rounded-lg overflow-hidden flex flex-col justify-end bg-slate-800/40" style="height: ${totalHeightPct}%;">
+              <!-- Wrong part (red) on top -->
+              <div style="height: ${wrongPct}%;" class="w-full bg-rose-500/90 transition-all"></div>
+              <!-- Correct part (green) on bottom -->
+              <div style="height: ${correctPct}%;" class="w-full bg-emerald-500 transition-all"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // SOLVER & PRACTICE INTERACTION
+    function startQBankPractice(subject) {
+      activeQBankSubject = subject;
+      currentQBankQuestions = getAllQuestionsForSubject(subject);
+      currentQBankIndex = 0;
+      selectedOptionLetter = null;
+      isCurrentAnswerChecked = false;
+
+      document.getElementById('qbank-hub-view')?.classList.add('hidden');
+      document.getElementById('qbank-solver-view')?.classList.remove('hidden');
+
+      renderCurrentQBankQuestion();
+    }
+
+    function exitQBankSolver() {
+      document.getElementById('qbank-solver-view')?.classList.add('hidden');
+      document.getElementById('qbank-hub-view')?.classList.remove('hidden');
+      initQBankView();
+    }
+
+    function renderCurrentQBankQuestion() {
+      if (!currentQBankQuestions || currentQBankQuestions.length === 0) {
+        showToast("ℹ️ Empty Subject", "No questions available in this bank yet. Use 'Add Custom Question' to add some!", "info");
+        exitQBankSolver();
+        return;
+      }
+
+      const q = currentQBankQuestions[currentQBankIndex];
+      selectedOptionLetter = null;
+      isCurrentAnswerChecked = false;
+
+      // 1. Badges
+      const subjBadge = document.getElementById('solver-subject-badge');
+      const domBadge = document.getElementById('solver-domain-badge');
+      const diffBadge = document.getElementById('solver-difficulty-badge');
+      const qIndexBadge = document.getElementById('solver-qindex-badge');
+      const btnSave = document.getElementById('btn-save-question');
+
+      if (subjBadge) {
+        if (activeQBankSubject === 'rw') {
+          subjBadge.innerText = 'Reading & Writing';
+          subjBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30';
+        } else {
+          subjBadge.innerText = 'Math';
+          subjBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30';
+        }
+      }
+      if (domBadge) domBadge.innerText = q.domain || (activeQBankSubject === 'rw' ? 'Reading Comprehension' : 'Algebra');
+      if (diffBadge) {
+        diffBadge.innerText = q.difficulty || 'Medium';
+        if (q.difficulty === 'Easy') {
+          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        } else if (q.difficulty === 'Hard') {
+          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+        } else {
+          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        }
+      }
+      if (qIndexBadge) qIndexBadge.innerText = `Question ${currentQBankIndex + 1} of ${currentQBankQuestions.length}`;
+
+      // Bookmark Status
+      const stats = getQBankStats();
+      const isSaved = stats.saved && stats.saved.includes(q.id);
+      if (btnSave) {
+        btnSave.className = isSaved 
+          ? 'p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 transition-colors'
+          : 'p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700';
+      }
+
+      // 2. Passage Column
+      const passageCol = document.getElementById('solver-passage-container');
+      const passageText = document.getElementById('solver-passage-text');
+      const passageSource = document.getElementById('solver-passage-source');
+
+      if (q.passage && q.passage.trim()) {
+        if (passageCol) passageCol.classList.remove('hidden');
+        if (passageText) passageText.innerHTML = `<p>${q.passage.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+        if (passageSource) passageSource.innerText = q.source || 'Digital SAT Resource';
+      } else {
+        if (passageCol) passageCol.classList.add('hidden');
+      }
+
+      // 3. Question Stem & Prompt
+      const promptDomain = document.getElementById('solver-prompt-domain');
+      const promptEl = document.getElementById('solver-question-prompt');
+      if (promptDomain) promptDomain.innerText = q.skill || q.domain || 'Digital SAT Question';
+      if (promptEl) promptEl.innerText = q.prompt;
+
+      // 4. Options
+      const optionsList = document.getElementById('solver-options-list');
+      if (optionsList && q.options) {
+        const letters = ['A', 'B', 'C', 'D'];
+        optionsList.innerHTML = letters.map(letter => {
+          const optText = q.options[letter] || '';
+          return `
+            <div onclick="selectQBankOption('${letter}')" id="opt-card-${letter}" class="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none">
+              <span id="opt-badge-${letter}" class="w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors">
+                ${letter}
+              </span>
+              <span class="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed">${optText}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 5. Action Buttons & Feedback Card
+      const btnCheck = document.getElementById('btn-check-answer');
+      const btnNext = document.getElementById('btn-next-question');
+      const feedbackCard = document.getElementById('solver-feedback-card');
+
+      if (btnCheck) btnCheck.classList.remove('hidden');
+      if (btnNext) btnNext.classList.add('hidden');
+      if (feedbackCard) feedbackCard.classList.add('hidden');
+    }
+
+    function selectQBankOption(letter) {
+      if (isCurrentAnswerChecked) return;
+      selectedOptionLetter = letter;
+
+      ['A', 'B', 'C', 'D'].forEach(l => {
+        const card = document.getElementById(`opt-card-${l}`);
+        const badge = document.getElementById(`opt-badge-${l}`);
+        if (card && badge) {
+          if (l === letter) {
+            card.className = 'p-3.5 sm:p-4 rounded-2xl bg-blue-950/40 border-2 border-blue-500 shadow-lg shadow-blue-500/10 cursor-pointer flex items-start gap-3.5 transition-all select-none';
+            badge.className = 'w-7 h-7 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-md';
+          } else {
+            card.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none';
+            badge.className = 'w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors';
+          }
+        }
+      });
+    }
+
+    function checkQBankAnswer() {
+      if (isCurrentAnswerChecked) return;
+      if (!selectedOptionLetter) {
+        showToast("⚠️ Select an Answer", "Please choose an option (A, B, C, or D) before checking!", "error");
+        return;
+      }
+
+      isCurrentAnswerChecked = true;
+      const q = currentQBankQuestions[currentQBankIndex];
+      const isCorrect = (selectedOptionLetter === q.correct);
+
+      // Highlight cards
+      ['A', 'B', 'C', 'D'].forEach(l => {
+        const card = document.getElementById(`opt-card-${l}`);
+        const badge = document.getElementById(`opt-badge-${l}`);
+        if (!card || !badge) return;
+
+        if (l === q.correct) {
+          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-emerald-950/50 border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 flex items-start gap-3.5';
+          badge.className = 'w-7 h-7 rounded-xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-xs shrink-0 shadow-md';
+        } else if (l === selectedOptionLetter && !isCorrect) {
+          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-rose-950/50 border-2 border-rose-500 shadow-xl shadow-rose-500/10 flex items-start gap-3.5';
+          badge.className = 'w-7 h-7 rounded-xl bg-rose-500 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-md';
+        } else {
+          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-950/50 border border-slate-900 opacity-50 flex items-start gap-3.5';
+          badge.className = 'w-7 h-7 rounded-xl bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-xs shrink-0';
+        }
+      });
+
+      // Update Statistics
+      const stats = getQBankStats();
+      stats.attempted += 1;
+      if (isCorrect) {
+        stats.correct += 1;
+        if (activeQBankSubject === 'rw') stats.rwSolved = (stats.rwSolved || 0) + 1;
+        else stats.mathSolved = (stats.mathSolved || 0) + 1;
+      } else {
+        stats.wrong += 1;
+      }
+
+      // Update today's entry in history
+      const todayEntry = stats.history.find(h => h.day === 'Today');
+      if (todayEntry) {
+        if (isCorrect) todayEntry.correct += 1;
+        else todayEntry.wrong += 1;
+        todayEntry.total += 1;
+      }
+      saveQBankStats(stats);
+
+      // Feedback Card
+      const feedbackCard = document.getElementById('solver-feedback-card');
+      const feedbackIcon = document.getElementById('feedback-icon');
+      const feedbackTitle = document.getElementById('feedback-title');
+      const feedbackExpl = document.getElementById('feedback-explanation');
+
+      if (feedbackCard) {
+        feedbackCard.classList.remove('hidden');
+        if (isCorrect) {
+          feedbackCard.className = 'p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 space-y-2 shadow-xl';
+          if (feedbackIcon) feedbackIcon.innerText = '🎉';
+          if (feedbackTitle) feedbackTitle.innerHTML = '<span class="text-emerald-400">Correct! Great Job!</span>';
+        } else {
+          feedbackCard.className = 'p-5 rounded-2xl border border-rose-500/40 bg-rose-950/30 space-y-2 shadow-xl';
+          if (feedbackIcon) feedbackIcon.innerText = '❌';
+          if (feedbackTitle) feedbackTitle.innerHTML = `<span class="text-rose-400">Incorrect. The correct answer is Choice ${q.correct}.</span>`;
+        }
+        if (feedbackExpl) {
+          feedbackExpl.innerHTML = `<strong>Explanation:</strong> ${q.explanation || 'Review the passage details and rule conventions carefully.'}`;
+        }
+      }
+
+      // Swap Buttons
+      document.getElementById('btn-check-answer')?.classList.add('hidden');
+      document.getElementById('btn-next-question')?.classList.remove('hidden');
+    }
+
+    function nextQBankQuestion() {
+      if (currentQBankIndex + 1 < currentQBankQuestions.length) {
+        currentQBankIndex += 1;
+        renderCurrentQBankQuestion();
+      } else {
+        showToast("🏆 Subject Practice Complete!", `You have finished all questions in this bank! Great job.`, "success");
+        exitQBankSolver();
+      }
+    }
+
+    function toggleSaveCurrentQuestion() {
+      if (!currentQBankQuestions || currentQBankQuestions.length === 0) return;
+      const q = currentQBankQuestions[currentQBankIndex];
+      const stats = getQBankStats();
+      if (!stats.saved) stats.saved = [];
+
+      const idx = stats.saved.indexOf(q.id);
+      if (idx > -1) {
+        stats.saved.splice(idx, 1);
+        showToast("Bookmark Removed", "Question removed from your saved list.", "info");
+      } else {
+        stats.saved.push(q.id);
+        showToast("⭐ Question Saved", "Question bookmarked in your Saved list for quick review.", "success");
+      }
+      saveQBankStats(stats);
+
+      const btnSave = document.getElementById('btn-save-question');
+      const isSaved = stats.saved.includes(q.id);
+      if (btnSave) {
+        btnSave.className = isSaved 
+          ? 'p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 transition-colors'
+          : 'p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700';
+      }
+    }
+
+    function viewSavedQuestionsModal() {
+      const stats = getQBankStats();
+      const count = stats.saved ? stats.saved.length : 0;
+      if (count === 0) {
+        showToast("No Saved Questions", "You have not bookmarked any questions yet. Click the bookmark icon while solving to save tricky questions!", "info");
+        return;
+      }
+      showToast("Saved Questions", `You have ${count} saved question(s). Open practice to review them.`, "success");
+    }
+
+    function showAllAnalyticsModal() {
+      const stats = getQBankStats();
+      const acc = stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0;
+      alert(`📊 QUESTION BANK DETAILED ANALYTICS\n\n• Questions Attempted: ${stats.attempted}\n• Correct: ${stats.correct}\n• Wrong: ${stats.wrong}\n• Overall Accuracy: ${acc}%\n• Reading & Writing Solved: ${stats.rwSolved} / 1,492\n• Math Solved: ${stats.mathSolved} / 2,390\n• Study Streak: ${stats.streak} day(s)\n• Saved Questions: ${stats.saved ? stats.saved.length : 0}`);
+    }
+
+    // TEACHER CUSTOM QUESTION BUILDER
+    function openAddQuestionModal() {
+      document.getElementById('modal-add-question')?.classList.remove('hidden');
+    }
+
+    function closeAddQuestionModal() {
+      document.getElementById('modal-add-question')?.classList.add('hidden');
+    }
+
+    function handleSaveCustomQuestion(e) {
+      if (e) e.preventDefault();
+
+      const subject = document.getElementById('new-q-subject').value;
+      const difficulty = document.getElementById('new-q-diff').value;
+      const domain = document.getElementById('new-q-domain').value.trim();
+      const passage = document.getElementById('new-q-passage').value.trim();
+      const prompt = document.getElementById('new-q-prompt').value.trim();
+      const optA = document.getElementById('new-q-opt-a').value.trim();
+      const optB = document.getElementById('new-q-opt-b').value.trim();
+      const optC = document.getElementById('new-q-opt-c').value.trim();
+      const optD = document.getElementById('new-q-opt-d').value.trim();
+      const correct = document.getElementById('new-q-correct').value;
+      const explanation = document.getElementById('new-q-expl').value.trim();
+
+      const newQ = {
+        id: `custom_${Date.now()}`,
+        subject: subject,
+        difficulty: difficulty,
+        domain: domain,
+        passage: passage,
+        prompt: prompt,
+        options: { A: optA, B: optB, C: optC, D: optD },
+        correct: correct,
+        explanation: explanation
+      };
+
+      const customRaw = localStorage.getItem('satmaster_custom_qbank');
+      let customList = [];
+      if (customRaw) {
+        try { customList = JSON.parse(customRaw); } catch(e) {}
+      }
+      customList.push(newQ);
+      localStorage.setItem('satmaster_custom_qbank', JSON.stringify(customList));
+
+      closeAddQuestionModal();
+      document.getElementById('form-add-question').reset();
+      showToast("✅ Question Saved", `Successfully added new ${subject === 'rw' ? 'Reading & Writing' : 'Math'} question to the bank!`, "success");
+      initQBankView();
     }
 
   </script>
