@@ -321,15 +321,17 @@ def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False
         f"{user_str}"
         f"🆔 <b>Student ID:</b> <code>#{student_id}</code>\n\n"
         "✅ You are enrolled in your official SAT homework and practice cohort.\n\n"
-        "👉 Click below to access your tests and assignments directly:"
+        f"🔗 <b>Your Personal Portal Link:</b>\n{student_link}\n\n"
+        "👉 Tap a button below to open your tests and practice:"
     )
 
-    keyboard = {
-        "inline_keyboard": [
-            [make_url_button("🚀 Open SAT Student Portal →", student_link)],
-            [{"text": "🔄 Refresh Portal Link", "callback_data": "relink_student"}]
-        ]
-    }
+    buttons = []
+    if student_link.startswith("https://"):
+        buttons.append([{"text": "📱 Open in Telegram (App)", "web_app": {"url": student_link}}])
+    buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": student_link}])
+    buttons.append([{"text": "🔄 Refresh Portal Link", "callback_data": "relink_student"}])
+
+    keyboard = {"inline_keyboard": buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
 
@@ -366,23 +368,27 @@ def send_admin_hub(bot, chat_id, config, db):
         "• <b>/broadcast &lt;msg&gt;</b> - Send announcement\n\n"
         f"🔗 <b>Admin Platform Portal:</b>\n{admin_link}"
     )
-    keyboard = {
-        "inline_keyboard": [
-            [make_url_button("👑 Open Admin Platform Portal →", admin_link)],
-            [
-                {"text": "🏫 View Groups", "callback_data": "cmd_groups"},
-                {"text": "➕ Create Group", "callback_data": "cmd_newgroup"}
-            ],
-            [
-                {"text": "👥 View Students", "callback_data": "cmd_students"},
-                {"text": "👨‍🏫 View Teachers", "callback_data": "cmd_teachers"}
-            ],
-            [
-                {"text": "📊 Stats", "callback_data": "cmd_stats"},
-                {"text": "🗑️ Delete Group", "callback_data": "cmd_delgroup"}
-            ]
+
+    admin_buttons = []
+    if admin_link.startswith("https://"):
+        admin_buttons.append([{"text": "👑 Open Admin App (Telegram)", "web_app": {"url": admin_link}}])
+    admin_buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": admin_link}])
+    admin_buttons.extend([
+        [
+            {"text": "🏫 View Groups", "callback_data": "cmd_groups"},
+            {"text": "➕ Create Group", "callback_data": "cmd_newgroup"}
+        ],
+        [
+            {"text": "👥 View Students", "callback_data": "cmd_students"},
+            {"text": "👨‍🏫 View Teachers", "callback_data": "cmd_teachers"}
+        ],
+        [
+            {"text": "📊 Stats", "callback_data": "cmd_stats"},
+            {"text": "🗑️ Delete Group", "callback_data": "cmd_delgroup"}
         ]
-    }
+    ])
+
+    keyboard = {"inline_keyboard": admin_buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
 def send_teacher_hub(bot, chat_id, teacher_record, config, db):
@@ -406,15 +412,17 @@ def send_teacher_hub(bot, chat_id, teacher_record, config, db):
         "Test reports for your group students are automatically delivered to this chat.\n\n"
         f"🔗 <b>Teacher Workspace:</b>\n{teacher_link}"
     )
-    keyboard = {
-        "inline_keyboard": [
-            [make_url_button("👨‍🏫 Open Teacher Workspace →", teacher_link)],
-            [
-                {"text": "👥 My Students", "callback_data": "cmd_students"},
-                {"text": "📊 My Group Stats", "callback_data": "cmd_stats"}
-            ]
-        ]
-    }
+
+    t_buttons = []
+    if teacher_link.startswith("https://"):
+        t_buttons.append([{"text": "👨‍🏫 Open Teacher App (Telegram)", "web_app": {"url": teacher_link}}])
+    t_buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": teacher_link}])
+    t_buttons.append([
+        {"text": "👥 My Students", "callback_data": "cmd_students"},
+        {"text": "📊 My Group Stats", "callback_data": "cmd_stats"}
+    ])
+
+    keyboard = {"inline_keyboard": t_buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
 def handle_update(bot, update, config, db):
