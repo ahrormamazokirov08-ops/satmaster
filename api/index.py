@@ -63,6 +63,20 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         clean_path, parsed_path = self._get_clean_path()
 
+        # 0. GET /api/auth/verify - Verify student exists and belongs to active group
+        if clean_path == "/api/auth/verify":
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            ident = qs.get("uid", [None])[0] or qs.get("telegram_id", [None])[0] or qs.get("id", [None])[0] or qs.get("student_id", [None])[0]
+            if not ident:
+                return self.send_json(400, {"valid": False, "reason": "missing_identifier", "error": "Student identifier required (uid or telegram_id)"})
+            try:
+                stu = rdb.get_student(ident)
+                if stu and stu.get("group_id") and stu.get("group_name"):
+                    return self.send_json(200, {"valid": True, "student": stu})
+                return self.send_json(200, {"valid": False, "reason": "not_found_or_deleted"})
+            except Exception as e:
+                return self.send_json(500, {"valid": False, "error": str(e)})
+
         # 1. GET /api/groups - List all groups with student count
         if clean_path == "/api/groups":
             try:
@@ -122,6 +136,19 @@ class handler(BaseHTTPRequestHandler):
             body = json.loads(post_data.decode("utf-8")) if post_data else {}
         except Exception:
             body = {}
+
+        # 0. POST /api/auth/verify - Verify student exists and belongs to active group
+        if clean_path == "/api/auth/verify":
+            ident = body.get("uid") or body.get("telegram_id") or body.get("id") or body.get("student_id")
+            if not ident:
+                return self.send_json(400, {"valid": False, "reason": "missing_identifier", "error": "Student identifier required (uid or telegram_id)"})
+            try:
+                stu = rdb.get_student(ident)
+                if stu and stu.get("group_id") and stu.get("group_name"):
+                    return self.send_json(200, {"valid": True, "student": stu})
+                return self.send_json(200, {"valid": False, "reason": "not_found_or_deleted"})
+            except Exception as e:
+                return self.send_json(500, {"valid": False, "error": str(e)})
 
         # 1. POST /api/groups - Create a new group (accepts { name })
         if clean_path == "/api/groups":

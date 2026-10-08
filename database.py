@@ -440,15 +440,26 @@ class RelationalDB:
             return _format_rows(rows)
 
     def get_student(self, student_id):
-        """Fetch a single student by UUID or telegram_id."""
+        """Fetch a single student by UUID or telegram_id (with optional TG/STU prefix)."""
+        if not student_id:
+            return None
+        raw_id = str(student_id).strip()
+        num_id = raw_id
+        if raw_id.upper().startswith("TG"):
+            num_id = raw_id[2:].strip()
+        elif raw_id.upper().startswith("STU"):
+            num_id = raw_id[3:].strip()
+
         sql = self._query("""
             SELECT s.*, g.name AS group_name
             FROM students s
             JOIN groups g ON s.group_id = g.id
-            WHERE CAST(s.id AS TEXT) = %s OR CAST(s.telegram_id AS TEXT) = %s
+            WHERE CAST(s.id AS TEXT) = %s 
+               OR CAST(s.telegram_id AS TEXT) = %s 
+               OR CAST(s.telegram_id AS TEXT) = %s
         """)
         with self.cursor() as cur:
-            cur.execute(sql, (str(student_id), str(student_id)))
+            cur.execute(sql, (raw_id, raw_id, num_id))
             row = cur.fetchone()
             return _format_row(row)
 
