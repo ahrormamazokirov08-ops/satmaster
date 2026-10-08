@@ -25,9 +25,93 @@
     .transform-style-3d { transform-style: preserve-3d; }
     .backface-hidden { backface-visibility: hidden; }
     .rotate-y-180 { transform: rotateY(180deg); }
+    @keyframes splash-shake {
+      0%, 100% { transform: translateX(0); }
+      15%, 45%, 75% { transform: translateX(-6px); }
+      30%, 60%, 90% { transform: translateX(6px); }
+    }
+    .animate-shake {
+      animation: splash-shake 0.45s ease-in-out;
+    }
+    @keyframes checkmark-pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop-in {
+      animation: checkmark-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600/30 pb-20 md:pb-8">
+
+  <!-- ======================================================== -->
+  <!-- SECURITY VERIFICATION SPLASH SCREEN & ACCESS CONTROLLER -->
+  <!-- ======================================================== -->
+  <div id="security-splash-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 p-4 transition-opacity duration-500 overflow-y-auto">
+    <!-- Ambient glowing backdrop effect -->
+    <div class="absolute inset-0 bg-gradient-to-b from-blue-950/20 via-slate-950 to-slate-950 pointer-events-none"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 sm:w-96 h-80 sm:h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div id="splash-card" class="relative w-full max-w-sm sm:max-w-md p-6 sm:p-8 rounded-3xl border border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur-xl text-center space-y-6 overflow-hidden my-auto transition-transform">
+      
+      <!-- Top Subtle Security Badge -->
+      <div class="flex justify-center">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800/80 text-slate-300 border border-slate-700/60" id="splash-badge">
+          <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse" id="splash-badge-dot"></span>
+          <span>Security Verification Gateway</span>
+        </span>
+      </div>
+
+      <!-- Center Animated Icon Container -->
+      <div class="relative h-24 w-24 sm:h-28 sm:w-28 mx-auto flex items-center justify-center" id="splash-icon-wrapper">
+        <!-- Pulse / Radar Ring -->
+        <div id="splash-radar-ring" class="absolute inset-0 rounded-full bg-sky-500/20 animate-ping"></div>
+        <div id="splash-outer-ring" class="absolute inset-0 rounded-full border-2 border-sky-500/30 animate-pulse"></div>
+
+        <!-- 1. CHECKING STATE (Animated circular spinner) -->
+        <div id="splash-icon-checking" class="relative z-10 w-20 h-20 rounded-full border-4 border-slate-800 border-t-sky-400 animate-spin flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <div class="w-10 h-10 rounded-full bg-sky-500/20 flex items-center justify-center text-lg">
+            🔒
+          </div>
+        </div>
+
+        <!-- 2. SUCCESS STATE (Animated Green Checkmark) -->
+        <div id="splash-icon-success" class="hidden relative z-10 w-20 h-20 rounded-full bg-emerald-500/15 border-2 border-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/25">
+          <svg class="w-10 h-10 text-emerald-400 stroke-current animate-pop-in" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+
+        <!-- 3. FAILURE STATE (Red Cross with Shake Animation) -->
+        <div id="splash-icon-failure" class="hidden relative z-10 w-20 h-20 rounded-full bg-rose-500/15 border-2 border-rose-500 flex items-center justify-center shadow-xl shadow-rose-500/25">
+          <svg class="w-10 h-10 text-rose-400 stroke-current animate-pop-in" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Status Text -->
+      <div class="space-y-2">
+        <h2 id="splash-title" class="text-xl sm:text-2xl font-black text-white tracking-tight transition-all">
+          Security Verification in Progress...
+        </h2>
+        <p id="splash-subtext" class="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-xs mx-auto transition-all">
+          Verifying enrollment and account credentials with database...
+        </p>
+      </div>
+
+      <!-- Action Button Container (Revealed only on Failure / Unregistered) -->
+      <div id="splash-action-container" class="hidden pt-2 space-y-3">
+        <a href="https://t.me/Ahrorbek_SAT_bot" target="_blank" id="splash-btn-register" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-xl shadow-sky-500/25 transition-all hover:scale-[1.02] active:scale-95">
+          <span>✈️ Register via @Ahrorbek_SAT_bot</span>
+          <span>→</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Top Navigation Header -->
   <header class="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40 px-4 sm:px-6 flex items-center justify-between">
@@ -86,7 +170,7 @@
     <!-- ========================================== -->
     <!-- TAB 0: TELEGRAM BOT GATEWAY SCREEN -->
     <!-- ========================================== -->
-    <section id="tab-gateway" class="space-y-8 max-w-3xl mx-auto text-center py-6">
+    <section id="tab-gateway" class="hidden space-y-8 max-w-3xl mx-auto text-center py-6">
       <div class="p-8 sm:p-10 rounded-3xl border border-sky-500/30 bg-slate-900/90 shadow-2xl space-y-6">
         <div class="h-16 w-16 mx-auto rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-3xl shadow-xl shadow-sky-500/20">
           ✈️
@@ -2463,6 +2547,110 @@
       }
     }
 
+    // ========================================================
+    // SECURITY VERIFICATION SPLASH SCREEN CONTROLLER
+    // ========================================================
+    function showSplashChecking() {
+      const splash = document.getElementById('security-splash-screen');
+      const radar = document.getElementById('splash-radar-ring');
+      const outerRing = document.getElementById('splash-outer-ring');
+      const iconChecking = document.getElementById('splash-icon-checking');
+      const iconSuccess = document.getElementById('splash-icon-success');
+      const iconFailure = document.getElementById('splash-icon-failure');
+      const title = document.getElementById('splash-title');
+      const subtext = document.getElementById('splash-subtext');
+      const actionContainer = document.getElementById('splash-action-container');
+      const card = document.getElementById('splash-card');
+      const badgeDot = document.getElementById('splash-badge-dot');
+
+      if (card) card.classList.remove('animate-shake');
+      if (splash) {
+        splash.classList.remove('opacity-0', 'pointer-events-none');
+        splash.style.display = 'flex';
+      }
+      if (radar) radar.classList.remove('hidden');
+      if (outerRing) outerRing.className = 'absolute inset-0 rounded-full border-2 border-sky-500/30 animate-pulse';
+      if (iconChecking) iconChecking.classList.remove('hidden');
+      if (iconSuccess) iconSuccess.classList.add('hidden');
+      if (iconFailure) iconFailure.classList.add('hidden');
+      if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-sky-400 animate-pulse';
+
+      if (title) title.textContent = "Security Verification in Progress...";
+      if (subtext) subtext.textContent = "Verifying enrollment and account credentials with database...";
+      if (actionContainer) actionContainer.classList.add('hidden');
+    }
+
+    function showSplashSuccess(message, onComplete) {
+      const radar = document.getElementById('splash-radar-ring');
+      const outerRing = document.getElementById('splash-outer-ring');
+      const iconChecking = document.getElementById('splash-icon-checking');
+      const iconSuccess = document.getElementById('splash-icon-success');
+      const iconFailure = document.getElementById('splash-icon-failure');
+      const title = document.getElementById('splash-title');
+      const subtext = document.getElementById('splash-subtext');
+      const actionContainer = document.getElementById('splash-action-container');
+      const badgeDot = document.getElementById('splash-badge-dot');
+
+      if (radar) radar.classList.add('hidden');
+      if (outerRing) outerRing.className = 'absolute inset-0 rounded-full border-2 border-emerald-500/40 animate-pulse';
+      if (iconChecking) iconChecking.classList.add('hidden');
+      if (iconFailure) iconFailure.classList.add('hidden');
+      if (iconSuccess) iconSuccess.classList.remove('hidden');
+      if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+
+      if (title) title.textContent = message || "Access Granted • Welcome back!";
+      if (subtext) subtext.textContent = "Credentials authenticated. Opening workspace...";
+      if (actionContainer) actionContainer.classList.add('hidden');
+
+      // Wait ~400ms for visual polish, then smoothly fade out splash screen
+      setTimeout(() => {
+        const splash = document.getElementById('security-splash-screen');
+        if (splash) {
+          splash.classList.add('opacity-0', 'pointer-events-none');
+          setTimeout(() => {
+            splash.style.display = 'none';
+          }, 500);
+        }
+        if (typeof onComplete === 'function') onComplete();
+      }, 400);
+    }
+
+    function showSplashFailure(headline, message) {
+      const splash = document.getElementById('security-splash-screen');
+      const radar = document.getElementById('splash-radar-ring');
+      const outerRing = document.getElementById('splash-outer-ring');
+      const iconChecking = document.getElementById('splash-icon-checking');
+      const iconSuccess = document.getElementById('splash-icon-success');
+      const iconFailure = document.getElementById('splash-icon-failure');
+      const title = document.getElementById('splash-title');
+      const subtext = document.getElementById('splash-subtext');
+      const actionContainer = document.getElementById('splash-action-container');
+      const card = document.getElementById('splash-card');
+      const badgeDot = document.getElementById('splash-badge-dot');
+
+      if (splash) {
+        splash.classList.remove('opacity-0', 'pointer-events-none');
+        splash.style.display = 'flex';
+      }
+      if (radar) radar.classList.add('hidden');
+      if (outerRing) outerRing.className = 'absolute inset-0 rounded-full border-2 border-rose-500/40';
+      if (iconChecking) iconChecking.classList.add('hidden');
+      if (iconSuccess) iconSuccess.classList.add('hidden');
+      if (iconFailure) iconFailure.classList.remove('hidden');
+      if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-rose-400';
+
+      // Subtle shake animation on card
+      if (card) {
+        card.classList.remove('animate-shake');
+        void card.offsetWidth; // Trigger reflow to restart animation
+        card.classList.add('animate-shake');
+      }
+
+      if (title) title.textContent = headline || "Access Denied — Account Not Found";
+      if (subtext) subtext.textContent = message || "You do not have an active registration, or your cohort access was removed.";
+      if (actionContainer) actionContainer.classList.remove('hidden');
+    }
+
     function lockoutStudentSession(reasonMsg) {
       stopAuthHeartbeat();
 
@@ -2506,11 +2694,16 @@
       };
       localStorage.removeItem('satmaster_session');
 
-      // Redirect immediately to Gateway
-      switchTab('gateway');
+      // Update session state
       applyCurrentSession();
 
-      // Display prominent lockout banner in tab-gateway
+      // Display animated Security Verification Failure Splash Screen
+      showSplashFailure(
+        "Access Denied — Account Not Found",
+        reasonMsg || "You do not have an active registration, or your cohort access was removed."
+      );
+
+      // Display prominent lockout banner in tab-gateway for backwards compatibility
       const banner = document.getElementById('gateway-lockout-banner');
       if (banner) {
         banner.classList.remove('hidden');
@@ -2529,6 +2722,9 @@
     }
 
     async function initTelegramAuth() {
+      // 0. Activate Checking state on splash screen immediately
+      showSplashChecking();
+
       // 1. Check for Telegram WebApp environment
       let tgUser = null;
       if (window.Telegram && window.Telegram.WebApp) {
@@ -2596,6 +2792,7 @@
           localStorage.setItem('satmaster_session', JSON.stringify(currentSession));
           document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
           applyCurrentSession();
+          showSplashSuccess("Access Granted • Welcome back!");
           return;
         }
 
@@ -2615,12 +2812,13 @@
           document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
           applyCurrentSession();
           startAuthHeartbeat(candidate.uid);
+          showSplashSuccess("Access Granted • Welcome back!");
         } else {
           console.warn('[SATMaster] Student gatekeeper verification failed:', verifyRes);
-          lockoutStudentSession("Registration Required: This account or link is no longer valid. Your class cohort or student enrollment is not found or has been removed by the instructor.");
+          lockoutStudentSession("You do not have an active registration, or your cohort access was removed.");
         }
       } else {
-        // Guest user on Gateway
+        // Guest user on Gateway / Unregistered
         currentSession = {
           isLoggedIn: false,
           role: 'guest',
@@ -2631,6 +2829,10 @@
         };
         document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
         applyCurrentSession();
+        showSplashFailure(
+          "Access Denied — Account Not Found",
+          "You do not have an active registration, or your cohort access was removed."
+        );
       }
     }
 
@@ -2906,6 +3108,7 @@
       }
       localStorage.setItem('satmaster_session', JSON.stringify(currentSession));
       applyCurrentSession();
+      showSplashSuccess("Access Granted • Welcome back!");
       showToast("✈️ Authenticated", `Signed in as ${currentSession.name} (${currentSession.role}).`, "success");
     }
 
@@ -2963,7 +3166,11 @@
       localStorage.removeItem('satmaster_session');
       document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
       applyCurrentSession();
-      showToast("🔒 Exited Session", "Returned to Telegram Bot Gateway.", "info");
+      showSplashFailure(
+        "Access Denied — Account Not Found",
+        "You do not have an active registration, or your cohort access was removed."
+      );
+      showToast("🔒 Exited Session", "Session ended. Please register or start via Telegram Bot.", "info");
     }
 
     // DYNAMIC CLASSES STORAGE ENGINE (SYNCED WITH BACKEND API & TELEGRAM BOT)
