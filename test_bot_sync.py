@@ -29,6 +29,7 @@ class MockTelegramBot:
     def __init__(self):
         self.sent_messages = []
         self.answered_callbacks = []
+        self.deleted_messages = []
 
     def send_message(self, chat_id, text, reply_markup=None, parse_mode="HTML"):
         msg = {
@@ -39,6 +40,10 @@ class MockTelegramBot:
         }
         self.sent_messages.append(msg)
         return {"ok": True, "result": msg}
+
+    def delete_message(self, chat_id, message_id):
+        self.deleted_messages.append({"chat_id": chat_id, "message_id": message_id})
+        return {"ok": True}
 
     def answer_callback_query(self, callback_query_id, text=None):
         self.answered_callbacks.append({"id": callback_query_id, "text": text})
@@ -53,6 +58,7 @@ class MockTelegramBot:
     def clear(self):
         self.sent_messages.clear()
         self.answered_callbacks.clear()
+        self.deleted_messages.clear()
 
 
 class TestBotRegistrationFlow(unittest.TestCase):
@@ -352,6 +358,24 @@ class TestBotRegistrationFlow(unittest.TestCase):
             }
         }
         telegram_bot.handle_update(self.bot, update_msg, self.config, self.legacy_db)
+        last = self.bot.last_message()
+        self.assertIsNotNone(last.get("reply_markup"))
+        self.assertIn("not currently enrolled", last["text"])
+        callbacks = [btn["callback_data"] for row in last["reply_markup"]["inline_keyboard"] for btn in row]
+        self.assertIn("cmd_start", callbacks)
+
+        # Student clicks cmd_start button to begin fresh registration
+        self.bot.clear()
+        update_cmd_start = {
+            "update_id": 41,
+            "callback_query": {
+                "id": "cq_cascade_start",
+                "from": {"id": self.test_user_id, "username": self.test_username},
+                "message": {"chat": {"id": self.test_user_id}},
+                "data": "cmd_start"
+            }
+        }
+        telegram_bot.handle_update(self.bot, update_cmd_start, self.config, self.legacy_db)
         last = self.bot.last_message()
         self.assertIsNotNone(last.get("reply_markup"))
         callbacks = [btn["callback_data"] for row in last["reply_markup"]["inline_keyboard"] for btn in row]

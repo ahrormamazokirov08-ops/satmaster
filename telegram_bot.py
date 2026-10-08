@@ -68,6 +68,126 @@ def clear_user_state(user_id):
     user_states.pop(str(user_id), None)
     save_user_states(user_states)
 
+USER_MESSAGES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_messages.json")
+if not os.path.exists(USER_MESSAGES_FILE):
+    alt_m_file = os.path.join("/Users/macpro/Documents/new project", "user_messages.json")
+    if os.path.exists(alt_m_file):
+        USER_MESSAGES_FILE = alt_m_file
+
+def load_user_messages():
+    if os.path.exists(USER_MESSAGES_FILE):
+        try:
+            with open(USER_MESSAGES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_user_messages(messages_dict):
+    try:
+        with open(USER_MESSAGES_FILE, "w", encoding="utf-8") as f:
+            json.dump(messages_dict, f, indent=2)
+    except Exception:
+        pass
+
+user_tracked_messages = load_user_messages()
+
+def record_user_bot_message(user_id, message_id):
+    if not user_id or not message_id:
+        return
+    uid = str(user_id)
+    lst = user_tracked_messages.setdefault(uid, [])
+    if message_id not in lst:
+        lst.append(message_id)
+    if len(lst) > 10:
+        user_tracked_messages[uid] = lst[-10:]
+    save_user_messages(user_tracked_messages)
+
+def clear_user_bot_messages(bot, user_id):
+    uid = str(user_id)
+    msg_ids = user_tracked_messages.pop(uid, [])
+    save_user_messages(user_tracked_messages)
+    if not msg_ids:
+        return
+    if not bot:
+        bot = get_bot_client()
+    if bot and hasattr(bot, "delete_message"):
+        for mid in msg_ids:
+            try:
+                bot.delete_message(chat_id=int(uid), message_id=mid)
+            except Exception:
+                pass
+
+def get_bot_client():
+    cfg = load_config()
+    token = cfg.get("bot_token")
+    if token:
+        return TelegramBotClient(token)
+    return None
+
+def cleanup_student_session_and_messages(bot, student_id_or_tg_id):
+    """
+    Cleans up in-memory session, user states, legacy db entry,
+    and attempts to delete last bot-sent menu/access-link messages via deleteMessage API.
+    """
+    if not student_id_or_tg_id:
+        return
+    if not bot:
+        bot = get_bot_client()
+
+    raw = str(student_id_or_tg_id).strip()
+    tg_id = None
+    if raw.isdigit():
+        tg_id = int(raw)
+    elif raw.upper().startswith("TG") and raw[2:].isdigit():
+        tg_id = int(raw[2:])
+    else:
+        try:
+            stu = rdb.get_student(raw)
+            if stu and stu.get("telegram_id"):
+                tg_id = int(stu["telegram_id"])
+        except Exception:
+            pass
+
+    if tg_id:
+        tg_str = str(tg_id)
+        clear_user_state(tg_str)
+        db = load_db()
+        if tg_str in db.get("students", {}):
+            db["students"].pop(tg_str, None)
+            save_db(db)
+        clear_user_bot_messages(bot, tg_id)
+
+def cleanup_group_students_and_messages(bot, group_identifier):
+    """
+    Finds all students belonging to this cohort, wipes their sessions,
+    and attempts to delete their bot-sent messages via deleteMessage.
+    """
+    if not group_identifier:
+        return
+    if not bot:
+        bot = get_bot_client()
+
+    try:
+        grp = rdb.get_group(group_identifier)
+        if grp:
+            students = rdb.get_group_students(grp["id"]) or []
+            for s in students:
+                tg_id = s.get("telegram_id")
+                if tg_id:
+                    cleanup_student_session_and_messages(bot, tg_id)
+    except Exception as e:
+        print(f"Cleanup group error: {e}")
+
+    try:
+        db = load_db()
+        grp_name_lower = str(group_identifier).strip().lower()
+        for sid, s in list(db.get("students", {}).items()):
+            if s.get("class", "").strip().lower() == grp_name_lower or str(s.get("group_id", "")).lower() == grp_name_lower:
+                cleanup_student_session_and_messages(bot, sid)
+    except Exception as e:
+        print(f"Cleanup legacy db group error: {e}")
+
 DEFAULT_CONFIG = {
     "bot_token": "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ",
     "bot_username": "Ahrorbek_SAT_bot",
@@ -195,6 +315,11 @@ def add_group(db, name, code=None, schedule="", teacher_id=None, teacher_name=No
 
 def delete_group(db, identifier):
     clean_id = str(identifier).strip()
+    try:
+        cleanup_group_students_and_messages(None, clean_id)
+    except Exception as e:
+        print(f"Cleanup error during delete_group: {e}")
+
     try:
         rdb.delete_group(clean_id)
     except Exception as e:
@@ -359,6 +484,13 @@ class TelegramBotClient:
             payload["text"] = text
         return self.request("answerCallbackQuery", payload, timeout=4)
 
+    def delete_message(self, chat_id, message_id):
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id
+        }
+        return self.request("deleteMessage", payload, timeout=6)
+
 
 def make_url_button(label, url):
     """Telegram inline buttons strictly require https for web_app. For http, use url."""
@@ -401,7 +533,12 @@ def send_role_selection(bot, chat_id, custom_text=None):
         "🎓 <b>Welcome to SATMaster!</b>\n\n"
         "Please select your role to get your access link:"
     )
-    bot.send_message(chat_id, msg, reply_markup=keyboard)
+    res = bot.send_message(chat_id, msg, reply_markup=keyboard)
+    if res and isinstance(res, dict) and res.get("ok"):
+        result_obj = res.get("result", {})
+        if isinstance(result_obj, dict) and result_obj.get("message_id"):
+            record_user_bot_message(chat_id, result_obj["message_id"])
+    return res
 
 def prompt_student_registration(bot, chat_id, is_reset=False):
     """
@@ -435,7 +572,11 @@ def prompt_student_registration(bot, chat_id, is_reset=False):
             "👋 <b>Welcome to SATMaster!</b>\n\n"
             "👉 <b>Please select your class group below to get your SAT portal access link:</b>"
         )
-    bot.send_message(chat_id, msg, reply_markup=keyboard)
+    res = bot.send_message(chat_id, msg, reply_markup=keyboard)
+    if res and isinstance(res, dict) and res.get("ok"):
+        result_obj = res.get("result", {})
+        if isinstance(result_obj, dict) and result_obj.get("message_id"):
+            record_user_bot_message(chat_id, result_obj["message_id"])
     return True
 
 def ask_student_group_buttons(bot, chat_id, name, db, username=None):
@@ -475,7 +616,12 @@ def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False
     ])
 
     keyboard = {"inline_keyboard": buttons}
-    bot.send_message(chat_id, msg, reply_markup=keyboard)
+    res = bot.send_message(chat_id, msg, reply_markup=keyboard)
+    if res and isinstance(res, dict) and res.get("ok"):
+        result_obj = res.get("result", {})
+        if isinstance(result_obj, dict) and result_obj.get("message_id"):
+            record_user_bot_message(chat_id, result_obj["message_id"])
+    return res
 
 
 def send_admin_hub(bot, chat_id, config, db):
@@ -580,8 +726,22 @@ def handle_update(bot, update, config, db):
         chat_id = callback.get("message", {}).get("chat", {}).get("id", int(user_id))
         data = callback.get("data", "")
         is_admin = (str(user_id) == admin_chat_id or str(chat_id) == admin_chat_id)
+        is_teacher = user_id in db.get("teachers", {})
 
         bot.answer_callback_query(cq_id)
+
+        # 0. Fresh registration trigger from stale prompt button
+        if data == "cmd_start":
+            clear_user_state(user_id)
+            if user_id in db.get("students", {}):
+                db["students"].pop(user_id, None)
+                save_db(db)
+            student = rdb.get_student(user_id)
+            if student:
+                send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
+            else:
+                send_role_selection(bot, chat_id)
+            return
 
         if data.startswith("join_group:") or data.startswith("grp_"):
             if data.startswith("join_group:"):
@@ -623,8 +783,61 @@ def handle_update(bot, update, config, db):
                 )
                 send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
                 return
+            clear_user_state(user_id)
+            if user_id in db.get("students", {}):
+                db["students"].pop(user_id, None)
+                save_db(db)
             prompt_student_registration(bot, chat_id, is_reset=False)
             return
+
+        if data == "role_teacher":
+            clear_user_state(user_id)
+            web_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
+            teacher_link = generate_teacher_link(web_url, "Teacher")
+            msg = (
+                "👨‍🏫 <b>Teacher & Administrator Access</b>\n\n"
+                "Welcome, Instructor! As a teacher, you can create and manage class cohorts, view enrolled students, and inspect live test submissions on the web dashboard.\n\n"
+                "🔑 <b>Teacher Access Password:</b> <code>satmaster2026</code>\n\n"
+                f"🔗 <b>Teacher Dashboard URL:</b>\n{teacher_link}\n\n"
+                "👉 <i>To authenticate directly in this Telegram bot, send:</i>\n"
+                "<code>/admin satmaster2026</code>"
+            )
+            buttons = []
+            if teacher_link.startswith("https://"):
+                buttons.append([{"text": "👨‍🏫 Open Teacher App (Telegram)", "web_app": {"url": teacher_link}}])
+            buttons.append([{"text": "🌐 Open Teacher Dashboard in Browser", "url": teacher_link}])
+            bot.send_message(chat_id, msg, reply_markup={"inline_keyboard": buttons})
+            return
+
+        # STALE INTERACTION INTERCEPTOR FOR STUDENTS:
+        # If user is neither admin nor teacher, verify active enrollment in database.py
+        if not is_admin and not is_teacher:
+            student = rdb.get_student(user_id)
+            if not student:
+                clear_user_state(user_id)
+                if user_id in db.get("students", {}):
+                    db["students"].pop(user_id, None)
+                    save_db(db)
+
+                # Attempt to delete the stale interactive message so stale buttons disappear
+                msg_id = callback.get("message", {}).get("message_id")
+                if msg_id and hasattr(bot, "delete_message"):
+                    try:
+                        bot.delete_message(chat_id, msg_id)
+                    except Exception:
+                        pass
+
+                keyboard = {
+                    "inline_keyboard": [
+                        [{"text": "🚀 Register via /start", "callback_data": "cmd_start"}]
+                    ]
+                }
+                bot.send_message(
+                    chat_id,
+                    "⚠️ You are not currently enrolled in an active class cohort. Please send /start to register.",
+                    reply_markup=keyboard
+                )
+                return
 
         if data == "relink_student":
             student = rdb.get_student(user_id)
@@ -648,34 +861,6 @@ def handle_update(bot, update, config, db):
             else:
                 clear_user_state(user_id)
                 prompt_student_registration(bot, chat_id, is_reset=True)
-            return
-
-        if data == "role_teacher":
-            clear_user_state(user_id)
-            web_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
-            teacher_link = generate_teacher_link(web_url, "Teacher")
-            msg = (
-                "👨‍🏫 <b>Teacher & Administrator Access</b>\n\n"
-                "Welcome, Instructor! As a teacher, you can create and manage class cohorts, view enrolled students, and inspect live test submissions on the web dashboard.\n\n"
-                "🔑 <b>Teacher Access Password:</b> <code>satmaster2026</code>\n\n"
-                f"🔗 <b>Teacher Dashboard URL:</b>\n{teacher_link}\n\n"
-                "👉 <i>To authenticate directly in this Telegram bot, send:</i>\n"
-                "<code>/admin satmaster2026</code>"
-            )
-            buttons = []
-            if teacher_link.startswith("https://"):
-                buttons.append([{"text": "👨‍🏫 Open Teacher App (Telegram)", "web_app": {"url": teacher_link}}])
-            buttons.append([{"text": "🌐 Open Teacher Dashboard in Browser", "url": teacher_link}])
-            bot.send_message(chat_id, msg, reply_markup={"inline_keyboard": buttons})
-            return
-
-        if data == "reset_role":
-            set_user_state(user_id, {"role": "student", "step": "STUDENT_WAITING_NAME", "data": {}})
-            bot.send_message(
-                chat_id,
-                "🔄 <b>Update Student Profile</b>\n\n"
-                "👉 Please enter your updated Full Name:"
-            )
             return
 
         # ADMIN & TEACHER CALLBACKS
@@ -962,6 +1147,33 @@ def handle_update(bot, update, config, db):
                 except Exception:
                     pass
             bot.send_message(chat_id, f"✅ Broadcast sent to {count} student(s).")
+            return
+
+    # Check if student is actively in mid-registration onboarding flow
+    state = user_states.get(user_id)
+    in_student_registration = (
+        state and state.get("role") == "student" and state.get("step") in ["STUDENT_WAITING_NAME", "STUDENT_WAITING_GROUP"]
+    )
+
+    # STALE INTERACTION INTERCEPTOR FOR STUDENTS:
+    # If not admin, not teacher, and not in mid-registration flow, require active enrollment in database.py
+    if not is_admin and user_id not in db.get("teachers", {}) and not in_student_registration:
+        student = rdb.get_student(user_id)
+        if not student:
+            clear_user_state(user_id)
+            if user_id in db.get("students", {}):
+                db["students"].pop(user_id, None)
+                save_db(db)
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🚀 Register via /start", "callback_data": "cmd_start"}]
+                ]
+            }
+            bot.send_message(
+                chat_id,
+                "⚠️ You are not currently enrolled in an active class cohort. Please send /start to register.",
+                reply_markup=keyboard
+            )
             return
 
     if text.startswith("/name"):
@@ -1554,6 +1766,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
         if m_del_group:
             group_id = m_del_group.group(1)
             try:
+                cleanup_group_students_and_messages(None, group_id)
                 deleted = rdb.delete_group(group_id)
                 if not deleted:
                     return self.send_json(404, {"ok": False, "error": f"Group '{group_id}' not found"})
@@ -1573,6 +1786,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
         if m_del_student:
             student_id = m_del_student.group(1)
             try:
+                cleanup_student_session_and_messages(None, student_id)
                 deleted = rdb.delete_student(student_id)
                 if not deleted:
                     return self.send_json(404, {"ok": False, "error": f"Student '{student_id}' not found"})
@@ -1626,10 +1840,15 @@ def main():
         class MockBot:
             def __init__(self):
                 self.sent_messages = []
+                self.deleted_messages = []
             def send_message(self, chat_id, text, reply_markup=None, parse_mode="HTML"):
-                self.sent_messages.append({"chat_id": chat_id, "text": text, "reply_markup": reply_markup})
-                return {"ok": True}
+                msg = {"chat_id": chat_id, "text": text, "reply_markup": reply_markup}
+                self.sent_messages.append(msg)
+                return {"ok": True, "result": {"message_id": 1000 + len(self.sent_messages)}}
             def answer_callback_query(self, cq_id):
+                return {"ok": True}
+            def delete_message(self, chat_id, message_id):
+                self.deleted_messages.append({"chat_id": chat_id, "message_id": message_id})
                 return {"ok": True}
 
         # Clean test user before testing
@@ -1720,6 +1939,57 @@ def main():
             updated = rdb.get_student(999888)
             assert updated["display_name"] == "Nodirbek A. Aliyev"
             assert updated["telegram_username"] == "test_tg_user"
+
+            # 6. Admin deletes the group -> CASCADE deletes student
+            delete_group(db, test_grp["id"])
+            assert rdb.get_student(999888) is None, "Student must be deleted via cascade"
+
+            # 7. Deleted student taps stale callback button (e.g. relink_student)
+            update_stale_cb = {
+                "update_id": 1006,
+                "callback_query": {
+                    "id": "cq_stale",
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "message": {"chat": {"id": 999888}, "message_id": 555},
+                    "data": "relink_student"
+                }
+            }
+            handle_update(mock_bot, update_stale_cb, cfg, db)
+            last_msg = mock_bot.sent_messages[-1]
+            assert "You are not currently enrolled in an active class cohort" in last_msg["text"]
+            assert last_msg["reply_markup"] is not None
+            cbs = [btn["callback_data"] for row in last_msg["reply_markup"]["inline_keyboard"] for btn in row]
+            assert "cmd_start" in cbs
+            assert any(d["message_id"] == 555 for d in mock_bot.deleted_messages), "Stale message must be deleted"
+
+            # 8. Deleted student sends command or message -> rejected with enrollment warning
+            update_stale_cmd = {
+                "update_id": 1007,
+                "message": {
+                    "chat": {"id": 999888},
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "text": "/myinfo"
+                }
+            }
+            handle_update(mock_bot, update_stale_cmd, cfg, db)
+            last_msg = mock_bot.sent_messages[-1]
+            assert "You are not currently enrolled in an active class cohort" in last_msg["text"]
+
+            # 9. Deleted student sends /start or taps cmd_start -> runs clean onboarding greeting
+            update_clean_start = {
+                "update_id": 1008,
+                "message": {
+                    "chat": {"id": 999888},
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "text": "/start"
+                }
+            }
+            handle_update(mock_bot, update_clean_start, cfg, db)
+            last_msg = mock_bot.sent_messages[-1]
+            assert "Welcome to SATMaster" in last_msg["text"]
+            assert "Already Registered" not in last_msg["text"]
+            role_cbs = [btn["callback_data"] for row in last_msg["reply_markup"]["inline_keyboard"] for btn in row]
+            assert "role_student" in role_cbs
         finally:
             clear_user_state("999888")
             rdb.delete_student(999888)

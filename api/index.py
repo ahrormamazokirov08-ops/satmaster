@@ -155,6 +155,11 @@ class handler(BaseHTTPRequestHandler):
             action = body.get("action", "create")
             if action == "delete":
                 group_id = body.get("id") or body.get("name")
+                try:
+                    from telegram_bot import cleanup_group_students_and_messages
+                    cleanup_group_students_and_messages(None, group_id)
+                except Exception:
+                    pass
                 deleted = rdb.delete_group(group_id)
                 if deleted:
                     return self.send_json(200, {"ok": True, "message": "Group deleted", "deleted": deleted})
@@ -276,6 +281,11 @@ class handler(BaseHTTPRequestHandler):
         if m_del_group:
             group_id = m_del_group.group(1)
             try:
+                try:
+                    from telegram_bot import cleanup_group_students_and_messages
+                    cleanup_group_students_and_messages(None, group_id)
+                except Exception:
+                    pass
                 deleted = rdb.delete_group(group_id)
                 if not deleted:
                     return self.send_json(404, {"ok": False, "error": f"Group '{group_id}' not found"})
@@ -292,6 +302,11 @@ class handler(BaseHTTPRequestHandler):
         if m_del_student:
             student_id = m_del_student.group(1)
             try:
+                try:
+                    from telegram_bot import cleanup_student_session_and_messages
+                    cleanup_student_session_and_messages(None, student_id)
+                except Exception:
+                    pass
                 deleted = rdb.delete_student(student_id)
                 if not deleted:
                     return self.send_json(404, {"ok": False, "error": f"Student '{student_id}' not found"})
