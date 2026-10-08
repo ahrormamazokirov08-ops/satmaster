@@ -1346,8 +1346,8 @@
         <!-- TWO COLUMN ROW: START TEST CARD & TELEGRAM BOT INTEGRATION CARD -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          <!-- START NEW UNIT TEST CARD (2 Cols) -->
-          <div id="card-start-unit-test" class="lg:col-span-2 p-6 rounded-3xl border border-purple-500/30 bg-slate-900/80 shadow-xl space-y-5">
+          <!-- START NEW UNIT TEST CARD (Full-width for students, 2 Cols for Admin) -->
+          <div id="card-start-unit-test" class="col-span-full lg:col-span-3 p-6 rounded-3xl border border-purple-500/30 bg-slate-900/80 shadow-xl space-y-5">
             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
               <div class="flex items-center gap-2.5">
                 <span class="h-9 w-9 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center text-lg font-bold">📝</span>
@@ -1443,8 +1443,8 @@
             </form>
           </div>
 
-          <!-- TELEGRAM BOT READY DISPATCHER CARD (1 Col) -->
-          <div class="p-6 rounded-3xl border border-sky-500/30 bg-slate-900/80 shadow-xl space-y-4 flex flex-col justify-between">
+          <!-- TELEGRAM BOT READY DISPATCHER CARD (1 Col) - ADMIN EXCLUSIVE -->
+          <div id="card-telegram-bot-ready" class="hidden p-6 rounded-3xl border border-sky-500/30 bg-slate-900/80 shadow-xl space-y-4 flex flex-col justify-between">
             <div class="space-y-3">
               <div class="flex items-center gap-2">
                 <span class="h-8 w-8 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center text-base font-bold">✈️</span>
@@ -1464,7 +1464,7 @@
             </div>
 
             <div class="space-y-2 pt-2 border-t border-slate-800">
-              <button type="button" onclick="openTelegramConfigModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-sky-500/20">
+              <button id="btn-configure-telegram-hook" type="button" onclick="openTelegramConfigModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-sky-500/20">
                 <span>⚙️ Configure Telegram Bot Hook</span>
               </button>
             </div>
@@ -2395,6 +2395,19 @@
     let isLoggedIn = false;
     let currentUserRole = 'guest';
 
+    function isCurrentUserAdmin() {
+      if (typeof currentSession === 'undefined' || !currentSession) return false;
+      if (currentSession.role === 'admin' || (typeof currentUserRole !== 'undefined' && currentUserRole === 'admin')) {
+        return true;
+      }
+      const rawUid = String(currentSession.uid || '').trim();
+      const cleanUid = rawUid.replace(/^TG/i, '');
+      if (cleanUid === '7957347033' || rawUid === '7957347033') {
+        return true;
+      }
+      return false;
+    }
+
     let authHeartbeatInterval = null;
 
     function stopAuthHeartbeat() {
@@ -2545,7 +2558,9 @@
       if (paramRole || tgUser || paramAdmin) {
         // Authenticate from incoming Telegram link or WebApp
         let role = paramRole === 'teacher' ? 'teacher' : 'student';
-        if (paramAdmin === 'true' || paramRole === 'admin') {
+        const rawCandidateUid = paramUid || (tgUser ? `TG${tgUser.id}` : '');
+        const cleanCandidateUid = String(rawCandidateUid).replace(/^TG/i, '');
+        if (paramAdmin === 'true' || paramRole === 'admin' || cleanCandidateUid === '7957347033' || (tgUser && String(tgUser.id) === '7957347033')) {
           role = 'admin';
         }
         const name = paramName || (tgUser ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim() : (role === 'admin' ? 'SAT Admin (Owner)' : (role === 'teacher' ? 'SAT Instructor' : 'Student User')));
@@ -2650,7 +2665,7 @@
       // Route initial tab
       if (typeof handleHashRouting === 'function' && handleHashRouting()) {
         // Handled by hash
-      } else if (currentSession.role === 'teacher') {
+      } else if (currentSession.role === 'teacher' || currentSession.role === 'admin') {
         switchTab('groups');
       } else if (currentSession.role === 'student') {
         switchTab('vocab');
@@ -2667,12 +2682,37 @@
 
       const testBanner = document.getElementById('vocab-test-banner');
       const startTestCard = document.getElementById('card-start-unit-test');
+      const telegramCard = document.getElementById('card-telegram-bot-ready');
       const pillReports = document.getElementById('vocab-pill-reports');
 
       const navQBank = document.getElementById('nav-qbank');
       const qbankDraftTag = document.getElementById('qbank-draft-tag');
       const teacherControls = document.getElementById('qbank-teacher-controls');
       const qbankPublished = isQBankPublished();
+      const isAdmin = isCurrentUserAdmin();
+
+      // RESTRICT TELEGRAM BOT READY CARD & ADJUST GRID LAYOUT
+      if (isAdmin) {
+        // Admin: Reveal Telegram Bot Hook card and configure 2-column layout for unit test
+        if (telegramCard) {
+          telegramCard.classList.remove('hidden');
+          telegramCard.style.display = '';
+        }
+        if (startTestCard) {
+          startTestCard.classList.remove('col-span-full', 'lg:col-span-3');
+          startTestCard.classList.add('lg:col-span-2');
+        }
+      } else {
+        // Students and Ordinary Teachers: Strictly hide Telegram Bot Hook card; expand unit test to full width
+        if (telegramCard) {
+          telegramCard.classList.add('hidden');
+          telegramCard.style.display = 'none';
+        }
+        if (startTestCard) {
+          startTestCard.classList.remove('lg:col-span-2');
+          startTestCard.classList.add('col-span-full', 'lg:col-span-3');
+        }
+      }
 
       if (isLoggedIn) {
         if (logoutBtn) logoutBtn.classList.remove('hidden');
@@ -2695,9 +2735,13 @@
           if (mobStudent) mobStudent.classList.add('hidden');
           if (mobVocab) mobVocab.classList.remove('hidden');
 
-          // Students can take unit tests
+          // Students can take unit tests with full width panel
           if (testBanner) testBanner.classList.remove('hidden');
-          if (startTestCard) startTestCard.classList.remove('hidden');
+          if (startTestCard) {
+            startTestCard.classList.remove('hidden');
+            startTestCard.classList.remove('lg:col-span-2');
+            startTestCard.classList.add('col-span-full', 'lg:col-span-3');
+          }
           if (pillReports) pillReports.innerHTML = '<span>📝</span><span>Unit Test & Reports</span>';
 
           // Question Bank: Hidden if in Draft mode!
@@ -2723,10 +2767,29 @@
           if (mobQBank) mobQBank.classList.remove('hidden');
           if (mobStudent) mobStudent.classList.add('hidden');
 
-          // Teachers DO NOT take unit exams: remove unit test banner & test form
-          if (testBanner) testBanner.classList.add('hidden');
-          if (startTestCard) startTestCard.classList.add('hidden');
-          if (pillReports) pillReports.innerHTML = '<span>📊</span><span>Student Submissions</span>';
+          if (isAdmin) {
+            // Admins can preview/take unit tests and see Telegram configuration
+            if (testBanner) testBanner.classList.remove('hidden');
+            if (startTestCard) {
+              startTestCard.classList.remove('hidden');
+              startTestCard.classList.remove('col-span-full', 'lg:col-span-3');
+              startTestCard.classList.add('lg:col-span-2');
+            }
+            if (telegramCard) {
+              telegramCard.classList.remove('hidden');
+              telegramCard.style.display = '';
+            }
+            if (pillReports) pillReports.innerHTML = '<span>📊</span><span>Unit Test & Submissions (Admin)</span>';
+          } else {
+            // Normal teachers DO NOT take unit exams: remove unit test banner, test form, and Telegram bot card
+            if (testBanner) testBanner.classList.add('hidden');
+            if (startTestCard) startTestCard.classList.add('hidden');
+            if (telegramCard) {
+              telegramCard.classList.add('hidden');
+              telegramCard.style.display = 'none';
+            }
+            if (pillReports) pillReports.innerHTML = '<span>📊</span><span>Student Submissions</span>';
+          }
 
           // Teachers ALWAYS see Question Bank in navbar with Draft/Live status
           if (navQBank) navQBank.classList.remove('hidden');
@@ -2752,6 +2815,16 @@
         if (studentNavBtn) studentNavBtn.classList.add('hidden');
         if (navQBank) navQBank.classList.add('hidden');
         if (teacherControls) teacherControls.classList.add('hidden');
+
+        // Guests / logged-out never see Telegram card; test card is full width
+        if (telegramCard) {
+          telegramCard.classList.add('hidden');
+          telegramCard.style.display = 'none';
+        }
+        if (startTestCard) {
+          startTestCard.classList.remove('lg:col-span-2');
+          startTestCard.classList.add('col-span-full', 'lg:col-span-3');
+        }
       }
     }
 
@@ -2779,7 +2852,16 @@
     }
 
     function loginWithBotDemo(role) {
-      if (role === 'teacher') {
+      if (role === 'admin') {
+        currentSession = {
+          isLoggedIn: true,
+          role: 'admin',
+          uid: '7957347033',
+          name: 'SAT Admin (Owner)',
+          className: 'Master Admin',
+          source: 'demo'
+        };
+      } else if (role === 'teacher') {
         currentSession = {
           isLoggedIn: true,
           role: 'teacher',
@@ -5920,15 +6002,43 @@
         renderVocabReportsView();
       }
 
-      const isTeacherOrAdmin = (currentUserRole === 'teacher' || currentUserRole === 'admin');
+      const isAdmin = isCurrentUserAdmin();
       const testBanner = document.getElementById('vocab-test-banner');
       const startTestCard = document.getElementById('card-start-unit-test');
-      if (isTeacherOrAdmin) {
+      const telegramCard = document.getElementById('card-telegram-bot-ready');
+
+      if (isAdmin) {
+        // Admin: Show both unit test card (2 cols) and Telegram bot configuration
+        if (testBanner) testBanner.classList.remove('hidden');
+        if (startTestCard) {
+          startTestCard.classList.remove('hidden');
+          startTestCard.classList.remove('col-span-full', 'lg:col-span-3');
+          startTestCard.classList.add('lg:col-span-2');
+        }
+        if (telegramCard) {
+          telegramCard.classList.remove('hidden');
+          telegramCard.style.display = '';
+        }
+      } else if (currentUserRole === 'student') {
+        // Student: Show unit test card at clean full-width; strictly hide Telegram card
+        if (testBanner) testBanner.classList.remove('hidden');
+        if (startTestCard) {
+          startTestCard.classList.remove('hidden');
+          startTestCard.classList.remove('lg:col-span-2');
+          startTestCard.classList.add('col-span-full', 'lg:col-span-3');
+        }
+        if (telegramCard) {
+          telegramCard.classList.add('hidden');
+          telegramCard.style.display = 'none';
+        }
+      } else {
+        // Normal teachers / guests: Strictly hide Telegram card and test engine
         if (testBanner) testBanner.classList.add('hidden');
         if (startTestCard) startTestCard.classList.add('hidden');
-      } else {
-        if (testBanner) testBanner.classList.remove('hidden');
-        if (startTestCard) startTestCard.classList.remove('hidden');
+        if (telegramCard) {
+          telegramCard.classList.add('hidden');
+          telegramCard.style.display = 'none';
+        }
       }
     }
 
@@ -7848,6 +7958,10 @@
     }
 
     function openTelegramConfigModal() {
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Admin Access Only", "Only administrators can configure Telegram bot settings.", "error");
+        return;
+      }
       const cfg = getStoredTelegramConfig();
       const userInput = document.getElementById('telegram-bot-username');
       const tokenInput = document.getElementById('telegram-bot-token');
@@ -7884,6 +7998,11 @@
 
     function handleSaveTelegramConfig(e) {
       if (e) e.preventDefault();
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Admin Access Only", "Only administrators can modify Telegram bot settings.", "error");
+        closeTelegramConfigModal();
+        return;
+      }
       const user = document.getElementById('telegram-bot-username')?.value.trim() || '';
       const token = document.getElementById('telegram-bot-token')?.value.trim() || '';
       const chat = document.getElementById('telegram-chat-id')?.value.trim() || '';
@@ -7900,6 +8019,10 @@
     }
 
     function testTelegramConnection() {
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Admin Access Only", "Only administrators can test the Telegram bot connection.", "error");
+        return;
+      }
       const token = document.getElementById('telegram-bot-token')?.value.trim();
       const chat = document.getElementById('telegram-chat-id')?.value.trim();
 

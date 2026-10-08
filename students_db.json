@@ -29,6 +29,15 @@
       "class": "Group A",
       "registered_at": "2026-10-02T11:54:51.830962",
       "last_active": "2026-10-02T11:54:51.831041"
+    },
+    "8874063589": {
+      "telegram_id": 8874063589,
+      "student_id": "TG8874063589",
+      "name": "Go bro",
+      "username": "",
+      "class": "SAT_Alpha_1",
+      "registered_at": "2026-10-08T17:59:59.194620",
+      "last_active": "2026-10-08T17:59:59.194668"
     }
   },
   "teachers": {

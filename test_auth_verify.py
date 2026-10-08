@@ -188,7 +188,11 @@ def run_tests():
     assert "lockoutStudentSession" in html, "Missing lockoutStudentSession in index.html"
     assert "verifyStudentAccount" in html, "Missing verifyStudentAccount in index.html"
     assert "12000" in html, "Missing 12000ms (12s) heartbeat polling interval in index.html"
-    print("✅ index.html has all required UI banner, lockout, and 12s heartbeat handlers: PASS")
+    assert "id=\"card-telegram-bot-ready\"" in html, "Missing #card-telegram-bot-ready in index.html"
+    assert "id=\"card-start-unit-test\"" in html, "Missing #card-start-unit-test in index.html"
+    assert "isCurrentUserAdmin" in html, "Missing isCurrentUserAdmin in index.html"
+    assert "7957347033" in html, "Missing admin Telegram ID 7957347033 in index.html"
+    print("✅ index.html has all required UI banner, lockout, 12s heartbeat, and admin bot card exclusivity handlers: PASS")
 
     print("\n🎉 ALL TESTS PASSED SUCCESSFULLY!")
 
