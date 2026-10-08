@@ -14,17 +14,55 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import threading
+import html
+import traceback
+import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from datetime import datetime
 
+try:
+    from database import db as rdb
+except ImportError:
+    import database
+    rdb = database.db
+
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_config.json")
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "students_db.json")
+STATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_states.json")
 
 # In case it is run from another working directory
 if not os.path.exists(CONFIG_FILE):
     CONFIG_FILE = os.path.join("/Users/macpro/Documents/new project", "bot_config.json")
 if not os.path.exists(DB_FILE):
     DB_FILE = os.path.join("/Users/macpro/Documents/new project", "students_db.json")
+if not os.path.exists(STATES_FILE):
+    STATES_FILE = os.path.join("/Users/macpro/Documents/new project", "user_states.json")
+
+def load_user_states():
+    if os.path.exists(STATES_FILE):
+        try:
+            with open(STATES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_user_states(states):
+    try:
+        with open(STATES_FILE, "w", encoding="utf-8") as f:
+            json.dump(states, f, indent=2)
+    except Exception:
+        pass
+
+user_states = load_user_states()
+
+def set_user_state(user_id, state_obj):
+    user_states[str(user_id)] = state_obj
+    save_user_states(user_states)
+
+def clear_user_state(user_id):
+    user_states.pop(str(user_id), None)
+    save_user_states(user_states)
 
 DEFAULT_CONFIG = {
     "bot_token": "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ",
@@ -89,15 +127,54 @@ def save_db(db):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(db, f, indent=2)
 
+def get_live_groups(db):
+    """
+    Fetch live groups from Supabase PostgreSQL (RelationalDB) and sync with local memory db.
+    Ensures that any groups created in the web UI/Supabase appear in the Telegram bot instantly.
+    """
+    try:
+        r_groups = rdb.list_groups()
+        if r_groups:
+            legacy_groups = db.get("groups", [])
+            legacy_by_name = {g.get("name", "").strip().lower(): g for g in legacy_groups}
+            synced = []
+            for rg in r_groups:
+                name = rg.get("name", "").strip()
+                match = legacy_by_name.get(name.lower())
+                code = match.get("code") if match and match.get("code") else f"GRP-{str(rg.get('id',''))[:6].upper()}"
+                synced.append({
+                    "id": rg.get("id"),
+                    "name": name,
+                    "code": code,
+                    "schedule": match.get("schedule", "") if match else "",
+                    "teacher_name": match.get("teacher_name", "SAT Admin") if match else "SAT Admin",
+                    "student_count": rg.get("student_count", 0),
+                    "created_at": rg.get("created_at")
+                })
+            db["groups"] = synced
+            save_db(db)
+            return synced
+    except Exception as e:
+        print(f"RelationalDB get_live_groups sync error: {e}")
+    return db.get("groups", [])
+
 def add_group(db, name, code=None, schedule="", teacher_id=None, teacher_name=None):
     clean_name = name.strip()
+    r_grp = None
+    try:
+        r_grp = rdb.create_group(clean_name)
+    except Exception as e:
+        print(f"RelationalDB add_group sync error: {e}")
+
     groups = db.setdefault("groups", [])
     for g in groups:
         if g.get("name", "").strip().lower() == clean_name.lower():
+            if r_grp and r_grp.get("id"):
+                g["id"] = r_grp["id"]
             return g, False
     if not code:
         code = f"GRP-{len(groups)+1}"
-    group_id = f"grp_{int(time.time()*1000)}"
+    group_id = r_grp.get("id") if (r_grp and r_grp.get("id")) else f"grp_{int(time.time()*1000)}"
     new_group = {
         "id": group_id,
         "name": clean_name,
@@ -112,12 +189,17 @@ def add_group(db, name, code=None, schedule="", teacher_id=None, teacher_name=No
     return new_group, True
 
 def delete_group(db, identifier):
-    clean_id = str(identifier).strip().lower()
+    clean_id = str(identifier).strip()
+    try:
+        rdb.delete_group(clean_id)
+    except Exception as e:
+        print(f"RelationalDB delete_group sync error: {e}")
+
     groups = db.get("groups", [])
     removed = []
     kept = []
     for g in groups:
-        if g.get("id", "").lower() == clean_id or g.get("name", "").strip().lower() == clean_id or g.get("code", "").lower() == clean_id:
+        if str(g.get("id", "")).lower() == clean_id.lower() or g.get("name", "").strip().lower() == clean_id.lower() or str(g.get("code", "")).lower() == clean_id.lower():
             removed.append(g)
         else:
             kept.append(g)
@@ -157,6 +239,20 @@ def save_and_register_student(db, user_id, name, username, group_name):
     }
     students[user_id_str] = student_record
     save_db(db)
+
+    # Sync to relational database (groups & students tables)
+    try:
+        grp = rdb.get_group(clean_group)
+        if grp:
+            rdb.upsert_student(
+                telegram_id=int(user_id_str),
+                display_name=clean_name,
+                group_id=grp["id"],
+                telegram_username=clean_user
+            )
+    except Exception as e:
+        print(f"Relational DB sync error: {e}")
+
     return student_record
 
 class TelegramBotClient:
@@ -188,11 +284,12 @@ class TelegramBotClient:
     def get_me(self):
         return self.request("getMe", timeout=6)
 
-    def get_updates(self, offset=None, timeout=0):
+    def get_updates(self, offset=None, timeout=15):
         params = {"timeout": timeout}
         if offset is not None:
             params["offset"] = offset
-        return self.request("getUpdates", params, timeout=6)
+        req_timeout = (timeout + 10) if timeout else 8
+        return self.request("getUpdates", params, timeout=req_timeout)
 
     def send_message(self, chat_id, text, reply_markup=None, parse_mode="HTML"):
         payload = {
@@ -203,11 +300,11 @@ class TelegramBotClient:
             payload["parse_mode"] = parse_mode
         if reply_markup:
             payload["reply_markup"] = reply_markup
-        res = self.request("sendMessage", payload, timeout=6)
+        res = self.request("sendMessage", payload, timeout=10)
         if not res.get("ok") and parse_mode:
             # If HTML parsing failed, retry immediately as plain text!
             payload.pop("parse_mode", None)
-            res = self.request("sendMessage", payload, timeout=6)
+            res = self.request("sendMessage", payload, timeout=10)
         if not res.get("ok"):
             print(f"⚠️ Failed to send message to {chat_id}: {res.get('description')}")
         return res
@@ -218,7 +315,6 @@ class TelegramBotClient:
             payload["text"] = text
         return self.request("answerCallbackQuery", payload, timeout=5)
 
-user_states = {}
 
 def make_url_button(label, url):
     """Telegram inline buttons strictly require https for web_app. For http, use url."""
@@ -253,7 +349,7 @@ def send_role_selection(bot, chat_id, custom_text=None):
         "inline_keyboard": [
             [
                 {"text": "🎓 I am a Student", "callback_data": "role_student"},
-                {"text": "👨‍🏫 I am a Teacher (Admin)", "callback_data": "role_teacher"}
+                {"text": "👨‍🏫 I am a Teacher", "callback_data": "role_teacher"}
             ]
         ]
     }
@@ -263,73 +359,76 @@ def send_role_selection(bot, chat_id, custom_text=None):
     )
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
-def ask_student_group_buttons(bot, chat_id, name, db, username=None):
-    groups = db.get("groups", [])
+def prompt_student_registration(bot, chat_id, is_reset=False):
+    """
+    Renders live cohorts from satmaster.db (RelationalDB).
+    If no groups exist:
+        Replies with "There is no available group right now. Please talk with your teacher to create your class group first." and halts.
+    If groups exist:
+        Renders dynamic inline keyboard buttons showing each group's name with callback_data="join_group:<group_id>".
+    """
+    groups = rdb.list_groups()
     if not groups:
-        msg = (
-            f"👤 Student: <b>{name}</b>\n\n"
-            "⚠️ <b>No Active Groups Available Yet</b>\n\n"
-            "The SAT Administrator has not created any class groups on the platform yet.\n\n"
-            "👉 Please contact your SAT teacher or admin to create your group on the website first, then send /start again."
+        bot.send_message(
+            chat_id,
+            "There is no available group right now. Please talk with your teacher to create your class group first."
         )
-        keyboard = {
-            "inline_keyboard": [
-                [{"text": "🔄 Check Again", "callback_data": "role_student"}]
-            ]
-        }
-        bot.send_message(chat_id, msg, reply_markup=keyboard)
         return False
 
     buttons = []
-    row = []
     for g in groups:
-        btn_text = f"🏫 {g['name']}"
-        row.append({"text": btn_text, "callback_data": f"grp_{g['id']}"})
-        if len(row) == 2:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
+        buttons.append([{"text": f"🏫 {g['name']}", "callback_data": f"join_group:{g['id']}"}])
 
     keyboard = {"inline_keyboard": buttons}
-    user_info = f" (@{username})" if username else ""
-    msg = (
-        "🎓 <b>Student Registration (Step 3 of 3)</b>\n\n"
-        f"👤 Student: <b>{name}</b>{user_info}\n\n"
-        "👉 <b>What is your group?</b>\n"
-        "Please select your class group below:\n"
-        "<i>(Only official groups created by the teacher/admin on the platform are allowed)</i>"
-    )
+    if is_reset:
+        msg = (
+            "⚠️ <b>Registration Required</b>\n\n"
+            "Your student record is not active in the database.\n\n"
+            "👉 <b>Please select an active group below to register:</b>"
+        )
+    else:
+        msg = (
+            "👋 <b>Welcome to SATMaster!</b>\n\n"
+            "👉 <b>Please select your class group below to get your SAT portal access link:</b>"
+        )
     bot.send_message(chat_id, msg, reply_markup=keyboard)
     return True
 
+def ask_student_group_buttons(bot, chat_id, name, db, username=None):
+    return prompt_student_registration(bot, chat_id, is_reset=False)
+
 def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False):
     base_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
-    name = student_record.get("name", "Student")
-    student_id = student_record.get("student_id", f"TG{chat_id}")
-    class_name = student_record.get("class", "Group A")
-    username = student_record.get("username", "")
+    name = student_record.get("display_name") or student_record.get("name", "Student")
+    student_id = student_record.get("id") or student_record.get("student_id", f"TG{chat_id}")
+    class_name = student_record.get("group_name") or student_record.get("class") or ""
+    username = student_record.get("telegram_username") or student_record.get("username", "")
 
     student_link = generate_student_link(base_url, student_id, name, class_name)
 
-    greeting = f"👋 <b>Welcome back, {name}!</b>" if is_welcome_back else f"🎉 <b>Registration Complete, {name}!</b>"
+    safe_name = html.escape(name)
+    safe_class = html.escape(class_name)
+    greeting = f"👋 <b>Welcome back, {safe_name}!</b>" if is_welcome_back else f"🎉 <b>Registration Complete, {safe_name}!</b>"
     user_str = f"👤 <b>Telegram:</b> @{username}\n" if username else ""
 
     msg = (
         f"{greeting}\n\n"
-        f"🏫 <b>Class Group:</b> <b>{class_name}</b>\n"
+        f"🏫 <b>Class Group:</b> <b>{safe_class}</b>\n"
         f"{user_str}"
         f"🆔 <b>Student ID:</b> <code>#{student_id}</code>\n\n"
         "✅ You are enrolled in your official SAT homework and practice cohort.\n\n"
         f"🔗 <b>Your Personal Portal Link:</b>\n{student_link}\n\n"
-        "👉 Tap a button below to open your tests and practice:"
+        "👉 Tap a button below to open your tests and practice on any phone or computer:"
     )
 
     buttons = []
     if student_link.startswith("https://"):
         buttons.append([{"text": "📱 Open in Telegram (App)", "web_app": {"url": student_link}}])
     buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": student_link}])
-    buttons.append([{"text": "🔄 Refresh Portal Link", "callback_data": "relink_student"}])
+    buttons.append([
+        {"text": "✏️ Update Name", "callback_data": "reset_role"},
+        {"text": "🔄 Refresh Link", "callback_data": "relink_student"}
+    ])
 
     keyboard = {"inline_keyboard": buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
@@ -340,7 +439,7 @@ def send_admin_hub(bot, chat_id, config, db):
         config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html"),
         "SAT Admin (Owner)"
     ) + "&admin=true"
-    groups = db.get("groups", [])
+    groups = get_live_groups(db)
     students = db.get("students", {})
     teachers = db.get("teachers", {})
     reports = db.get("reports", [])
@@ -426,6 +525,7 @@ def send_teacher_hub(bot, chat_id, teacher_record, config, db):
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
 def handle_update(bot, update, config, db):
+    db = load_db()
     callback = update.get("callback_query")
     admin_chat_id = str(config.get("admin_chat_id") or db.get("admin_chat_id") or "7957347033")
 
@@ -439,127 +539,104 @@ def handle_update(bot, update, config, db):
 
         bot.answer_callback_query(cq_id)
 
-        if data == "role_student":
-            if user_id in db.get("students", {}):
-                student_record = db["students"][user_id]
+        if data.startswith("join_group:") or data.startswith("grp_"):
+            if data.startswith("join_group:"):
+                target_id = data.split(":", 1)[1].strip()
+            else:
+                target_id = data[4:].strip()
+
+            grp = rdb.get_group(target_id)
+            if not grp:
                 bot.send_message(
                     chat_id,
-                    f"🎓 You are already registered as <b>{student_record['name']}</b>"
-                    + (f" (@{student_record['username']})" if student_record.get('username') else "")
-                    + f" in <b>{student_record.get('class', 'Unassigned')}</b>.\n"
-                    "Each Telegram account can only register once with one name."
+                    "❌ That class group is no longer available. Please select an active group:"
                 )
-                send_student_hub(bot, chat_id, student_record, config, is_welcome_back=True)
+                prompt_student_registration(bot, chat_id, is_reset=True)
                 return
 
-            # Check if groups exist before asking for name
-            groups = db.get("groups", [])
-            if not groups:
-                msg = (
-                    "⚠️ <b>No Active Groups Available Yet</b>\n\n"
-                    "The SAT Administrator has not created any class groups on the platform yet.\n\n"
-                    "👉 Please ask your SAT teacher or admin to create your class group on the website first, then send /start again."
-                )
-                keyboard = {
-                    "inline_keyboard": [
-                        [{"text": "🔄 Check Again", "callback_data": "role_student"}]
-                    ]
+            set_user_state(user_id, {
+                "role": "student",
+                "step": "STUDENT_WAITING_NAME",
+                "data": {
+                    "group_id": grp["id"],
+                    "group_name": grp["name"]
                 }
-                bot.send_message(chat_id, msg, reply_markup=keyboard)
-                return
-
-            user_states[user_id] = {"role": "student", "step": "STUDENT_WAITING_NAME", "data": {}}
+            })
             msg = (
-                "🎓 <b>Student Registration (Step 1 of 3)</b>\n\n"
+                f"🏫 You selected: <b>{html.escape(grp['name'])}</b>\n\n"
                 "👉 <b>Please enter your Full Name:</b>\n"
                 "<i>(e.g., Cristiano Ronaldo, Alex Chen)</i>"
             )
             bot.send_message(chat_id, msg)
             return
 
-        if data.startswith("grp_"):
-            target_id = data[4:].strip()
-            groups = db.get("groups", [])
-            matched = next((g for g in groups if g.get("id") == target_id or g.get("name") == target_id), None)
-            group_name = matched.get("name") if matched else target_id
-
-            if user_id in db.get("students", {}):
-                student_record = db["students"][user_id]
+        if data == "role_student":
+            student = rdb.get_student(user_id)
+            if student:
                 bot.send_message(
                     chat_id,
-                    f"🎓 You are already registered as <b>{student_record['name']}</b> in <b>{student_record.get('class', 'Unassigned')}</b>."
+                    f"🎓 You are already registered as <b>{html.escape(student.get('display_name') or student.get('name', ''))}</b>."
                 )
-                send_student_hub(bot, chat_id, student_record, config, is_welcome_back=True)
+                send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
                 return
-
-            state = user_states.get(user_id, {})
-            name = state.get("data", {}).get("name")
-            username = state.get("data", {}).get("username", "")
-
-            if not name:
-                bot.send_message(chat_id, "⚠️ Please start your registration by sending your Full Name:")
-                user_states[user_id] = {"role": "student", "step": "STUDENT_WAITING_NAME", "data": {}}
-                return
-
-            student_record = save_and_register_student(db, user_id, name, username, group_name)
-            user_states.pop(user_id, None)
-
-            # Send student link immediately!
-            send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False)
-
-            # Notify Admin & Group Teacher
-            teacher_chat_id = str(matched.get("teacher_id") or "") if matched else ""
-
-            admin_msg = (
-                "🔔 <b>New Student Registered:</b>\n"
-                f"• Name: <b>{name}</b>\n"
-                f"• Username: @{username}\n"
-                f"• Group: <b>{group_name}</b>\n"
-                f"• ID: <code>#{student_record['student_id']}</code>"
-            )
-
-            if admin_chat_id and admin_chat_id != str(chat_id):
-                try:
-                    bot.send_message(int(admin_chat_id), admin_msg)
-                except Exception:
-                    pass
-
-            if teacher_chat_id and teacher_chat_id != admin_chat_id and teacher_chat_id != str(chat_id):
-                try:
-                    bot.send_message(int(teacher_chat_id), f"🎓 <b>New Student in your group ({group_name}):</b>\n• {name} (@{username}) — ID: #{student_record['student_id']}")
-                except Exception:
-                    pass
+            prompt_student_registration(bot, chat_id, is_reset=False)
             return
 
         if data == "relink_student":
-            if user_id in db.get("students", {}):
-                send_student_hub(bot, chat_id, db["students"][user_id], config, is_welcome_back=True)
+            student = rdb.get_student(user_id)
+            if student:
+                send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
             else:
-                send_role_selection(bot, chat_id)
-            return
-
-        if data == "role_teacher":
-            user_states[user_id] = {"role": "teacher", "step": "TEACHER_WAITING_NAME", "data": {}}
-            msg = (
-                "👨‍🏫 <b>Teacher Registration</b>\n\n"
-                "👉 <b>Please enter your Full Name & Title:</b>\n"
-                "<i>(e.g., Mr. Ahrorbek, Ms. Davis)</i>"
-            )
-            bot.send_message(chat_id, msg)
+                clear_user_state(user_id)
+                prompt_student_registration(bot, chat_id, is_reset=True)
             return
 
         if data == "reset_role":
-            user_states[user_id] = {"role": "student", "step": "STUDENT_WAITING_NAME", "data": {}}
+            student = rdb.get_student(user_id)
+            if student:
+                set_user_state(user_id, {"role": "student", "step": "STUDENT_UPDATING_NAME", "data": {}})
+                bot.send_message(
+                    chat_id,
+                    "✏️ <b>Update Display Name</b>\n\n"
+                    f"Current Name: <b>{html.escape(student.get('display_name') or student.get('name', ''))}</b>\n\n"
+                    "👉 Please enter your updated Full Name:"
+                )
+            else:
+                clear_user_state(user_id)
+                prompt_student_registration(bot, chat_id, is_reset=True)
+            return
+
+        if data == "role_teacher":
+            clear_user_state(user_id)
+            web_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
+            teacher_link = generate_teacher_link(web_url, "Teacher")
+            msg = (
+                "👨‍🏫 <b>Teacher & Administrator Access</b>\n\n"
+                "Welcome, Instructor! As a teacher, you can create and manage class cohorts, view enrolled students, and inspect live test submissions on the web dashboard.\n\n"
+                "🔑 <b>Teacher Access Password:</b> <code>satmaster2026</code>\n\n"
+                f"🔗 <b>Teacher Dashboard URL:</b>\n{teacher_link}\n\n"
+                "👉 <i>To authenticate directly in this Telegram bot, send:</i>\n"
+                "<code>/admin satmaster2026</code>"
+            )
+            buttons = []
+            if teacher_link.startswith("https://"):
+                buttons.append([{"text": "👨‍🏫 Open Teacher App (Telegram)", "web_app": {"url": teacher_link}}])
+            buttons.append([{"text": "🌐 Open Teacher Dashboard in Browser", "url": teacher_link}])
+            bot.send_message(chat_id, msg, reply_markup={"inline_keyboard": buttons})
+            return
+
+        if data == "reset_role":
+            set_user_state(user_id, {"role": "student", "step": "STUDENT_WAITING_NAME", "data": {}})
             bot.send_message(
                 chat_id,
                 "🔄 <b>Update Student Profile</b>\n\n"
-                "👉 Please enter your updated Full Name (or send your existing name):"
+                "👉 Please enter your updated Full Name:"
             )
             return
 
         # ADMIN & TEACHER CALLBACKS
         if data == "cmd_groups":
-            groups = db.get("groups", [])
+            groups = get_live_groups(db)
             if not groups:
                 msg = "🏫 <i>No class groups created yet.</i>\n\nUse <code>/newgroup &lt;name&gt;</code> to create one, or create it on the platform."
             else:
@@ -584,7 +661,7 @@ def handle_update(bot, update, config, db):
             if not is_admin:
                 bot.send_message(chat_id, "🔒 Only the SAT Admin can delete groups.")
                 return
-            groups = db.get("groups", [])
+            groups = get_live_groups(db)
             if not groups:
                 bot.send_message(chat_id, "ℹ️ No groups to delete.")
                 return
@@ -655,7 +732,7 @@ def handle_update(bot, update, config, db):
 
         if data == "cmd_stats":
             students = db.get("students", {})
-            groups = db.get("groups", [])
+            groups = get_live_groups(db)
             reports = db.get("reports", [])
             msg = (
                 "📊 <b>SATMaster Suite Statistics:</b>\n\n"
@@ -698,24 +775,29 @@ def handle_update(bot, update, config, db):
 
     # 2. Start command - Role differentiated!
     if text == "/start" or text.startswith("/start"):
-        user_states.pop(user_id, None)
+        clear_user_state(user_id)
         if is_admin:
             send_admin_hub(bot, chat_id, config, db)
             return
         elif user_id in db.get("teachers", {}):
             send_teacher_hub(bot, chat_id, db["teachers"][user_id], config, db)
             return
-        elif user_id in db.get("students", {}):
-            send_student_hub(bot, chat_id, db["students"][user_id], config, is_welcome_back=True)
+
+        student = rdb.get_student(user_id)
+        if student:
+            send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
             return
         else:
+            if user_id in db.get("students", {}):
+                db["students"].pop(user_id, None)
+                save_db(db)
             send_role_selection(bot, chat_id)
             return
 
     # 3. Admin-Exclusive Text Commands
     if is_admin:
         if text == "/groups":
-            groups = db.get("groups", [])
+            groups = get_live_groups(db)
             if not groups:
                 bot.send_message(chat_id, "🏫 <i>No class groups created yet.</i>\n\nUse <code>/newgroup &lt;name&gt;</code> to create one, or create it on the platform.")
                 return
@@ -811,7 +893,7 @@ def handle_update(bot, update, config, db):
 
         if text == "/stats":
             students = db.get("students", {})
-            groups = db.get("groups", [])
+            groups = get_live_groups(db)
             reports = db.get("reports", [])
             msg = (
                 "📊 <b>SATMaster Suite Statistics:</b>\n\n"
@@ -838,28 +920,74 @@ def handle_update(bot, update, config, db):
             bot.send_message(chat_id, f"✅ Broadcast sent to {count} student(s).")
             return
 
-    if text in ["/register", "/role", "/update"]:
-        user_states[user_id] = {"role": "student", "step": "STUDENT_WAITING_NAME", "data": {}}
+    if text.startswith("/name"):
+        parts = text.split(maxsplit=1)
+        student = rdb.get_student(user_id)
+        if not student:
+            clear_user_state(user_id)
+            prompt_student_registration(bot, chat_id, is_reset=True)
+            return
+
+        if len(parts) < 2 or not parts[1].strip():
+            set_user_state(user_id, {
+                "role": "student",
+                "step": "STUDENT_UPDATING_NAME",
+                "data": {}
+            })
+            bot.send_message(
+                chat_id,
+                f"Current Name: <b>{html.escape(student.get('display_name') or student.get('name', ''))}</b>\n\n"
+                "👉 Please enter your updated Full Name:"
+            )
+            return
+
+        new_name = parts[1].strip()
+        tg_username = (message.get("from") or {}).get("username")
+
+        updated_student = rdb.update_student_name(int(user_id), new_name)
+        if tg_username and tg_username != updated_student.get("telegram_username"):
+            rdb.upsert_student(
+                telegram_id=int(user_id),
+                display_name=new_name,
+                group_id=updated_student["group_id"],
+                telegram_username=tg_username
+            )
+            updated_student = rdb.get_student(user_id)
+
+        # Sync legacy JSON
+        if user_id in db.get("students", {}):
+            db["students"][user_id]["name"] = new_name
+            if tg_username:
+                db["students"][user_id]["username"] = tg_username
+            save_db(db)
+
+        clear_user_state(user_id)
         bot.send_message(
             chat_id,
-            "🔄 <b>Student Registration / Update</b>\n\n"
-            "👉 Please enter your Full Name:"
+            f"✅ <b>Name updated to:</b> <b>{html.escape(new_name)}</b> across the dashboard."
         )
+        send_student_hub(bot, chat_id, updated_student, config, is_welcome_back=True)
+        return
+
+    if text in ["/register", "/role", "/update"]:
+        clear_user_state(user_id)
+        send_role_selection(bot, chat_id)
         return
 
     if text == "/myinfo":
         if is_admin:
             send_admin_hub(bot, chat_id, config, db)
             return
-        elif user_id in db.get("students", {}):
-            send_student_hub(bot, chat_id, db["students"][user_id], config, is_welcome_back=True)
-            return
         elif user_id in db.get("teachers", {}):
             send_teacher_hub(bot, chat_id, db["teachers"][user_id], config, db)
             return
+        student = rdb.get_student(user_id)
+        if student:
+            send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
+            return
         else:
-            bot.send_message(chat_id, "ℹ️ You are not registered yet. Please select your role:")
-            send_role_selection(bot, chat_id)
+            clear_user_state(user_id)
+            prompt_student_registration(bot, chat_id, is_reset=True)
             return
 
     if text == "/help":
@@ -916,93 +1044,42 @@ def handle_update(bot, update, config, db):
 
         if step == "STUDENT_WAITING_NAME":
             entered_name = text.strip()
-            if len(entered_name) < 2:
+            if len(entered_name) < 2 or entered_name.startswith("/"):
                 bot.send_message(chat_id, "⚠️ Please enter your valid Full Name (at least 2 letters):")
                 return
 
-            if user_id in db.get("students", {}):
-                existing = db["students"][user_id]
-                bot.send_message(
-                    chat_id,
-                    f"⚠️ <b>This Telegram account is already registered!</b>\n\n"
-                    f"You are already registered as <b>{existing['name']}</b>"
-                    + (f" (@{existing['username']})" if existing.get('username') else "")
-                    + f" in <b>{existing.get('class', 'a group')}</b>.\n\n"
-                    "Each Telegram account can only register once. You cannot register with another name."
-                )
-                send_student_hub(bot, chat_id, existing, config, is_welcome_back=True)
-                user_states.pop(user_id, None)
+            group_id = state.get("data", {}).get("group_id")
+            grp = rdb.get_group(group_id) if group_id else None
+            if not grp:
+                clear_user_state(user_id)
+                bot.send_message(chat_id, "❌ That class group is no longer available.")
+                prompt_student_registration(bot, chat_id, is_reset=True)
                 return
 
-            state["data"]["name"] = entered_name
-            state["step"] = "STUDENT_WAITING_USERNAME"
+            tg_username = (message.get("from") or {}).get("username") or ""
 
-            tg_username = message.get("from", {}).get("username")
-            prompt = (
-                "🎓 <b>Student Registration (Step 2 of 3)</b>\n\n"
-                f"👤 Name: <b>{entered_name}</b>\n\n"
-                "👉 <b>Please enter your Telegram @username:</b>\n"
+            # Save student to relational database
+            student = rdb.upsert_student(
+                telegram_id=int(user_id),
+                display_name=entered_name,
+                group_id=grp["id"],
+                telegram_username=tg_username
             )
-            if tg_username:
-                prompt += f"<i>(Detected from your profile: @{tg_username} — you can send this or type your username)</i>"
-            else:
-                prompt += "<i>(e.g., @cristiano, @alexchen)</i>"
-            bot.send_message(chat_id, prompt)
-            return
 
-        if step == "STUDENT_WAITING_USERNAME":
-            clean_user = text.strip().lstrip("@").lower()
-            if len(clean_user) < 2:
-                bot.send_message(chat_id, "⚠️ Please enter a valid Telegram username (e.g. <code>@username</code>):")
-                return
+            # Sync with legacy db
+            save_and_register_student(db, user_id, entered_name, tg_username, grp["name"])
+            clear_user_state(user_id)
 
-            # Anti-duplicate: check if this username is already registered to another student!
-            for s_uid, s in db.get("students", {}).items():
-                s_uname = s.get("username", "").strip().lstrip("@").lower()
-                if s_uname == clean_user and str(s_uid) != str(user_id):
-                    bot.send_message(
-                        chat_id,
-                        f"⚠️ <b>This username is already taken!</b>\n\n"
-                        f"The Telegram username <code>@{clean_user}</code> is already registered to <b>{s.get('name')}</b> in <b>{s.get('class')}</b>.\n\n"
-                        "You cannot register with an already registered username under another name. Please enter your own unique Telegram @username:"
-                    )
-                    return
+            # Reply with confirmation and their unique web link to take tests
+            send_student_hub(bot, chat_id, student, config, is_welcome_back=False)
 
-            state["data"]["username"] = clean_user
-            state["step"] = "STUDENT_WAITING_GROUP"
-            ask_student_group_buttons(bot, chat_id, state["data"]["name"], db, clean_user)
-            return
-
-        if step == "STUDENT_WAITING_GROUP":
-            entered_group = text.strip()
-            groups = db.get("groups", [])
-            matched = next((g for g in groups if g.get("name", "").strip().lower() == entered_group.lower() or g.get("code", "").strip().lower() == entered_group.lower()), None)
-            if not matched:
-                bot.send_message(
-                    chat_id,
-                    f"❌ <b>'{entered_group}' is not an available class group.</b>\n\n"
-                    "If you do not tell which official group you are in, you cannot enter.\n\n"
-                    "👉 Please choose one of the available groups below:"
-                )
-                ask_student_group_buttons(bot, chat_id, state["data"].get("name", "Student"), db, state["data"].get("username"))
-                return
-
-            group_name = matched["name"]
-            name = state["data"].get("name", "Student")
-            username = state["data"].get("username", "")
-
-            student_record = save_and_register_student(db, user_id, name, username, group_name)
-            user_states.pop(user_id, None)
-
-            send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False)
-
-            teacher_chat_id = str(matched.get("teacher_id") or "")
+            teacher_chat_id = str(grp.get("teacher_id") or "")
             admin_msg = (
                 "🔔 <b>New Student Registered:</b>\n"
-                f"• Name: <b>{name}</b>\n"
-                f"• Username: @{username}\n"
-                f"• Group: <b>{group_name}</b>\n"
-                f"• ID: <code>#{student_record['student_id']}</code>"
+                f"• Name: <b>{html.escape(entered_name)}</b>\n"
+                f"• Username: @{tg_username}\n"
+                f"• Group: <b>{html.escape(grp['name'])}</b>\n"
+                f"• ID: <code>#{student['id']}</code>"
             )
             if admin_chat_id and admin_chat_id != str(chat_id):
                 try:
@@ -1011,9 +1088,77 @@ def handle_update(bot, update, config, db):
                     pass
             if teacher_chat_id and teacher_chat_id != admin_chat_id and teacher_chat_id != str(chat_id):
                 try:
-                    bot.send_message(int(teacher_chat_id), f"🎓 <b>New Student in your group ({group_name}):</b>\n• {name} (@{username}) — ID: #{student_record['student_id']}")
+                    bot.send_message(int(teacher_chat_id), f"🎓 <b>New Student in your group ({html.escape(grp['name'])}):</b>\n• {html.escape(entered_name)} (@{tg_username}) — ID: #{student['id']}")
                 except Exception:
                     pass
+            return
+
+        if step == "STUDENT_UPDATING_NAME":
+            new_name = text.strip()
+            if len(new_name) < 2 or new_name.startswith("/"):
+                bot.send_message(chat_id, "⚠️ Please enter your valid Full Name (at least 2 letters):")
+                return
+
+            student = rdb.get_student(user_id)
+            if not student:
+                clear_user_state(user_id)
+                prompt_student_registration(bot, chat_id, is_reset=True)
+                return
+
+            updated_student = rdb.update_student_name(int(user_id), new_name)
+            tg_username = (message.get("from") or {}).get("username")
+            if tg_username and tg_username != updated_student.get("telegram_username"):
+                rdb.upsert_student(
+                    telegram_id=int(user_id),
+                    display_name=new_name,
+                    group_id=updated_student["group_id"],
+                    telegram_username=tg_username
+                )
+                updated_student = rdb.get_student(user_id)
+
+            if user_id in db.get("students", {}):
+                db["students"][user_id]["name"] = new_name
+                if tg_username:
+                    db["students"][user_id]["username"] = tg_username
+                save_db(db)
+
+            clear_user_state(user_id)
+            bot.send_message(
+                chat_id,
+                f"✅ <b>Name updated to:</b> <b>{html.escape(new_name)}</b> across the dashboard."
+            )
+            send_student_hub(bot, chat_id, updated_student, config, is_welcome_back=True)
+            return
+
+        if step == "STUDENT_WAITING_GROUP":
+            entered_group = text.strip()
+            groups = rdb.list_groups()
+            matched = next((g for g in groups if g.get("name", "").strip().lower() == entered_group.lower() or str(g.get("id")) == entered_group), None)
+            if not matched and len(groups) == 1:
+                matched = groups[0]
+
+            if not matched:
+                bot.send_message(
+                    chat_id,
+                    f"❌ <b>'{html.escape(entered_group)}' is not an available class group.</b>\n\n"
+                    "👉 Please choose one of the available groups below:"
+                )
+                prompt_student_registration(bot, chat_id, is_reset=False)
+                return
+
+            name = state["data"].get("name", "Student")
+            username = state["data"].get("username", "") or (message.get("from") or {}).get("username", "")
+
+            student = rdb.upsert_student(
+                telegram_id=int(user_id),
+                display_name=name,
+                group_id=matched["id"],
+                telegram_username=username
+            )
+            save_and_register_student(db, user_id, name, username, matched["name"])
+            clear_user_state(user_id)
+
+            send_student_hub(bot, chat_id, student, config, is_welcome_back=False)
             return
 
     # Teacher question flow
@@ -1063,158 +1208,321 @@ def handle_update(bot, update, config, db):
                 )
             return
 
-    # 6. Fallback
+    # 6. Smart Fallback for unregistered users & general messages
     if is_admin:
         send_admin_hub(bot, chat_id, config, db)
-    elif user_id in db.get("students", {}):
-        send_student_hub(bot, chat_id, db["students"][user_id], config, is_welcome_back=True)
     elif user_id in db.get("teachers", {}):
         send_teacher_hub(bot, chat_id, db["teachers"][user_id], config, db)
     else:
-        send_role_selection(bot, chat_id)
+        student = rdb.get_student(user_id)
+        if student:
+            send_student_hub(bot, chat_id, student, config, is_welcome_back=True)
+        else:
+            clear_user_state(user_id)
+            if user_id in db.get("students", {}):
+                db["students"].pop(user_id, None)
+                save_db(db)
+            send_role_selection(bot, chat_id)
 
-def run_local_web_server(port=8000):
-    directory = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    class SATMasterHandler(SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=directory, **kwargs)
+class SATMasterHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=WEB_DIR, **kwargs)
 
-        def log_message(self, format, *args):
-            pass
+    def log_message(self, format, *args):
+        pass
 
-        def send_cors_headers(self):
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    def send_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-        def do_OPTIONS(self):
-            self.send_response(200)
-            self.send_cors_headers()
-            self.end_headers()
+    def send_json(self, status_code, data):
+        payload = json.dumps(data).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_cors_headers()
+        self.end_headers()
+        self.wfile.write(payload)
 
-        def do_GET(self):
-            parsed_path = urllib.parse.urlparse(self.path)
-            if parsed_path.path == "/api/groups":
-                db = load_db()
-                groups = db.get("groups", [])
-                students = db.get("students", {})
-                for g in groups:
-                    g_name = g.get("name", "").strip().lower()
-                    g["student_count"] = sum(1 for s in students.values() if s.get("class", "").strip().lower() == g_name)
-                payload = json.dumps({"ok": True, "groups": groups}).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_cors_headers()
-                self.end_headers()
-                self.wfile.write(payload)
-                return
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_cors_headers()
+        self.end_headers()
 
-            if parsed_path.path == "/api/students":
+    def do_GET(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        clean_path = parsed_path.path.rstrip("/")
+        if not clean_path:
+            clean_path = "/"
+
+        # 1. GET /api/groups - List all groups with student count
+        if clean_path == "/api/groups":
+            try:
+                groups = rdb.list_groups()
+                return self.send_json(200, {"ok": True, "groups": groups, "count": len(groups)})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # 4. GET /api/groups/:id/students - Return all students isolated to this specific group
+        m_grp_students = re.match(r"^/api/groups/([^/]+)/students$", clean_path)
+        if m_grp_students:
+            group_id = m_grp_students.group(1)
+            try:
+                students = rdb.get_group_students(group_id)
+                if students is None:
+                    return self.send_json(404, {"ok": False, "error": f"Group '{group_id}' not found"})
+                return self.send_json(200, {"ok": True, "group_id": group_id, "students": students, "count": len(students)})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # 5. GET /api/students/:id/history - Return all past test attempts and unit scores for student
+        m_stu_history = re.match(r"^/api/students/([^/]+)/history$", clean_path)
+        if m_stu_history:
+            student_id = m_stu_history.group(1)
+            try:
+                history = rdb.get_student_history(student_id)
+                if history is None:
+                    return self.send_json(404, {"ok": False, "error": f"Student '{student_id}' not found"})
+                return self.send_json(200, {"ok": True, "student_id": student_id, "history": history, "test_results": history, "count": len(history)})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # Legacy support: GET /api/students?group=...
+        if clean_path == "/api/students":
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            group_filter = qs.get("group", [None])[0]
+            if group_filter:
+                students = rdb.get_group_students(group_filter)
+                if students is None:
+                    # Fallback to legacy db
+                    db = load_db()
+                    all_s = list(db.get("students", {}).values())
+                    students = [s for s in all_s if s.get("class", "").strip().lower() == group_filter.strip().lower()]
+            else:
                 db = load_db()
                 students = list(db.get("students", {}).values())
-                qs = urllib.parse.parse_qs(parsed_path.query)
-                group_filter = qs.get("group", [None])[0]
-                if group_filter:
-                    students = [s for s in students if s.get("class", "").strip().lower() == group_filter.strip().lower()]
-                payload = json.dumps({"ok": True, "students": students}).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_cors_headers()
-                self.end_headers()
-                self.wfile.write(payload)
-                return
+            return self.send_json(200, {"ok": True, "students": students or []})
 
-            super().do_GET()
+        # SPA Routes: /groups and /groups/:id
+        if clean_path == "/groups" or re.match(r"^/groups(/[a-zA-Z0-9_\-]+)?$", clean_path):
+            self.path = "/index.html"
+            return super().do_GET()
 
-        def do_POST(self):
-            parsed_path = urllib.parse.urlparse(self.path)
-            content_length = int(self.headers.get("Content-Length", 0))
-            post_data = self.rfile.read(content_length)
+        super().do_GET()
+
+    def do_POST(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        clean_path = parsed_path.path.rstrip("/")
+        content_length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(content_length)
+        try:
+            body = json.loads(post_data.decode("utf-8")) if post_data else {}
+        except Exception:
+            body = {}
+
+        # 2. POST /api/groups - Create a new group (accepts { name })
+        if clean_path == "/api/groups":
+            action = body.get("action", "create")
+            if action == "delete":
+                group_id = body.get("id") or body.get("name")
+                deleted = rdb.delete_group(group_id)
+                legacy_db = load_db()
+                delete_group(legacy_db, group_id)
+                if deleted:
+                    return self.send_json(200, {"ok": True, "message": "Group deleted", "deleted": deleted})
+                return self.send_json(404, {"ok": False, "error": "Group not found"})
+
+            name = body.get("name", "").strip()
+            if not name:
+                return self.send_json(400, {"ok": False, "error": "Group name is required"})
+
             try:
-                body = json.loads(post_data.decode("utf-8")) if post_data else {}
-            except Exception:
-                body = {}
+                new_grp = rdb.create_group(name)
+                # Sync with legacy db
+                legacy_db = load_db()
+                code = body.get("code", "").strip()
+                schedule = body.get("schedule", "").strip()
+                teacher_id = body.get("teacher_id") or legacy_db.get("admin_chat_id")
+                teacher_name = body.get("teacher_name") or "SAT Admin"
+                add_group(legacy_db, name, code, schedule, teacher_id, teacher_name)
+                return self.send_json(201, {"ok": True, "group": new_grp, "id": new_grp["id"], "name": new_grp["name"]})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
 
-            if parsed_path.path == "/api/groups":
-                action = body.get("action", "create")
-                db = load_db()
-                if action == "create":
-                    name = body.get("name", "").strip()
-                    code = body.get("code", "").strip()
-                    schedule = body.get("schedule", "").strip()
-                    desc = body.get("description", "").strip()
-                    teacher_id = body.get("teacher_id") or db.get("admin_chat_id")
-                    teacher_name = body.get("teacher_name") or "SAT Admin"
-                    if name:
-                        new_grp, created = add_group(db, name, code, schedule, teacher_id, teacher_name)
-                        res = {"ok": True, "group": new_grp, "created": created}
-                    else:
-                        res = {"ok": False, "error": "Name required"}
-                elif action == "delete":
-                    group_id = body.get("id") or body.get("name")
-                    removed = delete_group(db, group_id)
-                    res = {"ok": True, "removed": len(removed)}
-                else:
-                    res = {"ok": False, "error": "Unknown action"}
+        # POST /api/students - Register or add student
+        if clean_path == "/api/students":
+            telegram_id = body.get("telegram_id")
+            display_name = body.get("display_name") or body.get("name")
+            group_id = body.get("group_id") or body.get("class")
+            username = body.get("telegram_username") or body.get("username")
 
-                payload = json.dumps(res).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_cors_headers()
-                self.end_headers()
-                self.wfile.write(payload)
-                return
+            if not telegram_id or not display_name or not group_id:
+                return self.send_json(400, {"ok": False, "error": "telegram_id, display_name, and group_id are required"})
 
-            if parsed_path.path == "/api/report":
-                report = body
-                db = load_db()
-                cfg = load_config()
-                db.setdefault("reports", []).append(report)
-                save_db(db)
+            try:
+                # Check group existence
+                grp = rdb.get_group(group_id)
+                if not grp:
+                    return self.send_json(404, {"ok": False, "error": f"Group '{group_id}' not found"})
+                student = rdb.upsert_student(
+                    telegram_id=int(telegram_id),
+                    display_name=display_name,
+                    group_id=grp["id"],
+                    telegram_username=username
+                )
+                # Sync to legacy db
+                legacy_db = load_db()
+                save_and_register_student(legacy_db, telegram_id, display_name, username, grp["name"])
+                return self.send_json(201, {"ok": True, "student": student})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
 
-                # Group report routing
-                student_group = report.get("studentClass", "").strip().lower()
-                target_teacher_chat = None
-                for g in db.get("groups", []):
-                    if g.get("name", "").strip().lower() == student_group:
-                        target_teacher_chat = g.get("teacher_id")
-                        break
+        # POST /api/students/:id/test-results - Record test result
+        m_stu_test = re.match(r"^/api/students/([^/]+)/test-results$", clean_path)
+        if m_stu_test:
+            student_id = m_stu_test.group(1)
+            student = rdb.get_student(student_id)
+            if not student:
+                return self.send_json(404, {"ok": False, "error": f"Student '{student_id}' not found"})
 
-                admin_chat_id = str(cfg.get("admin_chat_id") or db.get("admin_chat_id") or "7957347033")
-                token = cfg.get("bot_token")
-                bot_client = TelegramBotClient(token) if token else None
+            group_id = body.get("group_id") or student["group_id"]
+            total_score = body.get("total_score")
+            rw_score = body.get("rw_score", 0)
+            math_score = body.get("math_score", 0)
 
-                if bot_client:
-                    report_text = report.get("telegramText") or (
-                        f"📊 [TEST REPORT - {report.get('studentName')}]\n"
-                        f"🏫 Group: {report.get('studentClass')}\n"
-                        f"Score: {report.get('scorePct')}% ({report.get('correctCount')}/{report.get('totalQuestions')})"
-                    )
-                    # 1. Deliver to group teacher
-                    if target_teacher_chat and str(target_teacher_chat) != admin_chat_id:
-                        try:
-                            bot_client.send_message(int(target_teacher_chat), f"📊 [GROUP REPORT: {report.get('studentClass')}]\n" + report_text)
-                        except Exception:
-                            pass
-                    # 2. Deliver to Admin
-                    if admin_chat_id:
-                        try:
-                            bot_client.send_message(int(admin_chat_id), f"📊 [ADMIN REPORT: {report.get('studentClass')}]\n" + report_text)
-                        except Exception:
-                            pass
+            if total_score is None:
+                return self.send_json(400, {"ok": False, "error": "total_score is required"})
 
-                payload = json.dumps({"ok": True}).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_cors_headers()
-                self.end_headers()
-                self.wfile.write(payload)
-                return
+            try:
+                res = rdb.record_test_result(
+                    student_id=student["id"],
+                    group_id=group_id,
+                    total_score=int(total_score),
+                    rw_score=int(rw_score),
+                    math_score=int(math_score)
+                )
+                return self.send_json(201, {"ok": True, "test_result": res})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
 
-            self.send_response(404)
-            self.end_headers()
+        # Existing POST /api/report
+        if clean_path == "/api/report":
+            report = body
+            db = load_db()
+            cfg = load_config()
+            db.setdefault("reports", []).append(report)
+            save_db(db)
 
+            # Record into relational test_results if student matches
+            try:
+                student_name = report.get("studentName", "").strip()
+                student_group = report.get("studentClass", "").strip()
+                grp = rdb.get_group(student_group)
+                if grp:
+                    students = rdb.get_group_students(grp["id"]) or []
+                    matching = [s for s in students if s["display_name"].lower() == student_name.lower()]
+                    if matching:
+                        target_student = matching[0]
+                        pct = float(report.get("scorePct", 0))
+                        est_total = int(400 + (pct / 100.0) * 1200)
+                        est_rw = int(200 + (pct / 100.0) * 600)
+                        est_math = int(200 + (pct / 100.0) * 600)
+                        rdb.record_test_result(
+                            student_id=target_student["id"],
+                            group_id=grp["id"],
+                            total_score=est_total,
+                            rw_score=est_rw,
+                            math_score=est_math
+                        )
+            except Exception as err:
+                print(f"Report relational sync note: {err}")
+
+            # Group report routing & Telegram notification
+            student_group_name = report.get("studentClass", "").strip().lower()
+            target_teacher_chat = None
+            for g in db.get("groups", []):
+                if g.get("name", "").strip().lower() == student_group_name:
+                    target_teacher_chat = g.get("teacher_id")
+                    break
+
+            admin_chat_id = str(cfg.get("admin_chat_id") or db.get("admin_chat_id") or "7957347033")
+            token = cfg.get("bot_token")
+            bot_client = TelegramBotClient(token) if token else None
+
+            if bot_client:
+                report_text = report.get("telegramText") or (
+                    f"📊 [TEST REPORT - {report.get('studentName')}]\n"
+                    f"🏫 Group: {report.get('studentClass')}\n"
+                    f"Score: {report.get('scorePct')}% ({report.get('correctCount')}/{report.get('totalQuestions')})"
+                )
+                # Deliver to group teacher
+                if target_teacher_chat and str(target_teacher_chat) != admin_chat_id:
+                    try:
+                        bot_client.send_message(int(target_teacher_chat), f"📊 [GROUP REPORT: {report.get('studentClass')}]\n" + report_text)
+                    except Exception:
+                        pass
+                # Deliver to Admin
+                if admin_chat_id:
+                    try:
+                        bot_client.send_message(int(admin_chat_id), f"📊 [ADMIN REPORT: {report.get('studentClass')}]\n" + report_text)
+                    except Exception:
+                        pass
+
+            return self.send_json(200, {"ok": True})
+
+        return self.send_json(404, {"ok": False, "error": "Endpoint not found"})
+
+    def do_DELETE(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        clean_path = parsed_path.path.rstrip("/")
+
+        # 3. DELETE /api/groups/:id - Delete a group (triggers CASCADE delete for all students and test records)
+        m_del_group = re.match(r"^/api/groups/([^/]+)$", clean_path)
+        if m_del_group:
+            group_id = m_del_group.group(1)
+            try:
+                deleted = rdb.delete_group(group_id)
+                if not deleted:
+                    return self.send_json(404, {"ok": False, "error": f"Group '{group_id}' not found"})
+                # Sync delete to legacy JSON db
+                legacy_db = load_db()
+                delete_group(legacy_db, group_id)
+                return self.send_json(200, {
+                    "ok": True,
+                    "message": "Group and all associated students and test records deleted successfully via CASCADE",
+                    "deleted": deleted
+                })
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # 6. DELETE /api/students/:id - Hard-delete a student and all their test history
+        m_del_student = re.match(r"^/api/students/([^/]+)$", clean_path)
+        if m_del_student:
+            student_id = m_del_student.group(1)
+            try:
+                deleted = rdb.delete_student(student_id)
+                if not deleted:
+                    return self.send_json(404, {"ok": False, "error": f"Student '{student_id}' not found"})
+                # Sync delete to legacy JSON db
+                legacy_db = load_db()
+                students = legacy_db.get("students", {})
+                for uid in list(students.keys()):
+                    if uid == student_id or students[uid].get("student_id") == student_id or str(students[uid].get("telegram_id")) == str(deleted.get("telegram_id")):
+                        del students[uid]
+                save_db(legacy_db)
+                return self.send_json(200, {
+                    "ok": True,
+                    "message": "Student and test history hard-deleted successfully via CASCADE",
+                    "deleted": deleted
+                })
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        return self.send_json(404, {"ok": False, "error": "Endpoint not found"})
+
+def run_local_web_server(port=8000):
     server = HTTPServer(("0.0.0.0", port), SATMasterHandler)
     server.serve_forever()
 
@@ -1223,13 +1531,130 @@ def main():
         print("Running SATMaster Telegram Bot self-tests...")
         cfg = load_config()
         db = load_db()
-        test_link = generate_student_link("http://localhost:8000/index.html", "TG12345", "Test Student", "Group A")
+        test_link = generate_student_link("http://localhost:8000/index.html", "TG12345", "Test Student", "SAT Math 2026")
         assert "role=student" in test_link
         assert "uid=TG12345" in test_link
         assert "name=Test+Student" in test_link
         teacher_link = generate_teacher_link("http://localhost:8000/index.html")
         assert "role=teacher" in teacher_link
-        print("✅ Self-test passed: Link generation, database load/save all functional!")
+
+        # Test state persistence
+        set_user_state("TEST_USER_999", {"role": "student", "step": "STUDENT_WAITING_GROUP", "data": {"name": "Test Runner"}})
+        states_disk = load_user_states()
+        assert "TEST_USER_999" in states_disk
+        assert states_disk["TEST_USER_999"]["data"]["name"] == "Test Runner"
+        clear_user_state("TEST_USER_999")
+        states_cleared = load_user_states()
+        assert "TEST_USER_999" not in states_cleared
+
+        # Test simulated message handling
+        class MockBot:
+            def __init__(self):
+                self.sent_messages = []
+            def send_message(self, chat_id, text, reply_markup=None, parse_mode="HTML"):
+                self.sent_messages.append({"chat_id": chat_id, "text": text, "reply_markup": reply_markup})
+                return {"ok": True}
+            def answer_callback_query(self, cq_id):
+                return {"ok": True}
+
+        # Clean test user before testing
+        db["students"].pop("999888", None)
+        save_db(db)
+        clear_user_state("999888")
+
+        mock_bot = MockBot()
+        try:
+            # Test Part 3 live database registration & sync flow
+            test_grp = rdb.get_group("Test Cohort Bot")
+            if not test_grp:
+                test_grp = rdb.create_group("Test Cohort Bot")
+
+            # 1. Unregistered student sends /start -> gets mandatory role selection buttons
+            update_start = {
+                "update_id": 1001,
+                "message": {
+                    "chat": {"id": 999888},
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "text": "/start"
+                }
+            }
+            handle_update(mock_bot, update_start, cfg, db)
+            assert len(mock_bot.sent_messages) > 0
+            last_msg = mock_bot.sent_messages[-1]
+            assert last_msg["reply_markup"] is not None
+            role_cbs = [btn["callback_data"] for row in last_msg["reply_markup"]["inline_keyboard"] for btn in row]
+            assert "role_student" in role_cbs
+            assert "role_teacher" in role_cbs
+
+            # 2. User selects Student role -> gets active group buttons
+            update_role = {
+                "update_id": 1002,
+                "callback_query": {
+                    "id": "cq_role",
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "message": {"chat": {"id": 999888}},
+                    "data": "role_student"
+                }
+            }
+            handle_update(mock_bot, update_role, cfg, db)
+            last_msg = mock_bot.sent_messages[-1]
+            assert last_msg["reply_markup"] is not None
+            grp_cbs = [btn["callback_data"] for row in last_msg["reply_markup"]["inline_keyboard"] for btn in row]
+            assert f"join_group:{test_grp['id']}" in grp_cbs
+
+            # 3. Student taps group button (join_group:<group_id>)
+            update_cb = {
+                "update_id": 1003,
+                "callback_query": {
+                    "id": "cq_123",
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "message": {"chat": {"id": 999888}},
+                    "data": f"join_group:{test_grp['id']}"
+                }
+            }
+            handle_update(mock_bot, update_cb, cfg, db)
+            assert "999888" in user_states
+            assert user_states["999888"]["step"] == "STUDENT_WAITING_NAME"
+
+            # 4. Student enters their Full Name -> saved to satmaster.db
+            update_name = {
+                "update_id": 1004,
+                "message": {
+                    "chat": {"id": 999888},
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "text": "Nodirbek Aliyev"
+                }
+            }
+            handle_update(mock_bot, update_name, cfg, db)
+            reg_student = rdb.get_student(999888)
+            assert reg_student is not None
+            assert reg_student["display_name"] == "Nodirbek Aliyev"
+            assert reg_student["group_id"] == test_grp["id"]
+            assert "999888" not in user_states
+
+            # 5. Student updates their name via /name
+            update_rename = {
+                "update_id": 1005,
+                "message": {
+                    "chat": {"id": 999888},
+                    "from": {"id": 999888, "username": "test_tg_user"},
+                    "text": "/name Nodirbek A. Aliyev"
+                }
+            }
+            handle_update(mock_bot, update_rename, cfg, db)
+            updated = rdb.get_student(999888)
+            assert updated["display_name"] == "Nodirbek A. Aliyev"
+            assert updated["telegram_username"] == "test_tg_user"
+        finally:
+            clear_user_state("999888")
+            rdb.delete_student(999888)
+            if test_grp:
+                rdb.delete_group(test_grp["id"])
+            fresh_db = load_db()
+            fresh_db["students"].pop("999888", None)
+            save_db(fresh_db)
+
+        print("✅ Self-test passed: Link generation, states persistence, dynamic group selection, relational DB upsert, and /name sync all verified!")
         return
 
     config = load_config()
@@ -1273,7 +1698,7 @@ def main():
     print("🚀 Bot is live with sub-second instant response!")
     while True:
         try:
-            updates_res = bot.get_updates(offset=last_offset, timeout=0)
+            updates_res = bot.get_updates(offset=last_offset, timeout=15)
             if updates_res.get("ok"):
                 results = updates_res.get("result", [])
                 for upd in results:
@@ -1281,11 +1706,16 @@ def main():
                     try:
                         handle_update(bot, upd, config, db)
                     except Exception as err:
-                        print(f"Error handling update {upd.get('update_id')}: {err}")
-                if not results:
-                    time.sleep(0.35)
+                        import traceback
+                        print(f"❌ Error handling update {upd.get('update_id')}: {err}")
+                        traceback.print_exc()
             else:
-                time.sleep(0.7)
+                desc = updates_res.get("description", "")
+                if "Conflict" in desc:
+                    print("⚠️ Another bot instance is polling Telegram! Waiting 5s...")
+                    time.sleep(5)
+                else:
+                    time.sleep(1)
         except KeyboardInterrupt:
             print("\nShutting down bot.")
             break

@@ -26,3 +26,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
+
+# Local data & binaries
+site_packages/
+satmaster.db
+*.pptx
+user_states.json
+images/
+images_uz/
+kahoot_uzbekistan_history/

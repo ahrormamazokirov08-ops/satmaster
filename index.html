@@ -32,8 +32,8 @@
     <!-- Navigation Tabs -->
     <nav class="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
 
-      <button onclick="switchTab('classes')" id="nav-classes" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-400 hover:text-white">
-        🏫 My Classes
+      <button onclick="switchTab('groups')" id="nav-groups" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-400 hover:text-white">
+        👥 Groups
       </button>
       <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-400 hover:text-white">
         📊 Teacher Dashboard
@@ -118,79 +118,232 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- TAB 1: TEACHER CLASSES MANAGEMENT -->
+    <!-- TAB 1: TEACHER GROUPS MANAGEMENT (/groups) -->
     <!-- ========================================== -->
-    <section id="tab-classes" class="hidden space-y-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-extrabold text-white">My SAT Classes & Cohorts</h1>
-          <p class="text-xs text-slate-400">Keep different classes organized with dedicated homework sets for each group.</p>
+    <section id="tab-groups" class="hidden space-y-6">
+      
+      <!-- VIEW A: GROUPS HUB (/groups) -->
+      <div id="groups-hub-view" class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Cohorts Hub
+              </span>
+              <span id="stat-groups-count" class="text-xs text-slate-400">Loading groups...</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">Groups</h1>
+            <p class="text-xs sm:text-sm text-slate-400">Manage student cohorts, track enrollments, and inspect test performance.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="fetchAndRenderGroups(true)" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all text-xs font-semibold flex items-center gap-1.5" title="Refresh Groups">
+              <span>🔄</span><span>Refresh</span>
+            </button>
+            <button type="button" onclick="openCreateClassModal()" id="btn-create-new-group" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/25 flex items-center gap-1.5 transition-all">
+              <span>+ Create New Class</span>
+            </button>
+          </div>
         </div>
-        <button onclick="openCreateClassModal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all">
-          <span>+ Create New Class</span>
-        </button>
+
+        <!-- SEARCH FILTER -->
+        <div class="flex items-center gap-3">
+          <div class="relative flex-1 max-w-md">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">🔍</span>
+            <input type="text" id="groups-search-input" oninput="filterGroupsGrid()" placeholder="Filter groups by name..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all">
+          </div>
+        </div>
+
+        <!-- LOADING SKELETON -->
+        <div id="groups-loading-skeleton" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 animate-pulse space-y-4">
+            <div class="h-5 bg-slate-800 rounded w-2/3"></div>
+            <div class="h-4 bg-slate-800/60 rounded w-1/3"></div>
+            <div class="h-10 bg-slate-800/40 rounded"></div>
+          </div>
+          <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 animate-pulse space-y-4">
+            <div class="h-5 bg-slate-800 rounded w-2/3"></div>
+            <div class="h-4 bg-slate-800/60 rounded w-1/3"></div>
+            <div class="h-10 bg-slate-800/40 rounded"></div>
+          </div>
+          <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 animate-pulse space-y-4">
+            <div class="h-5 bg-slate-800 rounded w-2/3"></div>
+            <div class="h-4 bg-slate-800/60 rounded w-1/3"></div>
+            <div class="h-10 bg-slate-800/40 rounded"></div>
+          </div>
+        </div>
+
+        <!-- ERROR STATE -->
+        <div id="groups-error-state" class="hidden p-6 rounded-2xl border border-rose-500/30 bg-rose-950/20 text-rose-300 text-center space-y-3">
+          <div class="text-2xl">⚠️</div>
+          <h3 class="text-sm font-bold text-white" id="groups-error-msg">Failed to load groups</h3>
+          <button onclick="fetchAndRenderGroups(true)" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-all">Retry</button>
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div id="groups-empty-state" class="hidden col-span-full p-12 text-center rounded-2xl border border-slate-800 bg-slate-900/40 space-y-3">
+          <div class="text-3xl">👥</div>
+          <h3 class="text-base font-bold text-white">No groups created yet</h3>
+          <p class="text-xs text-slate-400 max-w-sm mx-auto">Click "+ Create New Class" to establish your first cohort.</p>
+          <button onclick="openCreateClassModal()" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg inline-block">
+            + Create New Class
+          </button>
+        </div>
+
+        <!-- GROUPS GRID CONTAINER -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="groups-grid">
+          <!-- Dynamically populated via JS -->
+        </div>
+
+        <!-- Legacy compatibility container (hidden) -->
+        <div class="hidden" id="class-cards-container"></div>
       </div>
 
-      <!-- DYNAMIC CLASSES CONTAINER -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="class-cards-container">
-        <!-- Rendered dynamically via JS -->
+      <!-- VIEW B: GROUP DETAIL VIEW (/groups/:id) -->
+      <div id="group-detail-view" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div class="space-y-1">
+            <button type="button" onclick="returnToGroupsHub()" class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-400 hover:text-sky-300 hover:underline mb-1">
+              <span>← Back to Groups</span>
+            </button>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" id="detail-group-name">Cohort Name</h1>
+              <span id="detail-group-count-badge" class="px-3 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                0 Students
+              </span>
+            </div>
+            <p class="text-xs text-slate-400" id="detail-group-meta">Cohort roster and performance history</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="refreshGroupDetail()" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all text-xs font-semibold flex items-center gap-1.5">
+              <span>🔄 Refresh Roster</span>
+            </button>
+            <button type="button" onclick="switchTab('creator')" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5">
+              <span>➕ Assign Homework</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- DETAIL LOADING SKELETON -->
+        <div id="detail-roster-loading" class="hidden p-8 rounded-2xl border border-slate-800 bg-slate-900/40 text-center space-y-3">
+          <div class="inline-block animate-spin text-2xl">⏳</div>
+          <p class="text-xs text-slate-400">Fetching student roster from relational database...</p>
+        </div>
+
+        <!-- DETAIL ERROR STATE -->
+        <div id="detail-roster-error" class="hidden p-6 rounded-2xl border border-rose-500/30 bg-rose-950/20 text-rose-300 text-center space-y-3">
+          <div class="text-2xl">⚠️</div>
+          <h3 class="text-sm font-bold text-white" id="detail-roster-error-msg">Failed to load student roster</h3>
+          <button onclick="refreshGroupDetail()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-all">Retry</button>
+        </div>
+
+        <!-- DETAIL EMPTY STATE -->
+        <div id="detail-roster-empty" class="hidden p-12 text-center rounded-2xl border border-slate-800 bg-slate-900/40 space-y-3">
+          <div class="text-3xl">📋</div>
+          <h3 class="text-base font-bold text-white">No students enrolled yet</h3>
+          <p class="text-xs text-slate-400 max-w-md mx-auto">
+            Students assigned to this group will appear here automatically when they register via the Telegram Bot <strong class="text-sky-300">@Ahrorbek_SAT_bot</strong>.
+          </p>
+        </div>
+
+        <!-- ROSTER TABLE -->
+        <div id="detail-roster-table-wrapper" class="hidden overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 backdrop-blur-sm shadow-xl">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 bg-slate-950/60 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                  <th class="py-3.5 px-4 sm:px-6">Display Name</th>
+                  <th class="py-3.5 px-4 sm:px-6">Telegram Username</th>
+                  <th class="py-3.5 px-4 sm:px-6">Registered Date</th>
+                  <th class="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="detail-roster-tbody" class="divide-y divide-slate-800/60 text-slate-200">
+                <!-- Dynamically populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
+
     </section>
+    <!-- Alias for backward compatibility -->
+    <div id="tab-classes" class="hidden"></div>
 
     <!-- ========================================== -->
     <!-- TAB 2: TEACHER DASHBOARD & GRADEBOOK -->
     <!-- ========================================== -->
-    <section id="tab-dashboard" class="hidden space-y-6">
+    <section id="tab-dashboard" class="hidden space-y-8">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-extrabold text-white">Teacher Dashboard & Analytics</h1>
-          <p class="text-xs text-slate-400">Class scores, auto-graded submissions, and mistake heatmaps.</p>
+          <p class="text-xs text-slate-400">Class scores, auto-graded homework submissions, and mistake heatmaps.</p>
         </div>
+        <button onclick="switchTab('creator')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all">
+          <span>+ Create Homework</span>
+        </button>
       </div>
 
+      <!-- 4 Top Metric Cards (Dynamic) -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-          <span class="text-xs text-slate-400">Active Classes</span>
-          <div class="text-2xl font-black text-white" id="stat-active-classes">0</div>
+        <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-lg">
+          <span class="text-xs text-slate-400 font-medium">Active Classes</span>
+          <div class="text-3xl font-black text-white mt-1" id="stat-active-classes">0</div>
         </div>
-        <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-          <span class="text-xs text-slate-400">Active Homework</span>
-          <div class="text-2xl font-black text-white">3</div>
+        <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-lg">
+          <span class="text-xs text-slate-400 font-medium">Active Homework</span>
+          <div class="text-3xl font-black text-white mt-1" id="stat-active-homework">0</div>
         </div>
-        <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-          <span class="text-xs text-slate-400">Class Average</span>
-          <div class="text-2xl font-black text-emerald-400">85%</div>
+        <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-lg">
+          <span class="text-xs text-slate-400 font-medium">Class Average</span>
+          <div class="text-3xl font-black text-emerald-400 mt-1" id="stat-class-average">--</div>
         </div>
-        <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-          <span class="text-xs text-slate-400">Question Bank</span>
-          <div class="text-2xl font-black text-purple-400">16</div>
+        <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-lg">
+          <span class="text-xs text-slate-400 font-medium">Question Bank</span>
+          <div class="text-3xl font-black text-purple-400 mt-1" id="stat-question-bank">16</div>
         </div>
       </div>
 
-      <!-- Student Submissions Gradebook Table -->
+      <!-- Class Trouble Spots & Error Heatmap -->
+      <div class="p-6 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-950/20 via-slate-900 to-slate-900 space-y-4 shadow-xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🔥</span>
+            <div>
+              <h3 class="text-base font-black text-white">Class Trouble Spots & Error Heatmap</h3>
+              <p class="text-xs text-slate-400 mt-0.5">High-mistake questions pinpointed to guide your next review session.</p>
+            </div>
+          </div>
+          <span class="text-xs font-bold text-amber-300 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Class Diagnostic</span>
+        </div>
+
+        <div id="trouble-spots-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Dynamically populated trouble spot cards -->
+        </div>
+      </div>
+
+      <!-- Student Homework Submissions Gradebook Table -->
       <div class="space-y-3 pt-2">
-        <h2 class="text-base font-bold text-white">Submissions Gradebook</h2>
-        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/50">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>📊</span><span>Digital SAT Homework Gradebook</span>
+          </h2>
+          <span class="text-xs text-slate-400" id="gradebook-total-count">0 submissions</span>
+        </div>
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60 shadow-xl">
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
               <tr>
-                <th class="py-3 px-4">Student Name</th>
-                <th class="py-3 px-4">Contact Email</th>
-                <th class="py-3 px-4">Homework Set</th>
-                <th class="py-3 px-4">Score</th>
-                <th class="py-3 px-4">Time</th>
-                <th class="py-3 px-4">Teacher Note</th>
+                <th class="py-3.5 px-4">Student Name</th>
+                <th class="py-3.5 px-4">Class</th>
+                <th class="py-3.5 px-4">Homework Set</th>
+                <th class="py-3.5 px-4">Score</th>
+                <th class="py-3.5 px-4">Time</th>
+                <th class="py-3.5 px-4">Date</th>
+                <th class="py-3.5 px-4 text-right">Answer Sheet</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-800" id="gradebook-rows">
-              <tr class="hover:bg-slate-850">
-                <td class="py-3 px-4 font-bold text-white">Alex Chen</td>
-                <td class="py-3 px-4 text-slate-400">alex.c@student.edu</td>
-                <td class="py-3 px-4 text-slate-300">MATH-01</td>
-                <td class="py-3 px-4 text-emerald-400 font-bold">5/5 (100%)</td>
-                <td class="py-3 px-4 text-slate-400">11m 20s</td>
-                <td class="py-3 px-4 text-blue-300">Flawless work!</td>
-              </tr>
+            <tbody class="divide-y divide-slate-800/80" id="gradebook-rows">
+              <!-- Dynamically populated from satmaster_submissions -->
             </tbody>
           </table>
         </div>
@@ -209,16 +362,16 @@
             <span>Manage All Tests</span><span>→</span>
           </button>
         </div>
-        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/50">
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60 shadow-xl">
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
               <tr>
-                <th class="py-3 px-4">Student</th>
-                <th class="py-3 px-4">Date</th>
-                <th class="py-3 px-4">Scope Tested</th>
-                <th class="py-3 px-4">Score</th>
-                <th class="py-3 px-4">Status</th>
-                <th class="py-3 px-4 text-right">Telegram Report</th>
+                <th class="py-3.5 px-4">Student</th>
+                <th class="py-3.5 px-4">Date</th>
+                <th class="py-3.5 px-4">Scope Tested</th>
+                <th class="py-3.5 px-4">Score</th>
+                <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4 text-right">Telegram Report</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/80" id="dashboard-vocab-reports-rows">
@@ -229,26 +382,102 @@
       </div>
     </section>
 
+    <!-- ========================================== -->
     <!-- TAB 3: CREATE HOMEWORK -->
-    <section id="tab-creator" class="hidden space-y-6">
-      <div class="p-6 rounded-2xl border border-slate-800 bg-slate-900/60 space-y-4 max-w-2xl mx-auto">
-        <h2 class="text-lg font-bold text-white">Create Homework for a Class</h2>
-
-        <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-slate-300">Select Target Class</label>
-          <select id="creator-class-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
-            <!-- Dynamic class options -->
-          </select>
+    <!-- ========================================== -->
+    <section id="tab-creator" class="hidden space-y-6 max-w-4xl mx-auto">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-extrabold text-white">Create Digital SAT Homework</h1>
+          <p class="text-xs text-slate-400">Assemble homework drills from the Question Bank, set timers, and generate student PIN codes.</p>
         </div>
-
-        <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-slate-300">Homework Title</label>
-          <input type="text" id="creator-hw-title" value="SAT Practice Drill #1" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
-        </div>
-
-        <button onclick="handlePublishHomework()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-xs text-white shadow-lg shadow-blue-500/20">
-          Publish Homework & Generate PIN
+        <button onclick="switchTab('groups')" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+          <span>Manage Groups</span><span>→</span>
         </button>
+      </div>
+
+      <div class="p-6 sm:p-8 rounded-3xl border border-slate-800 bg-slate-900/80 space-y-6 shadow-2xl">
+        
+        <!-- Top Form: Class, Title, PIN, Timer -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-300">Target Class Cohort</label>
+            <select id="creator-class-select" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none">
+              <!-- Dynamic class options -->
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-300">Homework Title</label>
+            <input type="text" id="creator-hw-title" placeholder="e.g. Week 2: SAT Math Quadratics & Reading Conventions" value="Digital SAT Practice Drill #1" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none">
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-300">Assignment PIN Code</label>
+              <button type="button" onclick="generateNewHwPin()" class="text-[10px] text-sky-400 hover:text-sky-300 font-bold">🎲 Random PIN</button>
+            </div>
+            <input type="text" id="creator-hw-pin" value="SAT-01" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-mono uppercase font-bold focus:border-blue-500 outline-none">
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-300">Timer Limit</label>
+            <select id="creator-hw-timer" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none">
+              <option value="0">Untimed (Practice Drill)</option>
+              <option value="10">10 Minutes</option>
+              <option value="15" selected>15 Minutes</option>
+              <option value="20">20 Minutes</option>
+              <option value="30">30 Minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-300">Assignment Description / Notes (Optional)</label>
+          <input type="text" id="creator-hw-desc" placeholder="e.g. Focus on elimination of trap answers and vertex form quadratics." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none">
+        </div>
+
+        <!-- Question Selection Section -->
+        <div class="pt-4 border-t border-slate-800 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>📖</span><span>Select Questions from SAT Question Bank</span>
+              </h3>
+              <p class="text-xs text-slate-400">Select authentic questions covering Reading & Writing and Math.</p>
+            </div>
+            
+            <!-- Quick Selection Filters & Actions -->
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+              <button type="button" onclick="filterCreatorQuestions('all')" id="btn-filter-q-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px]">All</button>
+              <button type="button" onclick="filterCreatorQuestions('rw')" id="btn-filter-q-rw" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-[11px]">R&W</button>
+              <button type="button" onclick="filterCreatorQuestions('math')" id="btn-filter-q-math" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-[11px]">Math</button>
+              <span class="text-slate-600">|</span>
+              <button type="button" onclick="selectAllCreatorQuestions(true)" class="text-[11px] text-sky-400 hover:underline font-bold">Select All</button>
+              <button type="button" onclick="selectAllCreatorQuestions(false)" class="text-[11px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+
+          <!-- Counter Banner -->
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <span class="text-slate-300">Selected Questions: <strong id="creator-selected-count" class="text-emerald-400 font-bold text-sm">0</strong> / <span id="creator-total-count">16</span></span>
+            <span class="text-slate-400 text-[11px]" id="creator-est-time">Est. completion time: ~0 mins</span>
+          </div>
+
+          <!-- Question Picker Scrollable List -->
+          <div id="creator-questions-list" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <!-- Dynamically populated question cards with checkboxes -->
+          </div>
+        </div>
+
+        <!-- Publish Button -->
+        <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+          <span class="text-xs text-slate-400">Students access instantly via PIN code or Telegram link</span>
+          <button onclick="handlePublishHomework()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold text-xs text-white shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center gap-2">
+            <span>🚀 Publish Homework &amp; Generate PIN</span>
+          </button>
+        </div>
+
       </div>
     </section>
 
@@ -536,6 +765,13 @@
               <!-- Dynamically populated options -->
             </div>
 
+            <!-- SPR Grid-in Input Container (For Math) -->
+            <div id="solver-spr-container" class="hidden space-y-3">
+              <label class="text-xs text-slate-300 font-semibold block">Student-Produced Response (Grid-in):</label>
+              <input type="text" id="solver-spr-input" placeholder="Enter numerical answer (e.g. 2.5 or 5/2 or 220)" class="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner">
+              <p class="text-[11px] text-slate-400">Accepted formats: whole numbers, decimals, or reduced fractions.</p>
+            </div>
+
             <!-- Action Buttons: Check Answer & Next -->
             <div class="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
               <button type="button" id="btn-check-answer" onclick="checkQBankAnswer()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
@@ -656,35 +892,189 @@
       </div>
     </div>
 
-    <!-- TAB 5: STUDENT PORTAL -->
-    <section id="tab-student" class="hidden space-y-6 max-w-xl mx-auto">
-      <div class="p-6 rounded-2xl border border-slate-800 bg-slate-900/80 space-y-4 text-center">
-        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold">
-          🎓 Student Homework Portal
-        </span>
-        <h2 class="text-xl font-bold text-white">Join Your Class Homework</h2>
+    <!-- ========================================== -->
+    <!-- TAB 5: STUDENT HOMEWORK PORTAL & SAT TEST RUNNER -->
+    <!-- ========================================== -->
+    <section id="tab-student" class="hidden space-y-8 max-w-5xl mx-auto">
+      
+      <!-- STATE 1: STUDENT ENTRY / PORTAL HUB -->
+      <div id="student-portal-hub" class="space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center max-w-xl mx-auto space-y-2">
+          <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs font-bold inline-block">
+            🎓 Digital SAT Homework Portal
+          </span>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Access Your Assigned Homework</h1>
+          <p class="text-xs sm:text-sm text-slate-400">Enter your homework PIN code or pick an active assignment assigned to your class.</p>
+        </div>
 
-        <div class="space-y-3 text-left">
-          <div>
-            <label class="text-xs text-slate-300">Your Full Name</label>
-            <input type="text" id="student-name-input" placeholder="e.g. Alex Chen" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          
+          <!-- Left: PIN Entry Box -->
+          <div class="md:col-span-5 p-6 sm:p-7 rounded-3xl border border-slate-800 bg-slate-900/90 space-y-5 shadow-2xl">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>🔑</span><span>Enter Homework PIN</span>
+            </h3>
+
+            <div class="space-y-3.5 text-xs">
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Your Full Name</label>
+                <input type="text" id="student-name-input" placeholder="e.g. Alex Chen" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl p-3 text-xs text-white outline-none">
+              </div>
+
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Your Class Cohort</label>
+                <select id="student-class-select" onchange="renderAvailableHomeworkForClass()" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl p-3 text-xs text-white outline-none">
+                  <!-- Dynamic class options -->
+                </select>
+              </div>
+
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Class / Homework PIN Code</label>
+                <input type="text" id="student-pin-input" placeholder="e.g. MATH-01" class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl p-3 text-xs text-white font-mono uppercase font-black tracking-wider outline-none">
+              </div>
+
+              <button type="button" onclick="handleStartStudentQuiz()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold text-xs text-white shadow-xl shadow-emerald-600/25 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span>Begin Homework Drill</span>
+                <span>→</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="text-xs text-slate-300">Select Class or Enter PIN</label>
-            <select id="student-class-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
-              <!-- Dynamic class options -->
-            </select>
+
+          <!-- Right: Available Homework Drills for Class -->
+          <div class="md:col-span-7 p-6 sm:p-7 rounded-3xl border border-slate-800 bg-slate-900/90 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>📚</span><span>Active Class Assignments</span>
+              </h3>
+              <span class="text-[11px] text-slate-400">1-click launch</span>
+            </div>
+
+            <!-- List of available homework cards -->
+            <div id="student-active-hw-list" class="space-y-3">
+              <!-- Dynamically populated homework cards -->
+            </div>
           </div>
-          <div>
-            <label class="text-xs text-slate-300">Class / HW PIN Code</label>
-            <input type="text" id="student-pin-input" placeholder="e.g. MATH-01" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white font-mono uppercase">
+
+        </div>
+
+      </div>
+
+      <!-- STATE 2: IN-APP DIGITAL SAT TEST RUNNER -->
+      <div id="student-runner-container" class="hidden space-y-6">
+        
+        <!-- Test Header: Title, Timer, Question Index, Review & Submit -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="confirmExitStudentTest()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors">
+              ✕ Exit
+            </button>
+            <div>
+              <h2 id="runner-hw-title" class="text-sm sm:text-base font-extrabold text-white leading-tight">Digital SAT Homework</h2>
+              <span id="runner-hw-meta" class="text-[11px] text-slate-400">Section Drill</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 self-end sm:self-auto">
+            <!-- Timer Pill -->
+            <div id="runner-timer-pill" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-sky-400 font-mono font-bold text-xs shadow-inner">
+              <span>⏱️</span>
+              <span id="runner-timer-text">15:00</span>
+            </div>
+
+            <span id="runner-qindex-pill" class="text-xs font-mono text-slate-400">
+              Q 1 of 5
+            </span>
+
+            <button type="button" onclick="openReviewModal()" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all">
+              Review &amp; Submit
+            </button>
           </div>
         </div>
 
-        <button onclick="handleStartStudentQuiz()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white">
-          Begin Homework Test →
-        </button>
+        <!-- Split Screen Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Left Column: Stimulus / Passage Context -->
+          <div id="runner-passage-col" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4 min-h-[320px]">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span>📄</span><span>Stimulus Context</span>
+              </span>
+              <span id="runner-passage-source" class="text-[11px] text-slate-500 italic">Digital SAT Literature</span>
+            </div>
+            <div id="runner-passage-text" class="text-sm text-slate-200 leading-relaxed font-serif space-y-3">
+              <!-- Dynamic Passage Text -->
+            </div>
+          </div>
+
+          <!-- Right Column: Question Stem & Answer Options / SPR -->
+          <div id="runner-question-col" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+            
+            <!-- Question Prompt Header -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span id="runner-domain-badge" class="text-[11px] font-bold uppercase tracking-wider text-sky-400">Craft &amp; Structure</span>
+                <span id="runner-difficulty-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">Medium</span>
+              </div>
+              <h3 id="runner-prompt-text" class="text-base sm:text-lg font-bold text-white leading-snug">
+                <!-- Dynamic prompt -->
+              </h3>
+            </div>
+
+            <!-- Strikethrough Help Tip -->
+            <div class="text-[10px] text-slate-500 flex items-center gap-1">
+              <span>💡 Tip: Click</span>
+              <span class="w-4 h-4 rounded bg-slate-800 text-rose-400 inline-flex items-center justify-center font-bold">✕</span>
+              <span>to eliminate wrong choices.</span>
+            </div>
+
+            <!-- Choice Options List (A, B, C, D) -->
+            <div id="runner-options-list" class="space-y-3">
+              <!-- Dynamically populated options with strike-through buttons -->
+            </div>
+
+            <!-- SPR Grid-in Box (if SPR question) -->
+            <div id="runner-spr-container" class="hidden space-y-3">
+              <label class="text-xs font-semibold text-slate-300 block">Student-Produced Response (Grid-in):</label>
+              <input type="text" id="runner-spr-input" oninput="saveCurrentRunnerSprAnswer()" placeholder="Enter your answer (e.g. 2.5, 5/2, 220)" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner">
+              <p class="text-[11px] text-slate-400">Accepted formats: whole numbers, decimals, or reduced fractions.</p>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Bottom Navigation & Question Palette Bar -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-runner-flag" onclick="toggleCurrentQuestionFlag()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors">
+              <span id="runner-flag-icon">🚩</span>
+              <span id="runner-flag-text">Flag for Review</span>
+            </button>
+          </div>
+
+          <!-- Question Palette Dots -->
+          <div id="runner-palette-dots" class="flex items-center justify-center gap-1.5 flex-wrap">
+            <!-- Dynamically populated 1..N pills -->
+          </div>
+
+          <!-- Prev / Next Controls -->
+          <div class="flex items-center gap-2 self-end md:self-auto">
+            <button type="button" id="btn-runner-prev" onclick="navRunnerQuestion(-1)" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors">
+              ‹ Previous
+            </button>
+            <button type="button" id="btn-runner-next" onclick="navRunnerQuestion(1)" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-colors">
+              Next ›
+            </button>
+          </div>
+
+        </div>
+
       </div>
+
     </section>
 
     <!-- TAB 6: SAT VOCABULARY PRACTICE (ONEPREP STYLE) -->
@@ -1577,6 +1967,169 @@
   </div>
 
 
+  <!-- ========================================================= -->
+  <!-- TEACHER GROUPS & STUDENTS MODALS (PART 2) -->
+  <!-- ========================================================= -->
+
+  <!-- 1. CREATE GROUP MODAL -->
+  <div id="modal-create-group" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="max-w-md w-full p-6 rounded-2xl border border-slate-800 bg-slate-900 space-y-4 text-left shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👥</span>
+          <h3 class="text-base font-bold text-white">Create New Group</h3>
+        </div>
+        <button onclick="closeCreateGroupModal()" class="text-slate-400 hover:text-white text-base">✕</button>
+      </div>
+
+      <form onsubmit="submitCreateGroup(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="text-slate-300 block mb-1 font-medium">Group Name <span class="text-rose-400">*</span></label>
+          <input type="text" id="new-group-name" placeholder="e.g. Ivy League Cohort 2026" class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none transition-all" required autofocus>
+          <p class="text-[11px] text-slate-500 mt-1">This group cohort name will be selectable by students during bot registration.</p>
+        </div>
+
+        <div class="flex gap-2 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeCreateGroupModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">Cancel</button>
+          <button type="submit" id="btn-submit-create-group" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+            <span>Create Group</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. DELETE GROUP CONFIRMATION MODAL -->
+  <div id="modal-delete-group-confirm" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="max-w-md w-full p-6 rounded-2xl border border-rose-500/30 bg-slate-900 space-y-4 text-left shadow-2xl">
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-800">
+        <div class="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-lg">
+          ⚠️
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white">Permanently Delete Group</h3>
+          <span id="delete-group-target-name" class="text-xs font-mono text-rose-400 font-bold block truncate"></span>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-200 text-xs leading-relaxed font-medium">
+        Are you sure? This will permanently delete this group, its students, and all test records.
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeDeleteGroupModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">Cancel</button>
+        <button type="button" onclick="executeDeleteGroup()" id="btn-execute-delete-group" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all">
+          Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. DELETE STUDENT CONFIRMATION MODAL -->
+  <div id="modal-delete-student-confirm" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="max-w-md w-full p-6 rounded-2xl border border-rose-500/30 bg-slate-900 space-y-4 text-left shadow-2xl">
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-800">
+        <div class="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-lg">
+          👤
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white">Remove Student</h3>
+          <span id="delete-student-target-name" class="text-xs text-rose-300 font-bold block truncate"></span>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Are you sure you want to remove this student? This will permanently delete the student and all of their historical test records from the database.
+      </p>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeDeleteStudentModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">Cancel</button>
+        <button type="button" onclick="executeDeleteStudent()" id="btn-execute-delete-student" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all">
+          Delete Student
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. STUDENT SCORE HISTORY MODAL / DRAWER -->
+  <div id="modal-student-history" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div class="max-w-2xl w-full p-6 rounded-2xl border border-sky-500/30 bg-slate-900 space-y-5 text-left shadow-2xl my-8">
+      
+      <!-- HEADER -->
+      <div class="flex justify-between items-start pb-3 border-b border-slate-800">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📊</span>
+            <h3 class="text-base font-extrabold text-white" id="history-modal-student-name">Student Score History</h3>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span id="history-modal-telegram-user" class="font-mono text-sky-400 font-semibold">@username</span>
+            <span>•</span>
+            <span id="history-modal-student-id" class="font-mono text-[10px] text-slate-500">UUID</span>
+          </div>
+        </div>
+        <button onclick="closeStudentHistoryModal()" class="text-slate-400 hover:text-white text-base p-1">✕</button>
+      </div>
+
+      <!-- SUMMARY CARDS -->
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-0.5">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Tests Taken</span>
+          <span id="history-stat-count" class="text-lg font-black text-white">0</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-0.5">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Average Score</span>
+          <span id="history-stat-avg" class="text-lg font-black text-sky-400">-</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-0.5">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Best Score</span>
+          <span id="history-stat-best" class="text-lg font-black text-emerald-400">-</span>
+        </div>
+      </div>
+
+      <!-- LOADING STATE -->
+      <div id="history-loading" class="hidden p-8 text-center text-xs text-slate-400 space-y-2">
+        <div class="inline-block animate-spin text-2xl">⏳</div>
+        <p>Loading test submissions history...</p>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="history-empty" class="hidden p-8 text-center rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+        <div class="text-2xl">📝</div>
+        <h4 class="text-xs font-bold text-white">No test submissions recorded</h4>
+        <p class="text-[11px] text-slate-400">This student has not completed any tests yet.</p>
+      </div>
+
+      <!-- TABLE WRAPPER -->
+      <div id="history-table-wrapper" class="hidden overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+        <div class="overflow-x-auto max-h-72">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="sticky top-0 bg-slate-900 border-b border-slate-800 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="py-2.5 px-4">Test Title</th>
+                <th class="py-2.5 px-4">Total Score</th>
+                <th class="py-2.5 px-4">Subscores (RW / Math)</th>
+                <th class="py-2.5 px-4">Status</th>
+                <th class="py-2.5 px-4 text-right">Completed Date</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeStudentHistoryModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- CREATE CLASS MODAL DIALOG -->
   <div id="create-class-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
     <div class="max-w-md w-full p-6 rounded-2xl border border-slate-800 bg-slate-900 space-y-4 text-left shadow-2xl">
@@ -1632,6 +2185,150 @@
       <div class="flex gap-2 pt-2 border-t border-slate-800">
         <button onclick="closeSessionInfoModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs">Close</button>
         <button onclick="logoutUser()" class="py-2.5 px-4 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 font-bold text-xs border border-rose-800/40">Switch User / Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: STUDENT TEST RUNNER REVIEW & SUBMIT MODAL -->
+  <div id="modal-runner-review" class="hidden fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div class="max-w-md w-full p-6 sm:p-7 rounded-3xl border border-slate-800 bg-slate-900 space-y-5 text-left shadow-2xl my-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📋</span>
+          <h3 class="text-base font-bold text-white">Review &amp; Submit Drill</h3>
+        </div>
+        <button type="button" onclick="closeReviewModal()" class="text-slate-400 hover:text-white text-xs p-1">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <p class="text-slate-300">Check your progress before final submission:</p>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+            <span class="text-slate-400 block text-[11px]">Answered</span>
+            <span id="review-answered-count" class="text-xl font-black text-emerald-400 mt-0.5 block">0</span>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+            <span class="text-slate-400 block text-[11px]">Unanswered</span>
+            <span id="review-unanswered-count" class="text-xl font-black text-rose-400 mt-0.5 block">0</span>
+          </div>
+        </div>
+
+        <div id="review-flagged-warning" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px]">
+          ⚠️ You have <strong id="review-flagged-count">0</strong> question(s) flagged for review.
+        </div>
+      </div>
+
+      <div class="flex gap-2.5 pt-3 border-t border-slate-800">
+        <button type="button" onclick="closeReviewModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+          Return to Test
+        </button>
+        <button type="button" onclick="submitStudentTest()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20">
+          Confirm &amp; Submit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: STUDENT TEST RESULTS & STEP-BY-STEP EXPLANATIONS MODAL -->
+  <div id="modal-runner-results" class="hidden fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div class="max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-slate-800 bg-slate-900 space-y-6 text-left shadow-2xl my-auto max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl" id="runner-results-icon">🏆</span>
+          <div>
+            <h3 class="text-lg font-black text-white" id="runner-results-title">Homework Auto-Graded!</h3>
+            <p class="text-xs text-slate-400" id="runner-results-subtitle">Instant breakdown and step-by-step solutions</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeRunnerResultsModal()" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <!-- Score Banner -->
+      <div class="grid grid-cols-3 gap-3 shrink-0">
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-slate-400 block text-[11px]">Score</span>
+          <span id="runner-res-score" class="text-2xl font-black text-emerald-400 mt-1 block">5 / 5</span>
+        </div>
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-slate-400 block text-[11px]">Accuracy</span>
+          <span id="runner-res-pct" class="text-2xl font-black text-sky-400 mt-1 block">100%</span>
+        </div>
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-slate-400 block text-[11px]">Time Taken</span>
+          <span id="runner-res-time" class="text-2xl font-black text-purple-400 mt-1 block">8m 12s</span>
+        </div>
+      </div>
+
+      <!-- Step-by-Step Question Review List -->
+      <div class="space-y-4 overflow-y-auto pr-1 flex-1">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Question-by-Question Review</h4>
+        <div id="runner-results-review-list" class="space-y-3">
+          <!-- Dynamically populated question results with explanations -->
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end shrink-0">
+        <button type="button" onclick="closeRunnerResultsModal()" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20">
+          Finish &amp; Back to Hub
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: TEACHER DASHBOARD STUDENT ANSWER SHEET & FEEDBACK MODAL -->
+  <div id="modal-student-answersheet" class="hidden fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div class="max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-blue-500/30 bg-slate-900 space-y-6 text-left shadow-2xl my-auto max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">📝</span>
+          <div>
+            <h3 class="text-lg font-black text-white" id="answersheet-student-title">Student Answer Sheet</h3>
+            <p class="text-xs text-slate-400" id="answersheet-meta-sub">Inspection &amp; Personalized Teacher Feedback</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeAnswerSheetModal()" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <!-- Student Score Summary -->
+      <div class="grid grid-cols-3 gap-3 shrink-0">
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-slate-400 block text-[11px]">Score</span>
+          <span id="answersheet-score" class="text-2xl font-black text-emerald-400 mt-1 block">5 / 5</span>
+        </div>
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-slate-400 block text-[11px]">Percentage</span>
+          <span id="answersheet-pct" class="text-2xl font-black text-sky-400 mt-1 block">100%</span>
+        </div>
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+          <span class="text-slate-400 block text-[11px]">Duration</span>
+          <span id="answersheet-time" class="text-2xl font-black text-purple-400 mt-1 block">11m 20s</span>
+        </div>
+      </div>
+
+      <!-- Question Responses Breakdown -->
+      <div class="space-y-4 overflow-y-auto pr-1 flex-1">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Student Responses Breakdown</h4>
+        <div id="answersheet-questions-list" class="space-y-3">
+          <!-- Dynamically populated answer sheet items -->
+        </div>
+      </div>
+
+      <!-- Teacher Feedback Note Form -->
+      <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 shrink-0">
+        <label class="text-xs font-bold text-white flex items-center gap-1.5">
+          <span>✍️</span><span>Attach Personalized Teacher Feedback Note</span>
+        </label>
+        <textarea id="answersheet-teacher-note" rows="2" placeholder="e.g. Excellent mastery of vertex form! Watch out for modifier traps on question 4." class="w-full bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl p-2.5 text-xs text-white outline-none"></textarea>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-2.5 shrink-0">
+        <button type="button" onclick="closeAnswerSheetModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs">
+          Close
+        </button>
+        <button type="button" onclick="saveAnswerSheetTeacherNote()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20">
+          Save Feedback Note
+        </button>
       </div>
     </div>
   </div>
@@ -1751,8 +2448,10 @@
       syncStudentFormIdentities();
 
       // Route initial tab
-      if (currentSession.role === 'teacher') {
-        switchTab('classes');
+      if (typeof handleHashRouting === 'function' && handleHashRouting()) {
+        // Handled by hash
+      } else if (currentSession.role === 'teacher') {
+        switchTab('groups');
       } else if (currentSession.role === 'student') {
         switchTab('vocab');
       } else {
@@ -1762,7 +2461,7 @@
 
     function updateNavigationUI() {
       const logoutBtn = document.getElementById('btn-logout');
-      const teacherTabs = ['nav-classes', 'nav-dashboard', 'nav-creator', 'nav-bank'];
+      const teacherTabs = ['nav-groups', 'nav-classes', 'nav-dashboard', 'nav-creator', 'nav-bank'];
       const studentNavBtn = document.getElementById('nav-student');
       const isTeacherOrAdmin = (currentUserRole === 'teacher' || currentUserRole === 'admin');
 
@@ -1967,13 +2666,18 @@
             const classes = data.groups.map(g => ({
               id: g.id || ('grp_' + g.name),
               name: g.name,
-              code: g.code || 'PIN-100',
+              code: g.code || `GRP-${(g.id || '100').substring(0, 6).toUpperCase()}`,
               schedule: g.schedule || '',
               description: g.description || (g.teacher_name ? `Assigned: ${g.teacher_name}` : 'SAT Cohort'),
               studentCount: g.student_count || 0
             }));
             localStorage.setItem('satmaster_classes', JSON.stringify(classes));
             renderClasses();
+            if (typeof cachedGroups !== 'undefined') {
+              cachedGroups = data.groups;
+              if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
+              if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
+            }
           }
         })
         .catch(err => {
@@ -1981,6 +2685,723 @@
           renderClasses();
         });
     }
+
+    // =========================================================
+    // PART 2: GROUPS & STUDENTS MANAGEMENT SYSTEM (TEACHER UI)
+    // =========================================================
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeJs(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n');
+    }
+
+    function formatTimestamp(isoStr) {
+      if (!isoStr) return 'N/A';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      } catch (e) {
+        return isoStr;
+      }
+    }
+
+    function formatTimestampWithTime(isoStr) {
+      if (!isoStr) return 'N/A';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        return isoStr;
+      }
+    }
+
+    function getInitials(name) {
+      if (!name) return 'ST';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    let cachedGroups = [];
+    let activeGroupId = null;
+    let activeGroupName = '';
+    let pendingDeleteGroupId = null;
+    let pendingDeleteGroupName = '';
+    let pendingDeleteStudentId = null;
+    let pendingDeleteStudentName = '';
+
+    function fetchAndRenderGroups(force = false) {
+      const grid = document.getElementById('groups-grid');
+      const skeleton = document.getElementById('groups-loading-skeleton');
+      const errorBox = document.getElementById('groups-error-state');
+      const emptyState = document.getElementById('groups-empty-state');
+      const countStat = document.getElementById('stat-groups-count');
+
+      if (skeleton && (!cachedGroups.length || force)) {
+        skeleton.classList.remove('hidden');
+        if (grid) grid.classList.add('hidden');
+        if (errorBox) errorBox.classList.add('hidden');
+        if (emptyState) emptyState.classList.add('hidden');
+      }
+
+      fetch('/api/groups')
+        .then(res => {
+          if (!res.ok) throw new Error('Status ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          if (skeleton) skeleton.classList.add('hidden');
+          if (errorBox) errorBox.classList.add('hidden');
+
+          if (data && data.ok && Array.isArray(data.groups)) {
+            cachedGroups = data.groups;
+            if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
+            syncClassesDropdownsFromGroups(cachedGroups);
+            renderGroupsGrid(cachedGroups);
+          } else {
+            throw new Error(data.error || 'Failed to parse groups data');
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching /api/groups:', err);
+          if (skeleton) skeleton.classList.add('hidden');
+          if (errorBox) {
+            errorBox.classList.remove('hidden');
+            const msg = document.getElementById('groups-error-msg');
+            if (msg) msg.innerText = `Unable to connect to database: ${err.message}`;
+          }
+          if (cachedGroups && cachedGroups.length) {
+            renderGroupsGrid(cachedGroups);
+          }
+        });
+    }
+
+    function renderGroupsGrid(groups) {
+      const grid = document.getElementById('groups-grid');
+      const emptyState = document.getElementById('groups-empty-state');
+      if (!grid) return;
+
+      if (!groups || groups.length === 0) {
+        grid.classList.add('hidden');
+        grid.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+      }
+
+      if (emptyState) emptyState.classList.add('hidden');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = groups.map(g => `
+        <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/60 space-y-4 hover:border-slate-700 hover:bg-slate-900/80 transition-all flex flex-col justify-between group-card shadow-lg" id="group-card-${g.id}">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20" id="group-count-badge-${g.id}">
+                👥 ${g.student_count || 0} ${(g.student_count || 0) === 1 ? 'Student' : 'Students'}
+              </span>
+              <span class="text-[10px] text-slate-500 font-mono">${formatTimestamp(g.created_at)}</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-white tracking-tight">${escapeHtml(g.name)}</h3>
+              <p class="text-xs text-slate-400 mt-1">Cohort ID: <span class="font-mono text-[10px] text-slate-500">${g.id.substring(0, 8)}...</span></p>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+            <button type="button" onclick="confirmDeleteGroup('${g.id}', '${escapeJs(g.name)}')" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 py-1.5 rounded-lg border border-transparent hover:border-rose-500/20 text-xs font-semibold transition-all flex items-center gap-1">
+              <span>🗑️</span><span>Delete Group</span>
+            </button>
+            <button type="button" onclick="openGroupDetail('${g.id}', '${escapeJs(g.name)}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1">
+              <span>View Cohort</span><span>→</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterGroupsGrid() {
+      const q = (document.getElementById('groups-search-input')?.value || '').trim().toLowerCase();
+      if (!q) {
+        renderGroupsGrid(cachedGroups);
+        return;
+      }
+      const filtered = cachedGroups.filter(g => (g.name || '').toLowerCase().includes(q));
+      renderGroupsGrid(filtered);
+    }
+
+    function syncClassesDropdownsFromGroups(groups) {
+      const creatorSelect = document.getElementById('creator-class-select');
+      const studentSelect = document.getElementById('student-class-select');
+      if (creatorSelect) {
+        if (!groups.length) {
+          creatorSelect.innerHTML = `<option value="">No classes available - Please create a group first</option>`;
+        } else {
+          creatorSelect.innerHTML = groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+        }
+      }
+      if (studentSelect) {
+        if (!groups.length) {
+          studentSelect.innerHTML = `<option value="">No active classes listed</option>`;
+        } else {
+          studentSelect.innerHTML = groups.map(g => `<option value="${g.name}">${escapeHtml(g.name)}</option>`).join('');
+        }
+      }
+    }
+
+    // Modal Create Group
+    function openCreateGroupModal() {
+      const modal = document.getElementById('modal-create-group');
+      const input = document.getElementById('new-group-name');
+      if (modal) {
+        modal.classList.remove('hidden');
+        if (input) {
+          input.value = '';
+          setTimeout(() => input.focus(), 50);
+        }
+      }
+    }
+
+    function closeCreateGroupModal() {
+      const modal = document.getElementById('modal-create-group');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function submitCreateGroup(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('new-group-name');
+      const name = (input ? input.value : '').trim();
+      if (!name) {
+        showToast("⚠️ Missing Name", "Please enter a valid group name.", "error");
+        return;
+      }
+
+      const submitBtn = document.getElementById('btn-submit-create-group');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Creating...</span>';
+      }
+
+      fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Status ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Create Group</span>';
+        }
+        if (data && data.ok) {
+          closeCreateGroupModal();
+          const newGrp = data.group || { id: data.id, name: data.name, student_count: 0, created_at: new Date().toISOString() };
+          newGrp.student_count = newGrp.student_count || 0;
+          cachedGroups.unshift(newGrp);
+
+          // Dynamically update UI without full page reload
+          renderGroupsGrid(cachedGroups);
+          const countStat = document.getElementById('stat-groups-count');
+          if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
+          // Also keep getClasses() in sync
+          const currentClasses = getClasses().filter(c => c.id !== newGrp.id && c.name.toLowerCase() !== newGrp.name.toLowerCase());
+          currentClasses.unshift({
+            id: newGrp.id,
+            name: newGrp.name,
+            code: 'PIN-100',
+            schedule: '',
+            description: 'SAT Cohort',
+            studentCount: 0
+          });
+          saveClasses(currentClasses);
+          if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
+
+          showToast("👥 Group Created", `Cohort "${newGrp.name}" is now live in Supabase!`, "success");
+        } else {
+          throw new Error(data.error || 'Failed to create group');
+        }
+      })
+      .catch(err => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Create Group</span>';
+        }
+        showToast("🚫 Creation Error", err.message, "error");
+      });
+    }
+
+    // Modal Delete Group
+    function confirmDeleteGroup(groupId, groupName) {
+      pendingDeleteGroupId = groupId;
+      pendingDeleteGroupName = groupName;
+      const modal = document.getElementById('modal-delete-group-confirm');
+      const targetLabel = document.getElementById('delete-group-target-name');
+      if (targetLabel) targetLabel.innerText = groupName || groupId;
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDeleteGroupModal() {
+      pendingDeleteGroupId = null;
+      pendingDeleteGroupName = '';
+      const modal = document.getElementById('modal-delete-group-confirm');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function executeDeleteGroup() {
+      if (!pendingDeleteGroupId) return;
+      const gid = pendingDeleteGroupId;
+      const gname = pendingDeleteGroupName;
+      const btn = document.getElementById('btn-execute-delete-group');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Deleting...';
+      }
+
+      fetch('/api/groups/' + encodeURIComponent(gid), {
+        method: 'DELETE'
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Status ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Delete Permanently';
+        }
+        closeDeleteGroupModal();
+        if (data && data.ok) {
+          // Dynamically remove card from grid with smooth animation
+          const card = document.getElementById('group-card-' + gid);
+          if (card) {
+            card.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => card.remove(), 250);
+          }
+          cachedGroups = cachedGroups.filter(g => g.id !== gid && g.name !== gid);
+
+          const countStat = document.getElementById('stat-groups-count');
+          if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
+          if (cachedGroups.length === 0) {
+            const emptyState = document.getElementById('groups-empty-state');
+            if (emptyState) emptyState.classList.remove('hidden');
+          }
+
+          showToast("🗑️ Group Deleted", `Cohort "${gname}" and all records were permanently removed.`, "info");
+        } else {
+          throw new Error(data.error || 'Failed to delete group');
+        }
+      })
+      .catch(err => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Delete Permanently';
+        }
+        showToast("🚫 Delete Error", err.message, "error");
+      });
+    }
+
+    // Detail View Functions
+    function openGroupDetail(groupId, groupName) {
+      activeGroupId = groupId;
+      const grp = cachedGroups.find(g => g.id === groupId || g.name === groupId);
+      activeGroupName = groupName || (grp ? grp.name : 'Cohort');
+
+      // Update URL hash to #groups/:id
+      window.location.hash = '#groups/' + groupId;
+
+      const hubView = document.getElementById('groups-hub-view');
+      const detailView = document.getElementById('group-detail-view');
+      if (hubView) hubView.classList.add('hidden');
+      if (detailView) detailView.classList.remove('hidden');
+
+      const nameEl = document.getElementById('detail-group-name');
+      const metaEl = document.getElementById('detail-group-meta');
+      const countBadge = document.getElementById('detail-group-count-badge');
+
+      if (nameEl) nameEl.innerText = activeGroupName;
+      if (metaEl) metaEl.innerText = `Cohort ID: ${groupId}`;
+      if (countBadge) countBadge.innerText = grp ? `${grp.student_count || 0} Students` : 'Loading...';
+
+      fetchAndRenderGroupDetail(groupId);
+    }
+
+    function returnToGroupsHub() {
+      activeGroupId = null;
+      activeGroupName = '';
+      window.location.hash = '#groups';
+
+      const hubView = document.getElementById('groups-hub-view');
+      const detailView = document.getElementById('group-detail-view');
+      if (detailView) detailView.classList.add('hidden');
+      if (hubView) hubView.classList.remove('hidden');
+
+      fetchAndRenderGroups(false);
+    }
+
+    function refreshGroupDetail() {
+      if (activeGroupId) {
+        fetchAndRenderGroupDetail(activeGroupId);
+      }
+    }
+
+    function fetchAndRenderGroupDetail(groupId) {
+      const loading = document.getElementById('detail-roster-loading');
+      const errorBox = document.getElementById('detail-roster-error');
+      const emptyState = document.getElementById('detail-roster-empty');
+      const tableWrapper = document.getElementById('detail-roster-table-wrapper');
+      const tbody = document.getElementById('detail-roster-tbody');
+      const countBadge = document.getElementById('detail-group-count-badge');
+
+      if (loading) loading.classList.remove('hidden');
+      if (errorBox) errorBox.classList.add('hidden');
+      if (emptyState) emptyState.classList.add('hidden');
+      if (tableWrapper) tableWrapper.classList.add('hidden');
+
+      fetch('/api/groups/' + encodeURIComponent(groupId) + '/students')
+        .then(res => {
+          if (!res.ok) throw new Error('Status ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          if (loading) loading.classList.add('hidden');
+
+          if (data && data.ok && Array.isArray(data.students)) {
+            const students = data.students;
+            if (countBadge) {
+              countBadge.innerText = `${students.length} ${students.length === 1 ? 'Student' : 'Students'}`;
+            }
+
+            // Sync with cached group count
+            const grp = cachedGroups.find(g => g.id === groupId);
+            if (grp) {
+              grp.student_count = students.length;
+              const cardBadge = document.getElementById('group-count-badge-' + groupId);
+              if (cardBadge) cardBadge.innerText = `👥 ${students.length} ${students.length === 1 ? 'Student' : 'Students'}`;
+            }
+
+            if (students.length === 0) {
+              if (emptyState) emptyState.classList.remove('hidden');
+              if (tableWrapper) tableWrapper.classList.add('hidden');
+              return;
+            }
+
+            if (emptyState) emptyState.classList.add('hidden');
+            if (tableWrapper) tableWrapper.classList.remove('hidden');
+
+            if (tbody) {
+              tbody.innerHTML = students.map(s => `
+                <tr class="hover:bg-slate-800/30 transition-all group-student-row" id="student-row-${s.id}">
+                  <td class="py-3 px-4 sm:px-6">
+                    <div class="flex items-center gap-2.5">
+                      <div class="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-xs shadow-md shadow-blue-500/20">
+                        ${getInitials(s.display_name)}
+                      </div>
+                      <div>
+                        <span class="font-bold text-white block text-xs">${escapeHtml(s.display_name)}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">TG ID: ${s.telegram_id || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 sm:px-6">
+                    ${s.telegram_username ? `
+                      <span class="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                        @${escapeHtml(s.telegram_username)}
+                      </span>
+                    ` : `
+                      <span class="text-[11px] text-slate-500 italic">No @handle</span>
+                    `}
+                  </td>
+                  <td class="py-3 px-4 sm:px-6 text-slate-400 font-mono text-[11px]">
+                    ${formatTimestamp(s.created_at)}
+                  </td>
+                  <td class="py-3 px-4 sm:px-6 text-right space-x-2">
+                    <button type="button" onclick="openStudentHistoryModal('${s.id}', '${escapeJs(s.display_name)}', '${escapeJs(s.telegram_username || '')}')" class="text-xs font-semibold text-sky-400 hover:text-sky-300 hover:bg-sky-500/15 bg-sky-500/5 px-2.5 py-1.5 rounded-lg border border-sky-500/25 transition-all inline-flex items-center gap-1">
+                      <span>📊</span><span>View Test History</span>
+                    </button>
+                    <button type="button" onclick="confirmDeleteStudent('${s.id}', '${escapeJs(s.display_name)}')" class="text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 bg-rose-500/5 px-2.5 py-1.5 rounded-lg border border-rose-500/25 transition-all inline-flex items-center gap-1">
+                      <span>🗑️</span><span>Delete Student</span>
+                    </button>
+                  </td>
+                </tr>
+              `).join('');
+            }
+          } else {
+            throw new Error(data.error || 'Failed to parse student roster');
+          }
+        })
+        .catch(err => {
+          if (loading) loading.classList.add('hidden');
+          if (errorBox) {
+            errorBox.classList.remove('hidden');
+            const msg = document.getElementById('detail-roster-error-msg');
+            if (msg) msg.innerText = `Failed to load roster: ${err.message}`;
+          }
+        });
+    }
+
+    // Modal Student History
+    function openStudentHistoryModal(studentId, studentName, studentUsername) {
+      const modal = document.getElementById('modal-student-history');
+      const nameEl = document.getElementById('history-modal-student-name');
+      const userEl = document.getElementById('history-modal-telegram-user');
+      const idEl = document.getElementById('history-modal-student-id');
+      const loading = document.getElementById('history-loading');
+      const emptyState = document.getElementById('history-empty');
+      const tableWrapper = document.getElementById('history-table-wrapper');
+      const tbody = document.getElementById('history-tbody');
+      const countStat = document.getElementById('history-stat-count');
+      const avgStat = document.getElementById('history-stat-avg');
+      const bestStat = document.getElementById('history-stat-best');
+
+      if (nameEl) nameEl.innerText = `${studentName} — Test History`;
+      if (userEl) userEl.innerText = studentUsername ? `@${studentUsername}` : 'Direct Telegram User';
+      if (idEl) idEl.innerText = `ID: ${studentId}`;
+
+      if (countStat) countStat.innerText = '-';
+      if (avgStat) avgStat.innerText = '-';
+      if (bestStat) bestStat.innerText = '-';
+
+      if (loading) loading.classList.remove('hidden');
+      if (emptyState) emptyState.classList.add('hidden');
+      if (tableWrapper) tableWrapper.classList.add('hidden');
+      if (tbody) tbody.innerHTML = '';
+
+      if (modal) modal.classList.remove('hidden');
+
+      fetch('/api/students/' + encodeURIComponent(studentId) + '/history')
+        .then(res => {
+          if (!res.ok) throw new Error('Status ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          if (loading) loading.classList.add('hidden');
+          const history = (data && data.ok) ? (data.history || data.test_results || []) : [];
+
+          if (!history.length) {
+            if (emptyState) emptyState.classList.remove('hidden');
+            if (tableWrapper) tableWrapper.classList.add('hidden');
+            if (countStat) countStat.innerText = '0';
+            if (avgStat) avgStat.innerText = 'N/A';
+            if (bestStat) bestStat.innerText = 'N/A';
+            return;
+          }
+
+          if (emptyState) emptyState.classList.add('hidden');
+          if (tableWrapper) tableWrapper.classList.remove('hidden');
+
+          const totalScores = history.map(h => Number(h.total_score) || 0);
+          const avgScore = Math.round(totalScores.reduce((a, b) => a + b, 0) / totalScores.length);
+          const maxScore = Math.max(...totalScores);
+
+          if (countStat) countStat.innerText = history.length;
+          if (avgStat) avgStat.innerText = `${avgScore} / 1600`;
+          if (bestStat) bestStat.innerText = `${maxScore} / 1600`;
+
+          if (tbody) {
+            tbody.innerHTML = history.map(item => {
+              const total = Number(item.total_score) || 0;
+              const rw = item.rw_score !== undefined && item.rw_score !== null ? item.rw_score : '-';
+              const math = item.math_score !== undefined && item.math_score !== null ? item.math_score : '-';
+              const isPassed = total >= 1100;
+              const statusLabel = item.status || (isPassed ? 'Passed' : 'Completed');
+
+              return `
+                <tr class="hover:bg-slate-900/60 transition-all">
+                  <td class="py-2.5 px-4 font-semibold text-white">
+                    ${escapeHtml(item.test_title || 'Digital SAT Full Test')}
+                  </td>
+                  <td class="py-2.5 px-4 font-black text-sky-400">
+                    ${total} <span class="text-[10px] text-slate-500 font-normal">/ 1600</span>
+                  </td>
+                  <td class="py-2.5 px-4 font-mono text-[11px] text-slate-300">
+                    <span class="text-purple-300">RW: ${rw}</span> <span class="text-slate-600">|</span> <span class="text-blue-300">Math: ${math}</span>
+                  </td>
+                  <td class="py-2.5 px-4">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isPassed ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                    }">
+                      ${escapeHtml(statusLabel)}
+                    </span>
+                  </td>
+                  <td class="py-2.5 px-4 text-right font-mono text-[11px] text-slate-400">
+                    ${formatTimestampWithTime(item.completed_at)}
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+        })
+        .catch(err => {
+          if (loading) loading.classList.add('hidden');
+          if (emptyState) {
+            emptyState.classList.remove('hidden');
+            emptyState.innerHTML = `<p class="text-rose-400 text-xs">Error loading score history: ${escapeHtml(err.message)}</p>`;
+          }
+        });
+    }
+
+    function closeStudentHistoryModal() {
+      const modal = document.getElementById('modal-student-history');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // Modal Delete Student
+    function confirmDeleteStudent(studentId, studentName) {
+      pendingDeleteStudentId = studentId;
+      pendingDeleteStudentName = studentName;
+      const modal = document.getElementById('modal-delete-student-confirm');
+      const targetLabel = document.getElementById('delete-student-target-name');
+      if (targetLabel) targetLabel.innerText = studentName || studentId;
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDeleteStudentModal() {
+      pendingDeleteStudentId = null;
+      pendingDeleteStudentName = '';
+      const modal = document.getElementById('modal-delete-student-confirm');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function executeDeleteStudent() {
+      if (!pendingDeleteStudentId) return;
+      const sid = pendingDeleteStudentId;
+      const sname = pendingDeleteStudentName;
+      const btn = document.getElementById('btn-execute-delete-student');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Deleting...';
+      }
+
+      fetch('/api/students/' + encodeURIComponent(sid), {
+        method: 'DELETE'
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Status ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Delete Student';
+        }
+        closeDeleteStudentModal();
+        if (data && data.ok) {
+          // Dynamically remove student row from table
+          const row = document.getElementById('student-row-' + sid);
+          if (row) {
+            row.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => row.remove(), 250);
+          }
+
+          // Decrement group count badge in detail view
+          const tbody = document.getElementById('detail-roster-tbody');
+          const remainingRows = tbody ? tbody.querySelectorAll('tr').length - 1 : 0;
+          const countBadge = document.getElementById('detail-group-count-badge');
+          if (countBadge) {
+            countBadge.innerText = `${Math.max(0, remainingRows)} ${remainingRows === 1 ? 'Student' : 'Students'}`;
+          }
+
+          // Also update group count in cachedGroups and hub card
+          if (activeGroupId) {
+            const grp = cachedGroups.find(g => g.id === activeGroupId);
+            if (grp) {
+              grp.student_count = Math.max(0, (grp.student_count || 1) - 1);
+              const cardBadge = document.getElementById('group-count-badge-' + activeGroupId);
+              if (cardBadge) {
+                cardBadge.innerText = `👥 ${grp.student_count} ${grp.student_count === 1 ? 'Student' : 'Students'}`;
+              }
+            }
+          }
+
+          if (remainingRows <= 0) {
+            const emptyState = document.getElementById('detail-roster-empty');
+            const tableWrapper = document.getElementById('detail-roster-table-wrapper');
+            if (emptyState) emptyState.classList.remove('hidden');
+            if (tableWrapper) tableWrapper.classList.add('hidden');
+          }
+
+          showToast("🗑️ Student Removed", `Student "${sname}" and test history were removed.`, "info");
+        } else {
+          throw new Error(data.error || 'Failed to delete student');
+        }
+      })
+      .catch(err => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Delete Student';
+        }
+        showToast("🚫 Delete Error", err.message, "error");
+      });
+    }
+
+    // URL & Hash Routing Handler
+    function handleHashRouting() {
+      const hash = window.location.hash || '';
+      const path = window.location.pathname || '';
+
+      if (hash.startsWith('#groups/') || hash.startsWith('#/groups/')) {
+        const parts = hash.split('/');
+        const groupId = parts[parts.length - 1];
+        if (groupId) {
+          switchTab('groups');
+          openGroupDetail(groupId);
+          return true;
+        }
+      } else if (hash === '#groups' || hash === '#/groups') {
+        switchTab('groups');
+        returnToGroupsHub();
+        return true;
+      } else if (path.startsWith('/groups/')) {
+        const parts = path.split('/');
+        const groupId = parts[parts.length - 1];
+        if (groupId) {
+          switchTab('groups');
+          openGroupDetail(groupId);
+          return true;
+        }
+      } else if (path === '/groups') {
+        switchTab('groups');
+        returnToGroupsHub();
+        return true;
+      }
+      return false;
+    }
+
+    window.addEventListener('hashchange', handleHashRouting);
+    window.addEventListener('popstate', handleHashRouting);
+    // Initialize hash routing on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(handleHashRouting, 100);
+    });
 
     function renderClasses() {
       const classesList = getClasses();
@@ -2100,8 +3521,8 @@
 
     // Modal Control Functions
     function openCreateClassModal() {
-      if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
-        showToast("🔒 Access Denied", "Only administrators and teachers can create new classes.", "error");
+      if (currentUserRole === 'student') {
+        showToast("🔒 Access Denied", "Students cannot create classes.", "error");
         return;
       }
       document.getElementById('create-class-modal').classList.remove('hidden');
@@ -2113,59 +3534,106 @@
 
     function handleSaveNewClass(e) {
       e.preventDefault();
-      const name = document.getElementById('new-class-name').value.trim();
-      const codeInput = document.getElementById('new-class-code').value.trim();
-      const schedule = document.getElementById('new-class-schedule').value.trim();
-      const desc = document.getElementById('new-class-desc').value.trim();
+      const nameInput = document.getElementById('new-class-name');
+      const name = (nameInput ? nameInput.value : '').trim();
+      const codeInput = document.getElementById('new-class-code');
+      const codeVal = (codeInput ? codeInput.value : '').trim();
+      const scheduleInput = document.getElementById('new-class-schedule');
+      const schedule = (scheduleInput ? scheduleInput.value : '').trim();
+      const descInput = document.getElementById('new-class-desc');
+      const desc = (descInput ? descInput.value : '').trim();
 
-      if (!name) return;
+      if (!name) {
+        showToast("⚠️ Missing Name", "Please enter a class name.", "error");
+        return;
+      }
 
-      const code = codeInput ? codeInput.toUpperCase() : ('GRP-' + Math.floor(100 + Math.random() * 900));
+      const code = codeVal ? codeVal.toUpperCase() : ('GRP-' + Math.floor(100 + Math.random() * 900));
 
-      const newClass = {
-        id: 'grp_' + Date.now(),
-        name: name,
-        code: code,
-        schedule: schedule,
-        description: desc
-      };
+      const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Creating in Database...';
+      }
 
-      closeCreateClassModal();
+      // Execute POST /api/groups to save directly into database.py (Supabase)
+      fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          name: name,
+          code: code,
+          schedule: schedule,
+          description: desc,
+          teacher_id: (typeof currentSession !== 'undefined' && currentSession.uid) ? currentSession.uid : '7957347033',
+          teacher_name: (typeof currentSession !== 'undefined' && currentSession.name) ? currentSession.name : 'SAT Admin'
+        })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Server returned status ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Create Class';
+        }
 
-      showLoading('Creating Class...', 'Saving cohort & syncing with Telegram Bot...', 800, function() {
-        const classes = getClasses();
-        classes.unshift(newClass);
-        saveClasses(classes);
+        if (data && data.ok) {
+          closeCreateClassModal();
 
-        // POST to backend API to persist to students_db.json and Telegram bot
-        fetch('/api/groups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'create',
-            name: name,
+          // Reset inputs
+          if (nameInput) nameInput.value = '';
+          if (codeInput) codeInput.value = '';
+          if (scheduleInput) scheduleInput.value = '';
+          if (descInput) descInput.value = '';
+
+          const savedGroup = data.group || { id: data.id, name: data.name, student_count: 0, created_at: new Date().toISOString() };
+
+          // Sync into local classes store with verified Supabase ID
+          const newClass = {
+            id: savedGroup.id,
+            name: savedGroup.name,
             code: code,
             schedule: schedule,
-            description: desc,
-            teacher_id: currentSession.uid || '7957347033',
-            teacher_name: currentSession.name || 'SAT Admin'
-          })
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.ok) {
+            description: desc || 'SAT Class Cohort',
+            studentCount: savedGroup.student_count || 0
+          };
+          const classes = getClasses().filter(c => c.id !== newClass.id && c.name.toLowerCase() !== newClass.name.toLowerCase());
+          classes.unshift(newClass);
+          saveClasses(classes);
+
+          // Update cachedGroups and cohorts grid
+          if (typeof cachedGroups !== 'undefined') {
+            const existingIdx = cachedGroups.findIndex(g => g.id === savedGroup.id || g.name.toLowerCase() === savedGroup.name.toLowerCase());
+            if (existingIdx >= 0) {
+              cachedGroups[existingIdx] = savedGroup;
+            } else {
+              cachedGroups.unshift(savedGroup);
+            }
+            if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
+            const countStat = document.getElementById('stat-groups-count');
+            if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+            if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
+          }
+
+          if (typeof syncClassesFromServer === 'function') {
             syncClassesFromServer();
           }
-        })
-        .catch(err => console.log('API group sync notice:', err));
 
-        showToast("🏫 Class Created!", `Class "${name}" registered with PIN: ${code}`, "success");
-
-        // Clear Form
-        document.getElementById('new-class-name').value = '';
-        document.getElementById('new-class-code').value = '';
-        document.getElementById('new-class-schedule').value = '';
-        document.getElementById('new-class-desc').value = '';
+          showToast("🏫 Class Created!", `Class "${name}" saved to Supabase (PIN: ${code})`, "success");
+        } else {
+          throw new Error((data && data.error) || 'Failed to save class to database');
+        }
+      })
+      .catch(err => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Create Class';
+        }
+        console.error('API group creation error:', err);
+        showToast("🚫 Creation Error", "Failed to save class to database: " + err.message, "error");
       });
     }
 
@@ -2173,62 +3641,1390 @@
       if (confirm("Are you sure you want to delete this class cohort?")) {
         const classes = getClasses();
         const target = classes.find(c => c.id === id || c.name === id);
-        const filtered = classes.filter(c => c.id !== id && c.name !== id);
-        saveClasses(filtered);
+        const targetId = target ? target.id : id;
 
-        // Sync delete with backend
-        fetch('/api/groups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'delete',
-            id: id,
-            name: target ? target.name : id
-          })
+        fetch('/api/groups/' + encodeURIComponent(targetId), {
+          method: 'DELETE'
         })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            return fetch('/api/groups', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'delete', id: targetId, name: target ? target.name : id })
+            }).then(r => r.json());
+          }
+          return res.json();
+        })
         .then(data => {
-          syncClassesFromServer();
+          if (data && data.ok) {
+            const filtered = classes.filter(c => c.id !== id && c.name !== id && c.id !== targetId);
+            saveClasses(filtered);
+            if (typeof syncClassesFromServer === 'function') syncClassesFromServer();
+            if (typeof fetchAndRenderGroups === 'function') fetchAndRenderGroups(true);
+            showToast("🗑️ Class Deleted", "The selected class cohort has been removed from Supabase.", "info");
+          } else {
+            throw new Error((data && data.error) || 'Failed to delete class');
+          }
         })
-        .catch(err => console.log('API delete sync notice:', err));
-
-        showToast("🗑️ Class Deleted", "The selected class cohort has been removed.", "info");
+        .catch(err => {
+          console.error('Error deleting class:', err);
+          showToast("🚫 Delete Error", "Could not delete class from database: " + err.message, "error");
+        });
       }
+    }
+
+// =========================================================
+    // DIGITAL SAT QUESTION BANK & AUTHENTIC 16 QUESTIONS DATASET
+    // =========================================================
+
+    const DEFAULT_QBANK = {
+      rw: [
+        {
+          id: 'rw-wic-01',
+          section: 'rw',
+          domain: 'Craft and Structure',
+          skill: 'Words in Context',
+          difficulty: 'Medium',
+          source: 'History of Astronomy',
+          passage: 'In the early 1900s, astrophysicist Cecilia Payne-Gaposchkin proposed that stars are composed primarily of hydrogen and helium. At the time, prevailing dogma maintained that stars shared an identical chemical composition with Earth. Consequently, leading astronomers initially dismissed her conclusions as _______, insisting that such heavy reliance on hydrogen was physically implausible.',
+          prompt: 'Which choice completes the text with the most logical and precise word or phrase?',
+          type: 'multiple-choice',
+          options: {
+            A: 'erroneous',
+            B: 'unprecedented',
+            C: 'inconsequential',
+            D: 'provisional'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. The text explains that the prevailing belief was that stars had the same composition as Earth. Because Payne-Gaposchkin\'s finding contradicted this dogma, astronomers dismissed her conclusions as incorrect or mistaken ("erroneous"). Choice B ("unprecedented") means never done before, which doesn\'t explain dismissal. Choice C ("inconsequential") means unimportant, whereas they considered it fundamentally flawed. Choice D ("provisional") means temporary, which contradicts outright dismissal.'
+        },
+        {
+          id: 'rw-wic-02',
+          section: 'rw',
+          domain: 'Craft and Structure',
+          skill: 'Words in Context',
+          difficulty: 'Hard',
+          source: 'Literary Criticism',
+          passage: 'Although critics predicted that the author\'s unconventional narrative structure—interweaving three divergent timelines without explicit chapter headings—would confuse readers, the public response proved remarkably _______. Within days of publication, readers praised the seamless thematic cohesion of the novel.',
+          prompt: 'Which choice completes the text with the most logical and precise word or phrase?',
+          type: 'multiple-choice',
+          options: {
+            A: 'perfunctory',
+            B: 'laudatory',
+            C: 'equated',
+            D: 'ambivalent'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. The sentence sets up a contrast with "Although critics predicted... would confuse readers". The second sentence clarifies that readers "praised the seamless thematic cohesion." Thus, the public response was full of praise, which is precisely what "laudatory" means. "Perfunctory" (carried out with minimum effort), "equated" (made equal), and "ambivalent" (having mixed feelings) do not match praise.'
+        },
+        {
+          id: 'rw-tsp-01',
+          section: 'rw',
+          domain: 'Craft and Structure',
+          skill: 'Text Structure and Purpose',
+          difficulty: 'Medium',
+          source: 'Forest Ecology Research',
+          passage: 'Biologists have long observed that certain fungal species form symbiotic mycorrhizal networks connecting disparate trees across forest floors. Traditionally, researchers believed these networks operated strictly as passive conduit channels for nutrient exchange. However, a 2023 study led by Dr. Elena Ramos demonstrated that fungal hubs actively regulate resource allocation, prioritizing saplings stressed by drought over mature, self-sufficient trees.',
+          prompt: 'Which choice best describes the overall structure of the text?',
+          type: 'multiple-choice',
+          options: {
+            A: 'It summarizes a historical hypothesis, highlights an empirical study that refuted it, and describes how that study was designed.',
+            B: 'It introduces a natural biological phenomenon, outlines a long-held belief about its function, and presents recent findings that challenge that belief.',
+            C: 'It argues that current forest management policies overlook the importance of fungi, citing experimental evidence.',
+            D: 'It contrasts two competing contemporary theories regarding fungal resource sharing in arid environments.'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. Sentence 1 introduces mycorrhizal networks (a natural phenomenon). Sentence 2 states what researchers "traditionally believed" (passive exchange). Sentence 3 uses "However" to present Dr. Ramos\'s 2023 findings that challenge that belief. Choice A is incorrect because the passage does not detail how the study was designed.'
+        },
+        {
+          id: 'rw-sec-01',
+          section: 'rw',
+          domain: 'Standard English Conventions',
+          skill: 'Boundaries (Punctuation)',
+          difficulty: 'Medium',
+          source: 'Computer Science History',
+          passage: 'In 1965, computer scientist Gordon Moore predicted that the number of transistors on a microchip would double approximately every two _______ this exponential growth trajectory, dubbed Moore’s Law, drove technological revolution for over half a century.',
+          prompt: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+          type: 'multiple-choice',
+          options: {
+            A: 'years, and',
+            B: 'years; and,',
+            C: 'years;',
+            D: 'years,'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. The sentence connects two complete independent clauses: the first describes Moore\'s prediction, and the second describes the impact of Moore\'s Law. A semicolon correctly joins two independent clauses without a coordinating conjunction.'
+        },
+        {
+          id: 'rw-sec-02',
+          section: 'rw',
+          domain: 'Standard English Conventions',
+          skill: 'Boundaries & Modifiers',
+          difficulty: 'Hard',
+          source: 'Marine Biology Studies',
+          passage: 'Artificial beachfront lighting confuses newly hatched sea _______ orienting toward the brighter artificial glow inland rather than the natural moonlight reflecting off the ocean surface, their survival rates plunge dramatically.',
+          prompt: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+          type: 'multiple-choice',
+          options: {
+            A: 'turtles, and',
+            B: 'turtles; consequently,',
+            C: 'turtles,',
+            D: 'turtles, because'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. The semicolon separates two independent clauses, and the conjunctive adverb "consequently," followed by a comma, logically establishes cause and effect between artificial lighting confusion and the subsequent behavioral trap.'
+        },
+        {
+          id: 'rw-eoi-01',
+          section: 'rw',
+          domain: 'Expression of Ideas',
+          skill: 'Transitions',
+          difficulty: 'Medium',
+          source: 'Paleoethnobotany',
+          passage: 'Archaeologists traditionally relied on macroscopic plant remains—such as charred seeds and wood fragments—to reconstruct prehistoric diets. However, microfossil analysis has recently revealed evidence of plant use that leaves no visible macroscopic trace. _______, microscopic starch grains embedded in the dental calculus of Neanderthal skeletons have demonstrated regular consumption of cooked barley and water lilies.',
+          prompt: 'Which choice completes the text with the most logical transition?',
+          type: 'multiple-choice',
+          options: {
+            A: 'Consequently,',
+            B: 'In contrast,',
+            C: 'Specifically,',
+            D: 'Furthermore,'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. The preceding sentence introduces the general principle that microfossil analysis reveals invisible plant use. The final sentence gives a concrete, detailed instance of that principle (Neanderthal dental calculus showing barley). "Specifically" introduces this exact elaboration.'
+        },
+        {
+          id: 'rw-eoi-02',
+          section: 'rw',
+          domain: 'Expression of Ideas',
+          skill: 'Rhetorical Synthesis',
+          difficulty: 'Medium',
+          source: 'Marine Ecology Research Notes',
+          passage: 'While researching a topic, a student has taken the following notes:\n• The Great Barrier Reef spans over 2,300 kilometers along Australia’s northeastern coast.\n• It is home to more than 1,500 fish species and 400 hard coral types.\n• Coral bleaching occurs when thermal stress causes corals to expel symbiotic zooxanthellae algae.\n• Mass bleaching events were documented in 1998, 2002, 2016, 2017, and 2020.\n• Marine biologists advocate for targeted coral propagation and thermal-tolerant strain breeding.',
+          prompt: 'The student wants to emphasize the frequency of recent environmental threats facing the reef. Which choice most effectively uses the relevant information from the notes to accomplish this goal?',
+          type: 'multiple-choice',
+          options: {
+            A: 'Spanning 2,300 kilometers, the Great Barrier Reef provides habitat for over 1,500 species of fish and 400 coral types.',
+            B: 'Thermal stress causes corals to expel symbiotic algae, leading to widespread bleaching events along the coast.',
+            C: 'Between 1998 and 2020, the Great Barrier Reef endured five separate mass coral bleaching events driven by rising ocean temperatures.',
+            D: 'Marine biologists recommend breeding thermal-tolerant coral strains to mitigate ecosystem degradation.'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct because it directly satisfies the rhetorical goal: highlighting that five separate mass coral bleaching events struck between 1998 and 2020.'
+        }
+      ],
+      math: [
+        {
+          id: 'm-alg-01',
+          section: 'math',
+          domain: 'Algebra',
+          skill: 'Linear Equations in One Variable',
+          difficulty: 'Easy',
+          source: 'SAT Core Algebra',
+          passage: 'Consider the linear equation:\n3(2x - 4) = 5x + 7',
+          prompt: 'What value of x satisfies the given equation?',
+          type: 'multiple-choice',
+          options: {
+            A: '3',
+            B: '5',
+            C: '19',
+            D: '23'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. Expanding: 6x - 12 = 5x + 7. Subtracting 5x gives x - 12 = 7. Adding 12 gives x = 19. Check: 3(2(19) - 4) = 3(38 - 4) = 3(34) = 102. Right side: 5(19) + 7 = 95 + 7 = 102.'
+        },
+        {
+          id: 'm-alg-02',
+          section: 'math',
+          domain: 'Algebra',
+          skill: 'Systems of Two Linear Equations',
+          difficulty: 'Medium',
+          source: 'SAT Systems Modeling',
+          passage: 'Consider the following system of linear equations:\n\n2x + 5y = 31\n4x - y = 7',
+          prompt: 'What is the value of (x + y)?',
+          type: 'multiple-choice',
+          options: {
+            A: '5',
+            B: '8',
+            C: '10',
+            D: '12'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. From the second equation: y = 4x - 7. Substitute into the first equation: 2x + 5(4x - 7) = 31 => 2x + 20x - 35 = 31 => 22x = 66 => x = 3. Then y = 4(3) - 7 = 5. Therefore, x + y = 3 + 5 = 8.'
+        },
+        {
+          id: 'm-spr-01',
+          section: 'math',
+          domain: 'Algebra',
+          skill: 'Linear Functions & Rates',
+          difficulty: 'Medium',
+          source: 'Print Shop Pricing Model',
+          passage: 'A local print shop charges a flat setup fee of $15 plus $0.25 per booklet printed. If a school club spent a total of $70 on an order of booklets, how many booklets were printed?',
+          prompt: 'Enter your numerical answer below (e.g. 220):',
+          type: 'spr',
+          correct: '220',
+          acceptedAnswers: ['220'],
+          explanation: 'The cost model is C = 15 + 0.25n. Set C = 70: 70 = 15 + 0.25n => 55 = 0.25n => n = 55 / 0.25 = 220 booklets. Therefore, 220 booklets were printed.'
+        },
+        {
+          id: 'm-spr-02',
+          section: 'math',
+          domain: 'Advanced Math',
+          skill: 'Quadratic Equations (SPR)',
+          difficulty: 'Medium',
+          source: 'Quadratic Root Determination',
+          passage: 'Consider the factored quadratic equation:\n(2x - 5)(x + 4) = 0 and x > 0',
+          prompt: 'What is the value of x? (Enter as a decimal or fraction, e.g., 2.5 or 5/2)',
+          type: 'spr',
+          correct: '2.5',
+          acceptedAnswers: ['2.5', '5/2'],
+          explanation: 'By the zero-product property: 2x - 5 = 0 or x + 4 = 0. Solving 2x - 5 = 0 yields x = 5/2 = 2.5. Solving x + 4 = 0 yields x = -4. Since x > 0, we select the positive root: x = 2.5 (or 5/2).'
+        },
+        {
+          id: 'm-adv-01',
+          section: 'math',
+          domain: 'Advanced Math',
+          skill: 'Nonlinear Functions (Vertex Form)',
+          difficulty: 'Medium',
+          source: 'Parabola Vertex Analysis',
+          passage: 'The graph of the quadratic function f(x) = -2(x - 4)² + 18 is a parabola in the xy-plane.',
+          prompt: 'Which of the following statements about this graph is true?',
+          type: 'multiple-choice',
+          options: {
+            A: 'The parabola opens upward and has a minimum value of 18 at x = 4.',
+            B: 'The parabola opens downward and has a maximum value of 18 at x = 4.',
+            C: 'The parabola opens downward and has a maximum value of 4 at x = 18.',
+            D: 'The parabola opens upward and has a minimum value of -2 at x = 4.'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. In vertex form f(x) = a(x - h)² + k, the vertex is at (h, k) = (4, 18). Because a = -2 is negative, the parabola opens downward, meaning its maximum value is 18 occurring at x = 4.'
+        },
+        {
+          id: 'm-adv-02',
+          section: 'math',
+          domain: 'Advanced Math',
+          skill: 'Equivalent Algebraic Expressions',
+          difficulty: 'Hard',
+          source: 'Polynomial Difference of Cubes',
+          passage: 'Consider the algebraic rational expression:\n(x³ - 8) / (x - 2) for all x ≠ 2.',
+          prompt: 'Which of the following is equivalent to the expression for all x ≠ 2?',
+          type: 'multiple-choice',
+          options: {
+            A: 'x² - 4',
+            B: 'x² + 4',
+            C: 'x² + 2x + 4',
+            D: 'x² - 2x + 4'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. Using the difference of cubes factorization: a³ - b³ = (a - b)(a² + ab + b²). With a = x, b = 2: (x³ - 8) = (x - 2)(x² + 2x + 4). Dividing by (x - 2) leaves x² + 2x + 4.'
+        },
+        {
+          id: 'm-psda-01',
+          section: 'math',
+          domain: 'Problem-Solving and Data Analysis',
+          skill: 'Percentages & Ratios',
+          difficulty: 'Medium',
+          source: 'Financial Valuation Modeling',
+          passage: 'A vintage guitar was originally purchased for $800. In its first year, its market value increased by 20%. In its second year, its new value decreased by 15%.',
+          prompt: 'What was the guitar\'s market value at the end of the second year?',
+          type: 'multiple-choice',
+          options: {
+            A: '$816',
+            B: '$840',
+            C: '$805',
+            D: '$780'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. Year 1: $800 × (1 + 0.20) = $960. Year 2: $960 × (1 - 0.15) = $816. Common trap: combining +20% and -15% as a net +5% ($840, Choice B), which fails because percentages compound sequentially.'
+        },
+        {
+          id: 'm-geom-01',
+          section: 'math',
+          domain: 'Geometry and Trigonometry',
+          skill: 'Circles & Coordinate Geometry',
+          difficulty: 'Hard',
+          source: 'Circle Coordinate Geometry',
+          passage: 'In the xy-plane, the equation of a circle is x² + y² - 6x + 8y = 24.',
+          prompt: 'What are the coordinates of the center and the radius of this circle?',
+          type: 'multiple-choice',
+          options: {
+            A: 'Center: (3, -4), Radius: 7',
+            B: 'Center: (-3, 4), Radius: 7',
+            C: 'Center: (3, -4), Radius: 49',
+            D: 'Center: (-3, 4), Radius: √24'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. Complete the square for both x and y: (x² - 6x + 9) + (y² + 8y + 16) = 24 + 9 + 16 => (x - 3)² + (y + 4)² = 49. In standard circle form (x - h)² + (y - k)² = r²: Center = (3, -4) and Radius = √49 = 7.'
+        },
+        {
+          id: 'm-geom-02',
+          section: 'math',
+          domain: 'Geometry and Trigonometry',
+          skill: 'Right Triangle Trigonometry',
+          difficulty: 'Medium',
+          source: 'Cofunction Identities',
+          passage: 'In right triangle ABC, angle C is the right angle. If sin(A) = 3/5, what is the value of cos(B)?',
+          prompt: 'What is the value of cos(B)?',
+          type: 'multiple-choice',
+          options: {
+            A: '4/5',
+            B: '3/5',
+            C: '3/4',
+            D: '5/3'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. In any right triangle, acute angles A and B are complementary (A + B = 90°). By the fundamental trigonometric identity sin(θ) = cos(90° - θ), sin(A) = cos(B). Since sin(A) = 3/5, cos(B) = 3/5.'
+        }
+      ]
+    };
+
+    function getAllBankQuestions() {
+      const rw = DEFAULT_QBANK.rw || [];
+      const math = DEFAULT_QBANK.math || [];
+      const customRaw = localStorage.getItem('satmaster_custom_qbank');
+      let custom = [];
+      if (customRaw) {
+        try { custom = JSON.parse(customRaw); } catch(e) {}
+      }
+      return [...rw, ...math, ...custom];
+    }
+
+    function getQuestionById(id) {
+      return getAllBankQuestions().find(q => q.id === id);
+    }
+
+    function getQBankTotalCount() {
+      return getAllBankQuestions().length;
+    }
+
+    // =========================================================
+    // DIGITAL SAT MATH EQUIVALENCE & ANSWER VALIDATION HELPER
+    // =========================================================
+
+    function isAnswerCorrect(question, studentAns) {
+      if (!question || studentAns === undefined || studentAns === null) return false;
+      const sClean = String(studentAns).trim().toLowerCase();
+      if (!sClean) return false;
+
+      // Multiple Choice check
+      if (question.type !== 'spr' && question.options) {
+        return sClean === String(question.correct || '').trim().toLowerCase();
+      }
+
+      // SPR / Math Grid-in check
+      const accepted = (question.acceptedAnswers || [question.correct]).map(a => String(a).trim().toLowerCase());
+      if (accepted.includes(sClean)) return true;
+
+      // Numerical / Fraction evaluation helper
+      const parseNumOrFrac = (str) => {
+        if (!str) return NaN;
+        if (str.includes('/')) {
+          const parts = str.split('/');
+          if (parts.length === 2) {
+            const num = parseFloat(parts[0]);
+            const den = parseFloat(parts[1]);
+            if (den !== 0) return num / den;
+          }
+        }
+        return parseFloat(str);
+      };
+
+      const studentVal = parseNumOrFrac(sClean);
+      if (!isNaN(studentVal)) {
+        for (const acc of accepted) {
+          const accVal = parseNumOrFrac(acc);
+          if (!isNaN(accVal) && Math.abs(studentVal - accVal) < 0.0001) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    // =========================================================
+    // ASSIGNMENTS & HOMEWORK CREATOR STORAGE ENGINE
+    // =========================================================
+
+    const DEFAULT_ASSIGNMENTS = [
+      {
+        id: 'assign-math-01',
+        code: 'MATH-01',
+        className: 'Group A',
+        title: 'SAT Math: Algebra, Quadratics & Trigonometry Drill',
+        description: 'Practice set focused on linear equations, vertex form, trigonometric complementary identities, and grid-in algebraic responses.',
+        section: 'math',
+        questionIds: ['m-alg-01', 'm-alg-02', 'm-spr-01', 'm-adv-01', 'm-geom-02'],
+        timeLimitMinutes: 20,
+        createdAt: '2026-10-01T10:00:00.000Z'
+      },
+      {
+        id: 'assign-rw-01',
+        code: 'READ-01',
+        className: 'Group A',
+        title: 'SAT Reading & Writing: Words in Context & Transitions',
+        description: 'Targeted homework for sentence boundaries, modifier placement, context-dependent vocabulary, and transition logic.',
+        section: 'reading-writing',
+        questionIds: ['rw-wic-01', 'rw-wic-02', 'rw-tsp-01', 'rw-sec-01', 'rw-sec-02', 'rw-eoi-01'],
+        timeLimitMinutes: 15,
+        createdAt: '2026-10-02T14:30:00.000Z'
+      },
+      {
+        id: 'assign-mixed-01',
+        code: 'SAT-MIX',
+        className: 'Group A',
+        title: 'Comprehensive Digital SAT Diagnostic Review',
+        description: 'Comprehensive timed mixed drill covering reading analysis, writing conventions, and advanced math.',
+        section: 'mixed',
+        questionIds: ['rw-wic-01', 'rw-sec-01', 'rw-eoi-02', 'm-alg-01', 'm-spr-02', 'm-adv-02', 'm-psda-01', 'm-geom-01'],
+        timeLimitMinutes: 25,
+        createdAt: '2026-10-03T09:00:00.000Z'
+      }
+    ];
+
+    function getAssignments() {
+      const stored = localStorage.getItem('satmaster_assignments');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch(e) {}
+      }
+      localStorage.setItem('satmaster_assignments', JSON.stringify(DEFAULT_ASSIGNMENTS));
+      return DEFAULT_ASSIGNMENTS;
+    }
+
+    function saveAssignments(list) {
+      localStorage.setItem('satmaster_assignments', JSON.stringify(list));
+      updateDashboardStats();
+      renderAvailableHomeworkForClass();
+    }
+
+    function generateNewHwPin() {
+      const prefixes = ['MATH', 'READ', 'SAT', 'DRIL', 'HW'];
+      const randPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const randNum = Math.floor(10 + Math.random() * 90);
+      const pin = `${randPrefix}-${randNum}`;
+      const input = document.getElementById('creator-hw-pin');
+      if (input) input.value = pin;
+      return pin;
+    }
+
+    let creatorSelectedQuestionIds = ['m-alg-01', 'm-alg-02', 'm-spr-01', 'm-adv-01', 'm-geom-02'];
+    let creatorSubjectFilter = 'all';
+
+    function filterCreatorQuestions(subject) {
+      creatorSubjectFilter = subject;
+      ['all', 'rw', 'math'].forEach(s => {
+        const btn = document.getElementById(`btn-filter-q-${s}`);
+        if (btn) {
+          if (s === subject) {
+            btn.className = 'px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px]';
+          } else {
+            btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-[11px]';
+          }
+        }
+      });
+      renderCreatorQuestionSelector();
+    }
+
+    function selectAllCreatorQuestions(selectAll) {
+      const allQ = getAllBankQuestions();
+      const visible = allQ.filter(q => {
+        if (creatorSubjectFilter === 'all') return true;
+        return q.section === creatorSubjectFilter || (creatorSubjectFilter === 'rw' && q.id.startsWith('rw')) || (creatorSubjectFilter === 'math' && q.id.startsWith('m'));
+      });
+
+      if (selectAll) {
+        visible.forEach(q => {
+          if (!creatorSelectedQuestionIds.includes(q.id)) {
+            creatorSelectedQuestionIds.push(q.id);
+          }
+        });
+      } else {
+        const visibleIds = visible.map(q => q.id);
+        creatorSelectedQuestionIds = creatorSelectedQuestionIds.filter(id => !visibleIds.includes(id));
+      }
+      renderCreatorQuestionSelector();
+    }
+
+    function toggleSelectCreatorQuestion(id) {
+      const idx = creatorSelectedQuestionIds.indexOf(id);
+      if (idx > -1) {
+        creatorSelectedQuestionIds.splice(idx, 1);
+      } else {
+        creatorSelectedQuestionIds.push(id);
+      }
+      renderCreatorQuestionSelector();
+    }
+
+    function renderCreatorQuestionSelector() {
+      const container = document.getElementById('creator-questions-list');
+      const countEl = document.getElementById('creator-selected-count');
+      const totalEl = document.getElementById('creator-total-count');
+      const estTimeEl = document.getElementById('creator-est-time');
+
+      const allQ = getAllBankQuestions();
+      if (totalEl) totalEl.innerText = allQ.length;
+      if (countEl) countEl.innerText = creatorSelectedQuestionIds.length;
+      if (estTimeEl) estTimeEl.innerText = `Est. completion time: ~${Math.max(5, creatorSelectedQuestionIds.length * 2)} mins`;
+
+      if (!container) return;
+
+      const filtered = allQ.filter(q => {
+        if (creatorSubjectFilter === 'all') return true;
+        return q.section === creatorSubjectFilter || (creatorSubjectFilter === 'rw' && q.id.startsWith('rw')) || (creatorSubjectFilter === 'math' && q.id.startsWith('m'));
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No questions match the current filter.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(q => {
+        const isSelected = creatorSelectedQuestionIds.includes(q.id);
+        const isRw = q.section === 'rw' || q.id.startsWith('rw');
+        const badgeColor = isRw ? 'bg-pink-500/10 text-pink-300 border-pink-500/30' : 'bg-sky-500/10 text-sky-300 border-sky-500/30';
+        const diffColor = q.difficulty === 'Easy' ? 'text-emerald-400' : q.difficulty === 'Hard' ? 'text-rose-400' : 'text-amber-400';
+
+        return `
+          <div onclick="toggleSelectCreatorQuestion('${q.id}')" class="p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${isSelected ? 'bg-blue-950/40 border-blue-500/80 shadow-md shadow-blue-500/10' : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'}">
+            <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelectCreatorQuestion('${q.id}')" class="mt-1 w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 cursor-pointer">
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="flex items-center gap-2 flex-wrap text-[10px]">
+                <span class="px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border ${badgeColor}">
+                  ${isRw ? 'Reading & Writing' : 'Math'}
+                </span>
+                <span class="font-bold text-slate-300">${q.domain || 'Core SAT'}</span>
+                <span class="text-slate-500">•</span>
+                <span class="font-semibold ${diffColor}">${q.difficulty || 'Medium'}</span>
+                ${q.type === 'spr' ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold uppercase text-[9px]">SPR Grid-in</span>' : ''}
+              </div>
+              <p class="text-xs text-slate-200 line-clamp-2 leading-snug">${q.passage ? q.passage.substring(0, 110) + '... ' : ''}${q.prompt}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     function handlePublishHomework() {
       const classes = getClasses();
-      if (classes.length === 0) {
-        showToast("⚠️ Class Required", "Please create a class under 'My Classes' before publishing homework!", "error");
-        switchTab('classes');
+      const select = document.getElementById('creator-class-select');
+      const selectedClassName = (select && select.options && select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex].text : (select?.value || 'Group A');
+
+      const title = document.getElementById('creator-hw-title')?.value.trim() || 'SAT Practice Drill';
+      const pin = (document.getElementById('creator-hw-pin')?.value.trim() || generateNewHwPin()).toUpperCase();
+      const timerVal = parseInt(document.getElementById('creator-hw-timer')?.value || '15', 10);
+      const desc = document.getElementById('creator-hw-desc')?.value.trim() || 'Comprehensive Digital SAT homework assignment.';
+
+      if (creatorSelectedQuestionIds.length === 0) {
+        showToast("⚠️ Select Questions", "Please select at least 1 question from the question bank to include in this homework!", "error");
         return;
       }
-      const title = document.getElementById('creator-hw-title').value || 'SAT Practice Homework';
-      const select = document.getElementById('creator-class-select');
-      const selectedClassName = select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Target Class';
 
-      showLoading('Publishing Homework...', 'Generating PIN & notifying students', 1500, function() {
-        showToast("🎉 Homework Published!", `"${title}" has been assigned to ${selectedClassName}.`, "success");
+      showLoading('Publishing Homework...', `Generating PIN: ${pin} & notifying class...`, 1200, function() {
+        const assignments = getAssignments();
+        const newAssignment = {
+          id: `assign_${Date.now()}`,
+          code: pin,
+          className: selectedClassName,
+          title: title,
+          description: desc,
+          section: 'mixed',
+          questionIds: [...creatorSelectedQuestionIds],
+          timeLimitMinutes: timerVal,
+          createdAt: new Date().toISOString()
+        };
+
+        assignments.unshift(newAssignment);
+        saveAssignments(assignments);
+
+        showToast("🚀 Homework Published!", `"${title}" is LIVE for ${selectedClassName} with PIN: ${pin}`, "success");
         switchTab('dashboard');
       });
     }
 
-    function handleStartStudentQuiz() {
-      const name = document.getElementById('student-name-input').value.trim();
-      if (!name) {
-        showToast("⚠️ Name Required", "Please enter your full name before starting!", "error");
+    // =========================================================
+    // SUBMISSIONS GRADEBOOK & TROUBLE SPOTS ANALYTICS
+    // =========================================================
+
+    const DEFAULT_SUBMISSIONS = [];
+
+    function getSubmissions() {
+      const stored = localStorage.getItem('satmaster_submissions');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) return parsed;
+        } catch(e) {}
+      }
+      return [];
+    }
+
+    function saveSubmissions(list) {
+      localStorage.setItem('satmaster_submissions', JSON.stringify(list));
+      renderDashboardGradebook();
+      renderClassTroubleSpots();
+      updateDashboardStats();
+    }
+
+    function calcClassAverage() {
+      const subs = getSubmissions();
+      if (!subs || subs.length === 0) return 0;
+      const total = subs.reduce((sum, s) => sum + (s.scorePct || 0), 0);
+      return Math.round(total / subs.length);
+    }
+
+    function updateDashboardStats() {
+      const classes = getClasses();
+      const assignments = getAssignments();
+      const subs = getSubmissions();
+      const totalQ = getQBankTotalCount();
+
+      const elClasses = document.getElementById('stat-active-classes');
+      const elHw = document.getElementById('stat-active-homework');
+      const elAvg = document.getElementById('stat-class-average');
+      const elQBank = document.getElementById('stat-question-bank');
+
+      if (elClasses) elClasses.innerText = classes.length;
+      if (elHw) elHw.innerText = assignments.length;
+      if (elAvg) elAvg.innerText = subs.length > 0 ? `${calcClassAverage()}%` : '--';
+      if (elQBank) elQBank.innerText = totalQ;
+    }
+
+    function renderDashboardGradebook() {
+      const subs = getSubmissions();
+      const tbody = document.getElementById('gradebook-rows');
+      const countLabel = document.getElementById('gradebook-total-count');
+
+      if (countLabel) countLabel.innerText = `${subs.length} submission(s)`;
+      if (!tbody) return;
+
+      if (subs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">No homework submissions yet. Assign homework with a PIN to get started!</td></tr>`;
         return;
       }
 
-      showLoading('Loading SAT Homework...', `Preparing test interface for ${name}`, 1200, function() {
-        showToast("📝 Homework Session Started", `Welcome ${name}! Starting your Digital SAT homework session.`, "success");
-        window.location.href = 'quiz.html';
+      tbody.innerHTML = subs.map(s => {
+        const pct = s.scorePct || 0;
+        const scoreBadgeColor = pct >= 80 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : pct >= 60 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="py-3.5 px-4 font-bold text-white">
+              <div class="flex items-center gap-2">
+                <span>🎓</span>
+                <span>${s.studentName}</span>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-slate-400">${s.studentClass || 'Group A'}</td>
+            <td class="py-3.5 px-4">
+              <span class="text-xs font-mono font-bold text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">${s.hwCode || 'HW'}</span>
+              <span class="text-slate-300 text-[11px] block mt-0.5 truncate max-w-[180px]">${s.hwTitle || 'SAT Drill'}</span>
+            </td>
+            <td class="py-3.5 px-4">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${scoreBadgeColor}">
+                ${s.score}/${s.total} (${pct}%)
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-slate-400 font-mono text-[11px]">${s.timeSpentStr || '--'}</td>
+            <td class="py-3.5 px-4 text-slate-400 text-[11px]">${s.submittedAt || 'Today'}</td>
+            <td class="py-3.5 px-4 text-right">
+              <button onclick="openAnswerSheetModal('${s.id}')" class="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 font-bold text-xs border border-blue-500/30 transition-all">
+                📄 View Answer Sheet
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderClassTroubleSpots() {
+      const container = document.getElementById('trouble-spots-container');
+      if (!container) return;
+
+      const subs = getSubmissions();
+      if (subs.length === 0) {
+        container.innerHTML = `<div class="col-span-full p-6 text-center text-xs text-slate-500">Collect homework submissions to unlock mistake diagnostics.</div>`;
+        return;
+      }
+
+      // Analyze mistake frequency across questions
+      const mistakeStats = {}; // { qId: { total: int, wrong: int, commonWrong: { choice: count } } }
+      subs.forEach(s => {
+        const answers = s.answers || {};
+        const qList = s.questionIds || Object.keys(answers);
+
+        qList.forEach(qId => {
+          const q = getQuestionById(qId);
+          if (!q) return;
+          if (!mistakeStats[qId]) {
+            mistakeStats[qId] = { question: q, total: 0, wrong: 0, wrongChoices: {} };
+          }
+          mistakeStats[qId].total += 1;
+          const userAns = answers[qId];
+          const isCorrect = isAnswerCorrect(q, userAns);
+          if (!isCorrect) {
+            mistakeStats[qId].wrong += 1;
+            if (userAns) {
+              mistakeStats[qId].wrongChoices[userAns] = (mistakeStats[qId].wrongChoices[userAns] || 0) + 1;
+            }
+          }
+        });
+      });
+
+      // Filter questions with mistakes
+      const troubleList = Object.values(mistakeStats)
+        .filter(st => st.wrong > 0)
+        .map(st => {
+          let topTrap = 'N/A';
+          let maxCount = 0;
+          for (const [ch, cnt] of Object.entries(st.wrongChoices)) {
+            if (cnt > maxCount) { maxCount = cnt; topTrap = ch; }
+          }
+          return {
+            ...st,
+            errorPct: Math.round((st.wrong / st.total) * 100),
+            topTrap: topTrap
+          };
+        })
+        .sort((a, b) => b.errorPct - a.errorPct);
+
+      if (troubleList.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full p-6 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-center text-xs text-emerald-300">
+            ✨ Outstanding accuracy! No common trouble spots detected across the latest class homework submissions.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = troubleList.slice(0, 3).map(item => {
+        const q = item.question;
+        return `
+          <div class="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3 flex flex-col justify-between shadow-lg">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-300">${q.domain || 'Digital SAT'}</span>
+                <span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  ${item.errorPct}% Error Rate
+                </span>
+              </div>
+              <h4 class="text-xs font-semibold text-slate-200 line-clamp-2 leading-relaxed">${q.prompt}</h4>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Common Trap Choice:</span>
+                <span class="font-bold text-rose-400">Choice ${item.topTrap}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Correct Answer:</span>
+                <span class="font-bold text-emerald-400">Choice ${q.correct}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    let currentInspectingSubmissionId = null;
+
+    function openAnswerSheetModal(subId) {
+      currentInspectingSubmissionId = subId;
+      const subs = getSubmissions();
+      const sub = subs.find(s => s.id === subId);
+      if (!sub) return;
+
+      const titleEl = document.getElementById('answersheet-student-title');
+      const metaEl = document.getElementById('answersheet-meta-sub');
+      const scoreEl = document.getElementById('answersheet-score');
+      const pctEl = document.getElementById('answersheet-pct');
+      const timeEl = document.getElementById('answersheet-time');
+      const noteInput = document.getElementById('answersheet-teacher-note');
+      const listContainer = document.getElementById('answersheet-questions-list');
+
+      if (titleEl) titleEl.innerText = `${sub.studentName} — ${sub.hwTitle || 'Digital SAT Drill'}`;
+      if (metaEl) metaEl.innerText = `${sub.studentClass || 'Class'} • Assignment PIN: ${sub.hwCode} • Submitted ${sub.submittedAt || 'Recently'}`;
+      if (scoreEl) scoreEl.innerText = `${sub.score} / ${sub.total}`;
+      if (pctEl) pctEl.innerText = `${sub.scorePct}%`;
+      if (timeEl) timeEl.innerText = sub.timeSpentStr || '--';
+      if (noteInput) noteInput.value = sub.teacherNote || '';
+
+      if (listContainer) {
+        const answers = sub.answers || {};
+        const qIds = sub.questionIds || Object.keys(answers);
+
+        listContainer.innerHTML = qIds.map((qId, idx) => {
+          const q = getQuestionById(qId);
+          if (!q) return '';
+          const userAns = answers[qId] || '(Unanswered)';
+          const isCorrect = isAnswerCorrect(q, userAns);
+
+          return `
+            <div class="p-4 rounded-2xl border ${isCorrect ? 'bg-slate-950/60 border-slate-800' : 'bg-rose-950/15 border-rose-500/30'} space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-white">Q${idx + 1}. ${q.domain || 'Question'}</span>
+                <span class="font-bold px-2 py-0.5 rounded-full text-[10px] ${isCorrect ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}">
+                  ${isCorrect ? '✓ Correct' : '✕ Missed'}
+                </span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">${q.passage ? `<span class="italic text-slate-400 block mb-1">"${q.passage.substring(0, 90)}..."</span>` : ''}${q.prompt}</p>
+              <div class="flex items-center gap-4 text-xs font-mono pt-1">
+                <span>Student Answer: <strong class="${isCorrect ? 'text-emerald-400' : 'text-rose-400 font-bold'}">${userAns}</strong></span>
+                <span>Correct Answer: <strong class="text-emerald-400">${q.correct}</strong></span>
+              </div>
+              <p class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80 leading-relaxed">
+                <strong>Explanation:</strong> ${q.explanation}
+              </p>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('modal-student-answersheet')?.classList.remove('hidden');
+    }
+
+    function closeAnswerSheetModal() {
+      document.getElementById('modal-student-answersheet')?.classList.add('hidden');
+      currentInspectingSubmissionId = null;
+    }
+
+    function saveAnswerSheetTeacherNote() {
+      if (!currentInspectingSubmissionId) return;
+      const note = document.getElementById('answersheet-teacher-note')?.value.trim() || '';
+      const subs = getSubmissions();
+      const sub = subs.find(s => s.id === currentInspectingSubmissionId);
+      if (sub) {
+        sub.teacherNote = note;
+        saveSubmissions(subs);
+        showToast("✍️ Note Saved", "Teacher feedback note saved to student answer sheet!", "success");
+      }
+      closeAnswerSheetModal();
+    }
+
+    // =========================================================
+    // IN-APP DIGITAL SAT STUDENT TEST RUNNER & AUTO-GRADING
+    // =========================================================
+
+    function renderAvailableHomeworkForClass() {
+      const select = document.getElementById('student-class-select');
+      const selectedClass = select && select.value ? select.value.trim().toLowerCase() : '';
+      const container = document.getElementById('student-active-hw-list');
+      if (!container) return;
+
+      const assignments = getAssignments();
+
+      if (assignments.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No active homework drills currently assigned. Ask your teacher for a PIN code!</div>`;
+        return;
+      }
+
+      container.innerHTML = assignments.map(hw => {
+        const qCount = (hw.questionIds || []).length;
+        const timerText = hw.timeLimitMinutes > 0 ? `${hw.timeLimitMinutes} Mins` : 'Untimed';
+
+        return `
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">PIN: ${hw.code}</span>
+                <span class="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded">${timerText}</span>
+                <span class="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded">${qCount} Questions</span>
+              </div>
+              <h4 class="text-sm font-bold text-white">${hw.title}</h4>
+              <p class="text-xs text-slate-400 line-clamp-1">${hw.description || 'Digital SAT practice drill'}</p>
+            </div>
+            <button type="button" onclick="handleStartStudentQuiz('${hw.code}')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 shrink-0 active:scale-95 transition-all">
+              Start Test →
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    let currentRunnerTest = {
+      assignment: null,
+      questions: [],
+      currentIdx: 0,
+      answers: {},
+      eliminations: {},
+      flagged: {},
+      timeRemainingSec: 0,
+      timerInterval: null,
+      startTime: null
+    };
+
+    function handleStartStudentQuiz(presetPin = null) {
+      const nameInput = document.getElementById('student-name-input');
+      const studentName = (nameInput && nameInput.value.trim()) || (currentSession.name) || 'Student User';
+      const pin = (presetPin || document.getElementById('student-pin-input')?.value.trim() || '').toUpperCase();
+
+      if (!pin) {
+        showToast("⚠️ PIN Required", "Please enter your class homework PIN code (e.g. MATH-01)!", "error");
+        return;
+      }
+
+      const assignments = getAssignments();
+      const targetHw = assignments.find(a => a.code.toUpperCase() === pin || a.id === pin);
+
+      if (!targetHw) {
+        showToast("❌ Invalid PIN", `No homework found matching PIN: "${pin}". Check with your teacher!`, "error");
+        return;
+      }
+
+      // Gather question objects
+      const questions = (targetHw.questionIds || []).map(id => getQuestionById(id)).filter(Boolean);
+      if (questions.length === 0) {
+        showToast("⚠️ Empty Homework", "This homework assignment does not contain any questions yet.", "error");
+        return;
+      }
+
+      showLoading('Loading SAT Homework...', `Preparing Digital SAT drill for ${studentName}...`, 800, function() {
+        currentRunnerTest = {
+          assignment: targetHw,
+          questions: questions,
+          currentIdx: 0,
+          answers: {},
+          eliminations: {},
+          flagged: {},
+          timeRemainingSec: (targetHw.timeLimitMinutes || 20) * 60,
+          timerInterval: null,
+          startTime: Date.now()
+        };
+
+        // Switch view states
+        document.getElementById('student-portal-hub')?.classList.add('hidden');
+        document.getElementById('student-runner-container')?.classList.remove('hidden');
+
+        // Start countdown timer
+        startRunnerTimer();
+        renderCurrentRunnerQuestion();
+
+        showToast("📝 Test Started", `Now taking "${targetHw.title}". Good luck!`, "success");
       });
     }
 
+    function startRunnerTimer() {
+      if (currentRunnerTest.timerInterval) clearInterval(currentRunnerTest.timerInterval);
+      const isTimed = currentRunnerTest.assignment && currentRunnerTest.assignment.timeLimitMinutes > 0;
+      const textEl = document.getElementById('runner-timer-text');
+      const pillEl = document.getElementById('runner-timer-pill');
+
+      if (!isTimed) {
+        if (textEl) textEl.innerText = 'Untimed';
+        return;
+      }
+
+      const updateTimerUI = () => {
+        const sec = currentRunnerTest.timeRemainingSec;
+        const mins = Math.floor(sec / 60);
+        const remSec = sec % 60;
+        const formatted = `${String(mins).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
+        if (textEl) textEl.innerText = formatted;
+
+        if (sec <= 120 && pillEl) {
+          pillEl.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-300 font-mono font-bold text-xs animate-pulse';
+        } else if (pillEl) {
+          pillEl.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-sky-400 font-mono font-bold text-xs shadow-inner';
+        }
+      };
+
+      updateTimerUI();
+
+      currentRunnerTest.timerInterval = setInterval(() => {
+        if (currentRunnerTest.timeRemainingSec > 0) {
+          currentRunnerTest.timeRemainingSec -= 1;
+          updateTimerUI();
+        } else {
+          clearInterval(currentRunnerTest.timerInterval);
+          showToast("⏱️ Time Expired!", "Your test timer has reached zero. Submitting automatically...", "info");
+          submitStudentTest();
+        }
+      }, 1000);
+    }
+
+    function confirmExitStudentTest() {
+      if (confirm("Are you sure you want to exit? Your current test progress will be lost.")) {
+        if (currentRunnerTest.timerInterval) clearInterval(currentRunnerTest.timerInterval);
+        document.getElementById('student-runner-container')?.classList.add('hidden');
+        document.getElementById('student-portal-hub')?.classList.remove('hidden');
+        renderAvailableHomeworkForClass();
+      }
+    }
+
+    function renderCurrentRunnerQuestion() {
+      const test = currentRunnerTest;
+      if (!test.questions || test.questions.length === 0) return;
+
+      const q = test.questions[test.currentIdx];
+      const hw = test.assignment;
+
+      // 1. Headers & Badges
+      const hwTitleEl = document.getElementById('runner-hw-title');
+      const hwMetaEl = document.getElementById('runner-hw-meta');
+      const qIndexEl = document.getElementById('runner-qindex-pill');
+      const domainEl = document.getElementById('runner-domain-badge');
+      const diffEl = document.getElementById('runner-difficulty-badge');
+
+      if (hwTitleEl) hwTitleEl.innerText = hw.title;
+      if (hwMetaEl) hwMetaEl.innerText = `PIN: ${hw.code} • ${hw.section || 'Digital SAT Drill'}`;
+      if (qIndexEl) qIndexEl.innerText = `Q ${test.currentIdx + 1} of ${test.questions.length}`;
+      if (domainEl) domainEl.innerText = q.skill || q.domain || 'Digital SAT Question';
+      if (diffEl) {
+        diffEl.innerText = q.difficulty || 'Medium';
+        diffEl.className = q.difficulty === 'Easy' 
+          ? 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+          : q.difficulty === 'Hard'
+          ? 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/30'
+          : 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30';
+      }
+
+      // 2. Stimulus / Passage Column
+      const passageCol = document.getElementById('runner-passage-col');
+      const passageText = document.getElementById('runner-passage-text');
+      const passageSource = document.getElementById('runner-passage-source');
+
+      if (q.passage && q.passage.trim()) {
+        if (passageCol) passageCol.classList.remove('hidden');
+        if (passageText) passageText.innerHTML = `<p>${q.passage.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+        if (passageSource) passageSource.innerText = q.source || 'Digital SAT Context';
+      } else {
+        if (passageCol) passageCol.classList.add('hidden');
+      }
+
+      // 3. Prompt
+      const promptEl = document.getElementById('runner-prompt-text');
+      if (promptEl) promptEl.innerText = q.prompt;
+
+      // 4. Options vs SPR
+      const optionsList = document.getElementById('runner-options-list');
+      const sprContainer = document.getElementById('runner-spr-container');
+      const sprInput = document.getElementById('runner-spr-input');
+
+      if (q.type === 'spr') {
+        if (optionsList) optionsList.classList.add('hidden');
+        if (sprContainer) sprContainer.classList.remove('hidden');
+        if (sprInput) {
+          sprInput.value = test.answers[q.id] || '';
+          if (sprInput.focus) sprInput.focus();
+        }
+      } else {
+        if (sprContainer) sprContainer.classList.add('hidden');
+        if (optionsList && q.options) {
+          optionsList.classList.remove('hidden');
+          const letters = ['A', 'B', 'C', 'D'];
+          const selectedAnswer = test.answers[q.id];
+          const elims = test.eliminations[q.id] || {};
+
+          optionsList.innerHTML = letters.map(letter => {
+            const optText = q.options[letter] || '';
+            const isSelected = selectedAnswer === letter;
+            const isEliminated = !!elims[letter];
+
+            return `
+              <div onclick="selectRunnerOption('${letter}')" id="runner-opt-card-${letter}" class="group p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 select-none ${
+                isSelected 
+                  ? 'bg-blue-950/40 border-2 border-blue-500 shadow-lg shadow-blue-500/15'
+                  : isEliminated
+                  ? 'bg-slate-950/40 border-slate-900 opacity-40 line-through'
+                  : 'bg-slate-950/80 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+              }">
+                <div class="flex items-start gap-3.5 min-w-0">
+                  <span id="runner-opt-badge-${letter}" class="w-7 h-7 rounded-xl font-bold flex items-center justify-center text-xs shrink-0 transition-colors ${
+                    isSelected
+                      ? 'bg-blue-600 text-white font-black shadow-md'
+                      : 'bg-slate-800 border border-slate-700 text-slate-300'
+                  }">
+                    ${letter}
+                  </span>
+                  <span class="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed ${isEliminated ? 'line-through text-slate-500' : ''}">
+                    ${optText}
+                  </span>
+                </div>
+                <button type="button" onclick="toggleEliminateRunnerOption(event, '${letter}')" title="Cross out / Eliminate this choice" class="opacity-0 group-hover:opacity-100 hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all shrink-0">
+                  <span class="text-xs font-bold">✕</span>
+                </button>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 5. Flag Button
+      const isFlagged = !!test.flagged[q.id];
+      const flagBtn = document.getElementById('btn-runner-flag');
+      const flagText = document.getElementById('runner-flag-text');
+      if (flagBtn && flagText) {
+        if (isFlagged) {
+          flagBtn.className = 'px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/40 flex items-center gap-1.5 transition-colors';
+          flagText.innerText = 'Flagged';
+        } else {
+          flagBtn.className = 'px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors';
+          flagText.innerText = 'Flag for Review';
+        }
+      }
+
+      // 6. Navigation Buttons
+      const btnPrev = document.getElementById('btn-runner-prev');
+      const btnNext = document.getElementById('btn-runner-next');
+      if (btnPrev) btnPrev.disabled = test.currentIdx === 0;
+      if (btnNext) {
+        if (test.currentIdx === test.questions.length - 1) {
+          btnNext.innerText = 'Review & Submit';
+          btnNext.className = 'px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-colors';
+        } else {
+          btnNext.innerText = 'Next ›';
+          btnNext.className = 'px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-colors';
+        }
+      }
+
+      // 7. Palette Dots
+      renderRunnerPaletteDots();
+    }
+
+    function renderRunnerPaletteDots() {
+      const container = document.getElementById('runner-palette-dots');
+      if (!container) return;
+
+      const test = currentRunnerTest;
+      container.innerHTML = test.questions.map((q, idx) => {
+        const isCurrent = idx === test.currentIdx;
+        const isAnswered = test.answers[q.id] !== undefined && String(test.answers[q.id]).trim() !== '';
+        const isFlagged = !!test.flagged[q.id];
+
+        let baseStyle = 'w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ';
+        if (isCurrent) {
+          baseStyle += 'border-2 border-white shadow-lg ';
+        } else {
+          baseStyle += 'border border-transparent ';
+        }
+
+        if (isAnswered) {
+          baseStyle += 'bg-blue-600 text-white ';
+        } else {
+          baseStyle += 'bg-slate-800 text-slate-400 hover:bg-slate-700 ';
+        }
+
+        if (isFlagged) {
+          baseStyle += 'ring-2 ring-amber-400 text-amber-300 ';
+        }
+
+        return `
+          <button type="button" onclick="jumpRunnerQuestion(${idx})" class="${baseStyle}">
+            ${idx + 1}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectRunnerOption(letter) {
+      const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
+      currentRunnerTest.answers[q.id] = letter;
+      renderCurrentRunnerQuestion();
+    }
+
+    function toggleEliminateRunnerOption(e, letter) {
+      if (e) e.stopPropagation();
+      const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
+      if (!currentRunnerTest.eliminations[q.id]) currentRunnerTest.eliminations[q.id] = {};
+      currentRunnerTest.eliminations[q.id][letter] = !currentRunnerTest.eliminations[q.id][letter];
+      renderCurrentRunnerQuestion();
+    }
+
+    function saveCurrentRunnerSprAnswer() {
+      const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
+      const val = document.getElementById('runner-spr-input')?.value.trim();
+      currentRunnerTest.answers[q.id] = val;
+      renderRunnerPaletteDots();
+    }
+
+    function toggleCurrentQuestionFlag() {
+      const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
+      currentRunnerTest.flagged[q.id] = !currentRunnerTest.flagged[q.id];
+      renderCurrentRunnerQuestion();
+    }
+
+    function navRunnerQuestion(delta) {
+      const nextIdx = currentRunnerTest.currentIdx + delta;
+      if (nextIdx >= 0 && nextIdx < currentRunnerTest.questions.length) {
+        currentRunnerTest.currentIdx = nextIdx;
+        renderCurrentRunnerQuestion();
+      } else if (nextIdx >= currentRunnerTest.questions.length) {
+        openReviewModal();
+      }
+    }
+
+    function jumpRunnerQuestion(index) {
+      if (index >= 0 && index < currentRunnerTest.questions.length) {
+        currentRunnerTest.currentIdx = index;
+        renderCurrentRunnerQuestion();
+      }
+    }
+
+    function openReviewModal() {
+      const test = currentRunnerTest;
+      const total = test.questions.length;
+      let answered = 0;
+      let flagged = 0;
+
+      test.questions.forEach(q => {
+        if (test.answers[q.id] !== undefined && String(test.answers[q.id]).trim() !== '') {
+          answered += 1;
+        }
+        if (test.flagged[q.id]) flagged += 1;
+      });
+
+      const unanswered = total - answered;
+
+      const elAns = document.getElementById('review-answered-count');
+      const elUnans = document.getElementById('review-unanswered-count');
+      const elFlagWarn = document.getElementById('review-flagged-warning');
+      const elFlagCount = document.getElementById('review-flagged-count');
+
+      if (elAns) elAns.innerText = answered;
+      if (elUnans) elUnans.innerText = unanswered;
+      if (elFlagWarn && elFlagCount) {
+        if (flagged > 0) {
+          elFlagWarn.classList.remove('hidden');
+          elFlagCount.innerText = flagged;
+        } else {
+          elFlagWarn.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('modal-runner-review')?.classList.remove('hidden');
+    }
+
+    function closeReviewModal() {
+      document.getElementById('modal-runner-review')?.classList.add('hidden');
+    }
+
+    function submitStudentTest() {
+      closeReviewModal();
+      if (currentRunnerTest.timerInterval) clearInterval(currentRunnerTest.timerInterval);
+
+      const test = currentRunnerTest;
+      const questions = test.questions;
+      let correctCount = 0;
+
+      questions.forEach(q => {
+        const studentAns = test.answers[q.id];
+        if (isAnswerCorrect(q, studentAns)) {
+          correctCount += 1;
+        }
+      });
+
+      const totalCount = questions.length;
+      const scorePct = Math.round((correctCount / totalCount) * 100);
+      const elapsedSeconds = Math.round((Date.now() - (test.startTime || Date.now())) / 1000);
+      const mins = Math.floor(elapsedSeconds / 60);
+      const secs = elapsedSeconds % 60;
+      const timeSpentStr = `${mins}m ${secs}s`;
+
+      const studentName = document.getElementById('student-name-input')?.value.trim() || currentSession.name || 'Student User';
+      const studentClass = currentSession.className || 'Group A';
+
+      const newSubmission = {
+        id: `sub_${Date.now()}`,
+        studentName: studentName,
+        studentClass: studentClass,
+        hwId: test.assignment.id,
+        hwTitle: test.assignment.title,
+        hwCode: test.assignment.code,
+        score: correctCount,
+        total: totalCount,
+        scorePct: scorePct,
+        timeSpentStr: timeSpentStr,
+        answers: { ...test.answers },
+        questionIds: questions.map(q => q.id),
+        submittedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        teacherNote: ''
+      };
+
+      const subs = getSubmissions();
+      subs.unshift(newSubmission);
+      saveSubmissions(subs);
+
+      // Post submission report to /api/report (Telegram dispatch)
+      if (typeof fetch === 'function') {
+        fetch('/api/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentName: studentName,
+            studentClass: studentClass,
+            assignmentCode: test.assignment.code,
+            scorePct: scorePct,
+            correctCount: correctCount,
+            totalQuestions: totalCount,
+            timeSpent: timeSpentStr,
+            telegramText: `🎓 [DIGITAL SAT SUBMISSION]\nStudent: ${studentName} (${studentClass})\nDrill: ${test.assignment.title} (PIN: ${test.assignment.code})\nScore: ${scorePct}% (${correctCount}/${totalCount})\nTime: ${timeSpentStr}`
+          })
+        }).catch(err => console.log('Telegram report dispatch notice:', err));
+      }
+
+      // Show Results Modal
+      const resScoreEl = document.getElementById('runner-res-score');
+      const resPctEl = document.getElementById('runner-res-pct');
+      const resTimeEl = document.getElementById('runner-res-time');
+      const reviewList = document.getElementById('runner-results-review-list');
+
+      if (resScoreEl) resScoreEl.innerText = `${correctCount} / ${totalCount}`;
+      if (resPctEl) resPctEl.innerText = `${scorePct}%`;
+      if (resTimeEl) resTimeEl.innerText = timeSpentStr;
+
+      if (reviewList) {
+        reviewList.innerHTML = questions.map((q, idx) => {
+          const userAns = test.answers[q.id] || '(Unanswered)';
+          const isCorrect = isAnswerCorrect(q, userAns);
+
+          return `
+            <div class="p-4 rounded-2xl border ${isCorrect ? 'bg-slate-950/60 border-slate-800' : 'bg-rose-950/20 border-rose-500/30'} space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-white">Question ${idx + 1} (${q.domain || 'Digital SAT'})</span>
+                <span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${isCorrect ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}">
+                  ${isCorrect ? '✓ Correct' : '✕ Missed'}
+                </span>
+              </div>
+              <p class="text-xs text-slate-300 leading-relaxed">${q.passage ? `<span class="italic text-slate-400 block mb-1">"${q.passage.substring(0, 90)}..."</span>` : ''}${q.prompt}</p>
+              <div class="flex items-center gap-4 text-xs font-mono pt-1">
+                <span>Your Answer: <strong class="${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">${userAns}</strong></span>
+                <span>Correct Answer: <strong class="text-emerald-400">${q.correct}</strong></span>
+              </div>
+              <p class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80 leading-relaxed">
+                <strong>Explanation:</strong> ${q.explanation}
+              </p>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('modal-runner-results')?.classList.remove('hidden');
+    }
+
+    function closeRunnerResultsModal() {
+      document.getElementById('modal-runner-results')?.classList.add('hidden');
+      document.getElementById('student-runner-container')?.classList.add('hidden');
+      document.getElementById('student-portal-hub')?.classList.remove('hidden');
+      renderAvailableHomeworkForClass();
+      showToast("🏆 Homework Completed", "Your results have been recorded in the class gradebook!", "success");
+    }
+
+    function initAssignmentsAndGradebook() {
+      getAssignments();
+      getSubmissions();
+      updateDashboardStats();
+      renderDashboardGradebook();
+      renderClassTroubleSpots();
+    }
+
     function switchTab(tabName) {
+      if (tabName === 'classes') tabName = 'groups';
+
       if (currentUserRole === 'student') {
-        if (tabName === 'classes' || tabName === 'dashboard' || tabName === 'creator' || tabName === 'bank') {
+        if (tabName === 'groups' || tabName === 'classes' || tabName === 'dashboard' || tabName === 'creator' || tabName === 'bank') {
           showToast("🔒 Access Denied", "Students are strictly blocked from entering the Teacher Portal.", "error");
           return;
         }
@@ -2238,7 +5034,7 @@
         }
       }
 
-      ['gateway', 'entry', 'classes', 'dashboard', 'creator', 'bank', 'student', 'vocab', 'qbank'].forEach(t => {
+      ['gateway', 'entry', 'groups', 'classes', 'dashboard', 'creator', 'bank', 'student', 'vocab', 'qbank'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.add('hidden');
         const navBtn = document.getElementById('nav-' + t);
@@ -2256,6 +5052,12 @@
         activeBtn.classList.remove('text-slate-400');
       }
 
+      if (tabName === 'groups') {
+        if (typeof fetchAndRenderGroups === 'function') {
+          fetchAndRenderGroups();
+        }
+      }
+
       if (tabName === 'vocab') {
         if (currentVocabView === 'reports') {
           switchVocabView('reports');
@@ -2266,7 +5068,18 @@
       }
 
       if (tabName === 'dashboard') {
+        renderDashboardGradebook();
+        renderClassTroubleSpots();
+        updateDashboardStats();
         renderDashboardVocabReports();
+      }
+
+      if (tabName === 'creator') {
+        renderCreatorQuestionSelector();
+      }
+
+      if (tabName === 'student') {
+        renderAvailableHomeworkForClass();
       }
 
       if (tabName === 'qbank') {
@@ -3662,6 +6475,9 @@
       renderVocabReportsView();
       renderDashboardVocabReports();
       updateTelegramBotLink();
+      initAssignmentsAndGradebook();
+      renderAvailableHomeworkForClass();
+      updateDashboardStats();
     };
 
     // =========================================================================
@@ -4850,148 +7666,7 @@
     // DIGITAL SAT QUESTION BANK & DRAFT/PREVIEW ENGINE
     // =========================================================
 
-    const DEFAULT_QBANK = {
-      rw: [
-        {
-          id: 'rw_1',
-          domain: 'Craft and Structure',
-          skill: 'Words in Context',
-          difficulty: 'Medium',
-          source: 'Digital Communication History',
-          passage: 'In 1971, computer scientist Ray Tomlinson implemented the first practical email system on the ARPANET network. To designate where messages should be directed, Tomlinson selected the "@" symbol to separate the individual user name from the receiving machine name, a convention that remains ______ across contemporary electronic messaging platforms worldwide.',
-          prompt: 'Which choice completes the text with the most logical and precise word or phrase?',
-          options: {
-            A: 'archaic',
-            B: 'ubiquitous',
-            C: 'provisional',
-            D: 'contentious'
-          },
-          correct: 'B',
-          explanation: 'Choice B is correct. "Ubiquitous" means present, appearing, or found everywhere. The text states that Tomlinson selected the "@" symbol in 1971 and that this practice remains widespread across modern electronic messaging platforms worldwide. Choice A ("archaic") means obsolete, which contradicts "remains across contemporary platforms". Choice C ("provisional") means temporary, and Choice D ("contentious") means controversial.'
-        },
-        {
-          id: 'rw_2',
-          domain: 'Information and Ideas',
-          skill: 'Command of Evidence',
-          difficulty: 'Hard',
-          source: 'Urban Ecology Research',
-          passage: 'Ecologist Dr. Elena Vance and her team investigated whether mature urban tree canopies mitigate the microclimatic impact of urban heat islands. Measuring surface and ambient air temperatures across fifty commercial corridors over three consecutive summers, the researchers noted that corridors shaded by broadleaf deciduous canopies registered midday temperatures up to 7.2°C cooler than adjacent, unshaded asphalt thoroughfares. Crucially, the cooling effect was most pronounced during late afternoon heat waves when thermal radiation from concrete typically peaks.',
-          prompt: 'Which finding from the study, if true, best supports the researchers\' conclusion regarding the cooling mitigation of urban tree canopies?',
-          options: {
-            A: 'Unshaded asphalt corridors had higher pedestrian and vehicular volume than tree-lined streets.',
-            B: 'Broadleaf canopy corridors consistently recorded significantly lower peak afternoon temperatures compared to unshaded areas.',
-            C: 'Deciduous trees lost their foliage during autumn months, allowing ground-level solar absorption.',
-            D: 'Urban heat islands are primarily exacerbated by industrial air conditioning exhaust units.'
-          },
-          correct: 'B',
-          explanation: 'Choice B is correct. The conclusion is that mature urban tree canopies directly mitigate urban heat islands. Finding that tree-shaded corridors consistently recorded significantly lower peak afternoon temperatures compared to unshaded areas provides direct empirical evidence supporting that claim. Other choices discuss traffic, seasonal leaf loss, or air conditioning, which do not test canopy cooling.'
-        },
-        {
-          id: 'rw_3',
-          domain: 'Standard English Conventions',
-          skill: 'Boundaries & Sentence Structure',
-          difficulty: 'Medium',
-          source: 'Astrophysics & Exoplanetology',
-          passage: 'Astrophysicists analyzing initial spectroscopic transmissions from exoplanet WASP-96b hypothesized an atmosphere dense with suspended clouds of water ______ newly calibrated infrared data captured by the James Webb Space Telescope revealed distinct signatures of hazy aerosols and potassium silicate dust.',
-          prompt: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
-          options: {
-            A: 'vapor, however,',
-            B: 'vapor; however,',
-            C: 'vapor however,',
-            D: 'vapor; however'
-          },
-          correct: 'B',
-          explanation: 'Choice B is correct. The sentence connects two independent clauses: the first describes initial hypotheses about water vapor, and the second describes the newly calibrated data from JWST. A semicolon followed by the transitional adverb "however" and a comma is the standard, grammatically correct boundary convention to join two independent clauses.'
-        },
-        {
-          id: 'rw_4',
-          domain: 'Expression of Ideas',
-          skill: 'Rhetorical Synthesis',
-          difficulty: 'Medium',
-          source: 'Archaeological Field Notes',
-          passage: 'While researching a topic, a student has taken the following notes:\n• The Nazca Lines are enormous geoglyphs carved into the desert floor of southern Peru.\n• Created between 500 BCE and 500 CE by the pre-Inca Nazca culture.\n• Biomorphic glyphs depict fauna such as condors, spiders, hummingbirds, and monkeys.\n• Geometric glyphs comprise extensive trapezoids, straight spirals, and interconnected triangles.\n• The archaeological significance and ceremonial purpose of the glyphs remain widely debated.',
-          prompt: 'The student wants to emphasize the wide diversity of imagery represented across the Nazca Lines. Which choice most effectively uses the relevant information from the notes to accomplish this goal?',
-          options: {
-            A: 'Constructed between 500 BCE and 500 CE in southern Peru, the Nazca Lines remain an archaeological mystery.',
-            B: 'The Nazca Lines encompass a diverse spectrum of motifs, spanning biological figures like monkeys and condors as well as complex geometric spirals and trapezoids.',
-            C: 'Pre-Inca artisans designed biomorphic animal figures across the desert floor for ceremonial gatherings.',
-            D: 'Geometric patterns including straight triangles and trapezoids were etched into the southern Peruvian plains.'
-          },
-          correct: 'B',
-          explanation: 'Choice B is correct because it directly satisfies the rhetorical goal: it explicitly highlights the wide diversity of imagery by contrasting both biological fauna (monkeys, condors) and geometric formations (spirals, trapezoids). Other choices focus solely on date/location, ceremony, or geometry without highlighting diversity.'
-        }
-      ],
-      math: [
-        {
-          id: 'math_1',
-          domain: 'Algebra',
-          skill: 'Linear Equations in One Variable',
-          difficulty: 'Easy',
-          source: 'SAT Core Algebra',
-          passage: 'Consider the linear equation:\n3(2x - 4) = 5x + 7',
-          prompt: 'What value of x satisfies the given equation?',
-          options: {
-            A: '11',
-            B: '15',
-            C: '19',
-            D: '23'
-          },
-          correct: 'C',
-          explanation: 'Choice C is correct. Expanding the left side gives 6x - 12 = 5x + 7. Subtracting 5x from both sides gives x - 12 = 7. Adding 12 to both sides gives x = 19. Check: 3(2(19) - 4) = 3(38 - 4) = 3(34) = 102. Right side: 5(19) + 7 = 95 + 7 = 102. Both sides equal 102.'
-        },
-        {
-          id: 'math_2',
-          domain: 'Advanced Math',
-          skill: 'Nonlinear Functions & Quadratics',
-          difficulty: 'Medium',
-          source: 'SAT Polynomial Functions',
-          passage: 'A quadratic function is defined by f(x) = (x - 3)(x + 7).',
-          prompt: 'For which values of x is f(x) = 0?',
-          options: {
-            A: 'x = -3 and x = 7',
-            B: 'x = 3 and x = -7',
-            C: 'x = -3 and x = -7',
-            D: 'x = 3 and x = 7'
-          },
-          correct: 'B',
-          explanation: 'Choice B is correct. By the zero product property, if (x - 3)(x + 7) = 0, then either x - 3 = 0 (which gives x = 3) or x + 7 = 0 (which gives x = -7). Thus, the zeros occur at x = 3 and x = -7.'
-        },
-        {
-          id: 'math_3',
-          domain: 'Problem-Solving and Data Analysis',
-          skill: 'Linear Rate Modeling',
-          difficulty: 'Medium',
-          source: 'Applied Chemistry Modeling',
-          passage: 'A chemical solution in a laboratory calorimeter starts at an initial temperature of 24°C and cools uniformly at a constant rate of 1.5°C per minute.',
-          prompt: 'Which equation correctly models the temperature T, in degrees Celsius, of the solution m minutes after the cooling process initiates?',
-          options: {
-            A: 'T = 24 - 1.5m',
-            B: 'T = 24 + 1.5m',
-            C: 'T = 1.5 - 24m',
-            D: 'T = 1.5m - 24'
-          },
-          correct: 'A',
-          explanation: 'Choice A is correct. The initial temperature at m = 0 is 24°C (the y-intercept). Because the temperature cools uniformly at 1.5°C per minute, the temperature decreases by 1.5m after m minutes. Thus, T = 24 - 1.5m.'
-        },
-        {
-          id: 'math_4',
-          domain: 'Geometry and Trigonometry',
-          skill: 'Right Triangle Trigonometry',
-          difficulty: 'Hard',
-          source: 'SAT Trigonometric Relations',
-          passage: 'In right triangle ABC, angle C measures 90°. If sin(A) = 4/5, what is the value of cos(B)?',
-          prompt: 'What is the value of cos(B)?',
-          options: {
-            A: '3/5',
-            B: '4/5',
-            C: '3/4',
-            D: '5/4'
-          },
-          correct: 'B',
-          explanation: 'Choice B is correct. In any right triangle where angle C is 90°, acute angles A and B are complementary (A + B = 90°). By the cofunction identity, sin(A) = cos(90° - A) = cos(B). Since sin(A) = 4/5, cos(B) must also equal 4/5.'
-        }
-      ]
-    };
+    // (DEFAULT_QBANK initialized above with full authentic 16-question dataset)
 
     let activeQBankSubject = 'rw';
     let currentQBankQuestions = [];
@@ -5288,21 +7963,36 @@
       if (promptDomain) promptDomain.innerText = q.skill || q.domain || 'Digital SAT Question';
       if (promptEl) promptEl.innerText = q.prompt;
 
-      // 4. Options
+      // 4. Options or SPR Grid-in
       const optionsList = document.getElementById('solver-options-list');
-      if (optionsList && q.options) {
-        const letters = ['A', 'B', 'C', 'D'];
-        optionsList.innerHTML = letters.map(letter => {
-          const optText = q.options[letter] || '';
-          return `
-            <div onclick="selectQBankOption('${letter}')" id="opt-card-${letter}" class="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none">
-              <span id="opt-badge-${letter}" class="w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors">
-                ${letter}
-              </span>
-              <span class="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed">${optText}</span>
-            </div>
-          `;
-        }).join('');
+      const sprContainer = document.getElementById('solver-spr-container');
+      const sprInput = document.getElementById('solver-spr-input');
+
+      if (q.type === 'spr') {
+        if (optionsList) optionsList.classList.add('hidden');
+        if (sprContainer) sprContainer.classList.remove('hidden');
+        if (sprInput) {
+          sprInput.value = '';
+          sprInput.className = 'w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner';
+          sprInput.disabled = false;
+        }
+      } else {
+        if (sprContainer) sprContainer.classList.add('hidden');
+        if (optionsList && q.options) {
+          optionsList.classList.remove('hidden');
+          const letters = ['A', 'B', 'C', 'D'];
+          optionsList.innerHTML = letters.map(letter => {
+            const optText = q.options[letter] || '';
+            return `
+              <div onclick="selectQBankOption('${letter}')" id="opt-card-${letter}" class="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none">
+                <span id="opt-badge-${letter}" class="w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors">
+                  ${letter}
+                </span>
+                <span class="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed">${optText}</span>
+              </div>
+            `;
+          }).join('');
+        }
       }
 
       // 5. Action Buttons & Feedback Card
@@ -5336,14 +8026,32 @@
 
     function checkQBankAnswer() {
       if (isCurrentAnswerChecked) return;
-      if (!selectedOptionLetter) {
-        showToast("⚠️ Select an Answer", "Please choose an option (A, B, C, or D) before checking!", "error");
-        return;
-      }
-
-      isCurrentAnswerChecked = true;
       const q = currentQBankQuestions[currentQBankIndex];
-      const isCorrect = (selectedOptionLetter === q.correct);
+
+      let isCorrect = false;
+      if (q.type === 'spr') {
+        const sprInput = document.getElementById('solver-spr-input');
+        const val = sprInput ? sprInput.value.trim() : '';
+        if (!val) {
+          showToast("⚠️ Enter an Answer", "Please type your numerical answer before checking!", "error");
+          return;
+        }
+        isCurrentAnswerChecked = true;
+        isCorrect = isAnswerCorrect(q, val);
+        if (sprInput) {
+          sprInput.disabled = true;
+          sprInput.className = isCorrect 
+            ? 'w-full bg-emerald-950/50 border-2 border-emerald-500 rounded-2xl p-4 text-base font-mono font-bold text-emerald-300 outline-none shadow-xl'
+            : 'w-full bg-rose-950/50 border-2 border-rose-500 rounded-2xl p-4 text-base font-mono font-bold text-rose-300 outline-none shadow-xl';
+        }
+      } else {
+        if (!selectedOptionLetter) {
+          showToast("⚠️ Select an Answer", "Please choose an option (A, B, C, or D) before checking!", "error");
+          return;
+        }
+        isCurrentAnswerChecked = true;
+        isCorrect = (selectedOptionLetter === q.correct);
+      }
 
       // Highlight cards
       ['A', 'B', 'C', 'D'].forEach(l => {
