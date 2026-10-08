@@ -2,20 +2,32 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#020617" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SATMaster — Digital SAT Class & Auth Suite</title>
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Tailwind CSS CDN -->
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
+    html, body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+    button, input, select, textarea, a {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
     .perspective { perspective: 1000px; }
     .transform-style-3d { transform-style: preserve-3d; }
     .backface-hidden { backface-visibility: hidden; }
     .rotate-y-180 { transform: rotateY(180deg); }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600/30">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600/30 pb-20 md:pb-8">
 
   <!-- Top Navigation Header -->
   <header class="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40 px-4 sm:px-6 flex items-center justify-between">
@@ -2371,10 +2383,18 @@
       if (window.Telegram && window.Telegram.WebApp) {
         try {
           window.Telegram.WebApp.ready();
+          if (typeof window.Telegram.WebApp.expand === 'function') {
+            window.Telegram.WebApp.expand();
+          }
+          if (typeof window.Telegram.WebApp.enableClosingConfirmation === 'function') {
+            window.Telegram.WebApp.enableClosingConfirmation();
+          }
           if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             tgUser = window.Telegram.WebApp.initDataUnsafe.user;
           }
-        } catch(e) {}
+        } catch(e) {
+          console.warn('Telegram WebApp setup notice:', e);
+        }
       }
 
       // 2. Check URL Query Parameters: ?role=student&uid=TG123&name=Alex+Chen&class=SAT-Group-A&admin=true
@@ -2477,6 +2497,12 @@
       if (isLoggedIn) {
         if (logoutBtn) logoutBtn.classList.remove('hidden');
 
+        const mobGroups = document.getElementById('mob-nav-groups');
+        const mobDashboard = document.getElementById('mob-nav-dashboard');
+        const mobVocab = document.getElementById('mob-nav-vocab');
+        const mobQBank = document.getElementById('mob-nav-qbank');
+        const mobStudent = document.getElementById('mob-nav-student');
+
         if (currentUserRole === 'student') {
           // Students only get access to the SAT Vocabulary Suite (homework tab is hidden)
           teacherTabs.forEach(id => {
@@ -2484,6 +2510,10 @@
             if (el) el.classList.add('hidden');
           });
           if (studentNavBtn) studentNavBtn.classList.add('hidden');
+          if (mobGroups) mobGroups.classList.add('hidden');
+          if (mobDashboard) mobDashboard.classList.add('hidden');
+          if (mobStudent) mobStudent.classList.add('hidden');
+          if (mobVocab) mobVocab.classList.remove('hidden');
 
           // Students can take unit tests
           if (testBanner) testBanner.classList.remove('hidden');
@@ -2495,8 +2525,10 @@
           if (qbankPublished) {
             if (navQBank) navQBank.classList.remove('hidden');
             if (qbankDraftTag) qbankDraftTag.classList.add('hidden');
+            if (mobQBank) mobQBank.classList.remove('hidden');
           } else {
             if (navQBank) navQBank.classList.add('hidden');
+            if (mobQBank) mobQBank.classList.add('hidden');
           }
         } else {
           // Teachers / Admins have full management access
@@ -2505,6 +2537,11 @@
             if (el) el.classList.remove('hidden');
           });
           if (studentNavBtn) studentNavBtn.classList.add('hidden'); // Teachers do not take student homework
+          if (mobGroups) mobGroups.classList.remove('hidden');
+          if (mobDashboard) mobDashboard.classList.remove('hidden');
+          if (mobVocab) mobVocab.classList.remove('hidden');
+          if (mobQBank) mobQBank.classList.remove('hidden');
+          if (mobStudent) mobStudent.classList.add('hidden');
 
           // Teachers DO NOT take unit exams: remove unit test banner & test form
           if (testBanner) testBanner.classList.add('hidden');
@@ -2650,19 +2687,36 @@
       return []; // Clean empty state as requested!
     }
 
-    function saveClasses(classesList) {
-      localStorage.setItem('satmaster_classes', JSON.stringify(classesList));
-      renderClasses();
-    }
+    let cachedGroups = [];
+    let inFlightGroupsPromise = null;
+    let lastGroupsFetchTime = 0;
 
-    function syncClassesFromServer() {
-      fetch('/api/groups')
+    function fetchGroupsWithCache(force = false) {
+      const now = Date.now();
+      // If we have cached groups from the last 8 seconds and not forced, return cached immediately
+      if (!force && cachedGroups && cachedGroups.length && (now - lastGroupsFetchTime < 8000)) {
+        return Promise.resolve({ ok: true, groups: cachedGroups, fromCache: true });
+      }
+
+      // If a fetch is already in flight, reuse the promise to eliminate duplicate requests
+      if (!force && inFlightGroupsPromise) {
+        return inFlightGroupsPromise;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      inFlightGroupsPromise = fetch('/api/groups', { signal: controller.signal })
         .then(res => {
+          clearTimeout(timeoutId);
           if (!res.ok) throw new Error('Status ' + res.status);
           return res.json();
         })
         .then(data => {
+          inFlightGroupsPromise = null;
+          lastGroupsFetchTime = Date.now();
           if (data && data.ok && Array.isArray(data.groups)) {
+            cachedGroups = data.groups;
             const classes = data.groups.map(g => ({
               id: g.id || ('grp_' + g.name),
               name: g.name,
@@ -2673,13 +2727,22 @@
             }));
             localStorage.setItem('satmaster_classes', JSON.stringify(classes));
             renderClasses();
-            if (typeof cachedGroups !== 'undefined') {
-              cachedGroups = data.groups;
-              if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
-              if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
-            }
+            if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
+            if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
           }
+          return data;
         })
+        .catch(err => {
+          clearTimeout(timeoutId);
+          inFlightGroupsPromise = null;
+          throw err;
+        });
+
+      return inFlightGroupsPromise;
+    }
+
+    function syncClassesFromServer() {
+      fetchGroupsWithCache(false)
         .catch(err => {
           console.log('Class sync note (running standalone or offline):', err);
           renderClasses();
@@ -2748,7 +2811,6 @@
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
 
-    let cachedGroups = [];
     let activeGroupId = null;
     let activeGroupName = '';
     let pendingDeleteGroupId = null;
@@ -2763,6 +2825,26 @@
       const emptyState = document.getElementById('groups-empty-state');
       const countStat = document.getElementById('stat-groups-count');
 
+      // Instant optimistic render if cached data exists
+      if (!force && cachedGroups && cachedGroups.length) {
+        if (skeleton) skeleton.classList.add('hidden');
+        if (errorBox) errorBox.classList.add('hidden');
+        if (emptyState) emptyState.classList.add('hidden');
+        if (grid) grid.classList.remove('hidden');
+        if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+        renderGroupsGrid(cachedGroups);
+        // Silent background update if cache older than 6s
+        if (Date.now() - lastGroupsFetchTime > 6000) {
+          fetchGroupsWithCache(true).then(data => {
+            if (data && data.groups) {
+              if (countStat) countStat.innerText = `${data.groups.length} Active ${data.groups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+              renderGroupsGrid(data.groups);
+            }
+          }).catch(() => {});
+        }
+        return;
+      }
+
       if (skeleton && (!cachedGroups.length || force)) {
         skeleton.classList.remove('hidden');
         if (grid) grid.classList.add('hidden');
@@ -2770,11 +2852,7 @@
         if (emptyState) emptyState.classList.add('hidden');
       }
 
-      fetch('/api/groups')
-        .then(res => {
-          if (!res.ok) throw new Error('Status ' + res.status);
-          return res.json();
-        })
+      fetchGroupsWithCache(force)
         .then(data => {
           if (skeleton) skeleton.classList.add('hidden');
           if (errorBox) errorBox.classList.add('hidden');
@@ -2782,11 +2860,10 @@
           if (data && data.ok && Array.isArray(data.groups)) {
             cachedGroups = data.groups;
             if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
-
             syncClassesDropdownsFromGroups(cachedGroups);
             renderGroupsGrid(cachedGroups);
           } else {
-            throw new Error(data.error || 'Failed to parse groups data');
+            throw new Error((data && data.error) || 'Failed to parse groups data');
           }
         })
         .catch(err => {
@@ -3532,8 +3609,12 @@
       document.getElementById('create-class-modal').classList.add('hidden');
     }
 
+    let isCreatingClass = false;
+
     function handleSaveNewClass(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
+      if (isCreatingClass) return; // Prevent duplicate clicks on mobile/desktop
+
       const nameInput = document.getElementById('new-class-name');
       const name = (nameInput ? nameInput.value : '').trim();
       const codeInput = document.getElementById('new-class-code');
@@ -3553,8 +3634,29 @@
       const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerText = 'Creating in Database...';
+        submitBtn.innerHTML = '<span class="inline-block animate-spin mr-1.5">⏳</span><span>Creating in Database...</span>';
       }
+      isCreatingClass = true;
+
+      // Instant optimistic UI feedback
+      const tempId = 'temp_' + Date.now();
+      const optimisticCohort = {
+        id: tempId,
+        name: name,
+        code: code,
+        schedule: schedule,
+        description: desc || 'SAT Class Cohort',
+        student_count: 0,
+        created_at: new Date().toISOString()
+      };
+      cachedGroups.unshift(optimisticCohort);
+      lastGroupsFetchTime = Date.now();
+      if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
+      const countStat = document.getElementById('stat-groups-count');
+      if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
+      closeCreateClassModal();
+      showToast("⏳ Establishing Cohort", `Saving "${name}" to Supabase...`, "info");
 
       // Execute POST /api/groups to save directly into database.py (Supabase)
       fetch('/api/groups', {
@@ -3575,14 +3677,13 @@
         return res.json();
       })
       .then(data => {
+        isCreatingClass = false;
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerText = 'Create Class';
+          submitBtn.innerHTML = '<span>Create Class</span>';
         }
 
         if (data && data.ok) {
-          closeCreateClassModal();
-
           // Reset inputs
           if (nameInput) nameInput.value = '';
           if (codeInput) codeInput.value = '';
@@ -3590,6 +3691,15 @@
           if (descInput) descInput.value = '';
 
           const savedGroup = data.group || { id: data.id, name: data.name, student_count: 0, created_at: new Date().toISOString() };
+
+          // Reconcile optimistic record with confirmed database record
+          const tempIdx = cachedGroups.findIndex(g => g.id === tempId);
+          if (tempIdx >= 0) {
+            cachedGroups[tempIdx] = savedGroup;
+          } else {
+            cachedGroups.unshift(savedGroup);
+          }
+          lastGroupsFetchTime = Date.now();
 
           // Sync into local classes store with verified Supabase ID
           const newClass = {
@@ -3604,23 +3714,9 @@
           classes.unshift(newClass);
           saveClasses(classes);
 
-          // Update cachedGroups and cohorts grid
-          if (typeof cachedGroups !== 'undefined') {
-            const existingIdx = cachedGroups.findIndex(g => g.id === savedGroup.id || g.name.toLowerCase() === savedGroup.name.toLowerCase());
-            if (existingIdx >= 0) {
-              cachedGroups[existingIdx] = savedGroup;
-            } else {
-              cachedGroups.unshift(savedGroup);
-            }
-            if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
-            const countStat = document.getElementById('stat-groups-count');
-            if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
-            if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
-          }
-
-          if (typeof syncClassesFromServer === 'function') {
-            syncClassesFromServer();
-          }
+          if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
+          if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+          if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
 
           showToast("🏫 Class Created!", `Class "${name}" saved to Supabase (PIN: ${code})`, "success");
         } else {
@@ -3628,10 +3724,16 @@
         }
       })
       .catch(err => {
+        isCreatingClass = false;
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerText = 'Create Class';
+          submitBtn.innerHTML = '<span>Create Class</span>';
         }
+        // Rollback optimistic cohort on error
+        cachedGroups = cachedGroups.filter(g => g.id !== tempId);
+        if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
+        if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
         console.error('API group creation error:', err);
         showToast("🚫 Creation Error", "Failed to save class to database: " + err.message, "error");
       });
@@ -5034,6 +5136,24 @@
         }
       }
 
+      // Memory leak prevention: clear active timers if navigating away
+      if (tabName !== 'student') {
+        if (typeof currentRunnerTest !== 'undefined' && currentRunnerTest && currentRunnerTest.timerInterval) {
+          clearInterval(currentRunnerTest.timerInterval);
+          currentRunnerTest.timerInterval = null;
+        }
+      }
+      if (tabName !== 'vocab') {
+        if (typeof matchTimerInterval !== 'undefined' && matchTimerInterval) {
+          clearInterval(matchTimerInterval);
+          matchTimerInterval = null;
+        }
+        if (typeof vocabTestState !== 'undefined' && vocabTestState && vocabTestState.timerInterval) {
+          clearInterval(vocabTestState.timerInterval);
+          vocabTestState.timerInterval = null;
+        }
+      }
+
       ['gateway', 'entry', 'groups', 'classes', 'dashboard', 'creator', 'bank', 'student', 'vocab', 'qbank'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) el.classList.add('hidden');
@@ -5041,6 +5161,11 @@
         if (navBtn) {
           navBtn.classList.remove('text-blue-400', 'bg-blue-600/15', 'border', 'border-blue-500/30', 'text-sky-400');
           navBtn.classList.add('text-slate-400');
+        }
+        const mobBtn = document.getElementById('mob-nav-' + t);
+        if (mobBtn) {
+          mobBtn.classList.remove('text-blue-400', 'text-sky-400', 'text-emerald-400', 'font-bold');
+          mobBtn.classList.add('text-slate-400');
         }
       });
 
@@ -5050,6 +5175,11 @@
       if (activeBtn) {
         activeBtn.classList.add('text-blue-400', 'bg-blue-600/15', 'border', 'border-blue-500/30');
         activeBtn.classList.remove('text-slate-400');
+      }
+      const mobActiveBtn = document.getElementById('mob-nav-' + tabName);
+      if (mobActiveBtn) {
+        mobActiveBtn.classList.add('text-blue-400', 'font-bold');
+        mobActiveBtn.classList.remove('text-slate-400');
       }
 
       if (tabName === 'groups') {
@@ -8220,5 +8350,29 @@
     }
 
   </script>
+
+  <!-- Mobile Bottom Navigation Bar (Visible on mobile/tablet screens < 768px) -->
+  <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/80 px-2 py-2 flex items-center justify-around text-[10px] font-semibold text-slate-400">
+    <button type="button" onclick="switchTab('groups')" id="mob-nav-groups" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all text-blue-400">
+      <span class="text-base">👥</span>
+      <span>Groups</span>
+    </button>
+    <button type="button" onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all">
+      <span class="text-base">📊</span>
+      <span>Dashboard</span>
+    </button>
+    <button type="button" onclick="switchTab('vocab')" id="mob-nav-vocab" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all">
+      <span class="text-base">📚</span>
+      <span>Vocab</span>
+    </button>
+    <button type="button" onclick="switchTab('qbank')" id="mob-nav-qbank" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all">
+      <span class="text-base">📖</span>
+      <span>Q-Bank</span>
+    </button>
+    <button type="button" onclick="switchTab('student')" id="mob-nav-student" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all text-emerald-400">
+      <span class="text-base">📝</span>
+      <span>Portal</span>
+    </button>
+  </nav>
 </body>
 </html>

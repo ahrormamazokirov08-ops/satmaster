@@ -12,12 +12,14 @@ import os
 import sys
 import uuid
 import sqlite3
+import threading
 from datetime import datetime
 from contextlib import contextmanager
 import time
 
 try:
     import psycopg2
+    from psycopg2 import pool
     from psycopg2.extras import RealDictCursor
     PSYCOPG2_AVAILABLE = True
 except ImportError:
@@ -63,6 +65,12 @@ DEFAULT_SUPABASE_URL = "postgresql://postgres.mzagstfpiiueiofoehhl:0000AAxx..88@
 class RelationalDB:
     def __init__(self, db_url=None, db_path=None):
         load_env()
+        self._pool = None
+        self._pool_lock = threading.Lock()
+        self._cache_lock = threading.Lock()
+        self._groups_cache = None
+        self._cache_ttl = 4.0  # In-memory read cache TTL in seconds
+
         # If first argument is actually a file path, treat as db_path
         if db_url and not db_path and not (db_url.startswith("postgresql://") or db_url.startswith("postgres://")):
             db_path = db_url
@@ -86,6 +94,7 @@ class RelationalDB:
                     self.is_postgres = True
                     self.db_url = raw_url
                     self.db_path = None
+                    self._init_pool()
             else:
                 self.is_postgres = False
                 self.db_url = None
@@ -93,8 +102,30 @@ class RelationalDB:
 
         self.init_db()
 
-    def get_connection(self):
-        """Create a database connection for PostgreSQL or SQLite with retry on transient drops."""
+    def _init_pool(self):
+        """Initialize persistent thread-safe PostgreSQL connection pool."""
+        if not self.is_postgres or not PSYCOPG2_AVAILABLE:
+            return
+        with self._pool_lock:
+            if self._pool is None:
+                try:
+                    self._pool = pool.ThreadedConnectionPool(
+                        minconn=1,
+                        maxconn=10,
+                        dsn=self.db_url,
+                        sslmode="require",
+                        connect_timeout=10,
+                        keepalives=1,
+                        keepalives_idle=30,
+                        keepalives_interval=10,
+                        keepalives_count=5
+                    )
+                except Exception as e:
+                    print(f"⚠️ Warning: Failed to initialize ThreadedConnectionPool: {e}")
+                    self._pool = None
+
+    def get_direct_connection(self):
+        """Create a direct unpooled connection with retry on transient drops."""
         if not self.is_postgres:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -117,25 +148,111 @@ class RelationalDB:
             except Exception as e:
                 err_msg = str(e).lower()
                 if any(w in err_msg for w in ["eof", "closed", "ssl", "timeout", "connection", "address"]) and attempt < max_retries - 1:
-                    time.sleep(0.5)
+                    time.sleep(0.3)
                     continue
                 raise
 
+    def get_connection(self):
+        """Public connection getter (backwards compatible)."""
+        conn, _ = self._get_connection_from_pool()
+        return conn
+
+    def _get_connection_from_pool(self):
+        """Borrow a connection from the pool, testing health and reconnecting if stale."""
+        if not self.is_postgres:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON;")
+            return conn, False
+
+        if self._pool is None:
+            self._init_pool()
+
+        if self._pool is not None:
+            try:
+                conn = self._pool.getconn()
+                # If connection closed or broken, discard & fetch fresh
+                if conn.closed != 0:
+                    try:
+                        self._pool.putconn(conn, close=True)
+                    except Exception:
+                        pass
+                    conn = self._pool.getconn()
+
+                # Fast ping to ensure connection wasn't dropped by pooler idle timeout
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT 1;")
+                except Exception:
+                    # Stale connection dropped by Supabase pooler, reconnect
+                    try:
+                        self._pool.putconn(conn, close=True)
+                    except Exception:
+                        pass
+                    conn = self._pool.getconn()
+
+                return conn, True
+            except Exception:
+                # If pool fails or is exhausted, fall back to direct connection
+                pass
+
+        return self.get_direct_connection(), False
+
+    def _return_connection(self, conn, is_pooled, is_bad=False):
+        """Return connection to pool or close if direct or broken."""
+        if not conn:
+            return
+        if not self.is_postgres or not is_pooled:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            return
+
+        if self._pool is not None:
+            try:
+                self._pool.putconn(conn, close=is_bad)
+            except Exception:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+    def invalidate_cache(self):
+        """Invalidate in-memory read cache on data mutations."""
+        with self._cache_lock:
+            self._groups_cache = None
+
+    def close_pool(self):
+        """Cleanly close all connections in pool."""
+        with self._pool_lock:
+            if self._pool is not None:
+                try:
+                    self._pool.closeall()
+                except Exception:
+                    pass
+                self._pool = None
+
     @contextmanager
     def cursor(self):
-        """Context manager yielding a dictionary cursor."""
+        """Context manager yielding a dictionary cursor with pooled connection reuse."""
         conn = None
+        is_pooled = False
+        is_bad = False
         try:
-            conn = self.get_connection()
+            conn, is_pooled = self._get_connection_from_pool()
             if self.is_postgres:
                 cur = conn.cursor(cursor_factory=RealDictCursor)
                 yield cur
                 conn.commit()
+                cur.close()
             else:
                 cur = conn.cursor()
                 yield cur
                 conn.commit()
+                cur.close()
         except Exception:
+            is_bad = True
             if conn:
                 try:
                     conn.rollback()
@@ -144,10 +261,7 @@ class RelationalDB:
             raise
         finally:
             if conn:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
+                self._return_connection(conn, is_pooled, is_bad=is_bad)
 
     def _query(self, sql):
         """Helper to convert SQL placeholders: %s for Postgres, ? for SQLite."""
@@ -200,8 +314,14 @@ class RelationalDB:
     # GROUPS API METHODS
     # --------------------------------------------------------------------------
 
-    def list_groups(self):
+    def list_groups(self, bypass_cache=False):
         """Return all groups with their isolated student count."""
+        now = time.time()
+        if not bypass_cache:
+            with self._cache_lock:
+                if self._groups_cache and (now - self._groups_cache.get("ts", 0) < self._cache_ttl):
+                    return self._groups_cache["data"]
+
         sql = self._query("""
             SELECT 
                 g.id,
@@ -216,7 +336,10 @@ class RelationalDB:
         with self.cursor() as cur:
             cur.execute(sql)
             rows = cur.fetchall()
-            return _format_rows(rows)
+            formatted = _format_rows(rows)
+            with self._cache_lock:
+                self._groups_cache = {"data": formatted, "ts": now}
+            return formatted
 
     def get_group(self, group_id):
         """Fetch a single group by id or name."""
@@ -246,6 +369,7 @@ class RelationalDB:
         if existing:
             return existing
 
+        self.invalidate_cache()
         if self.is_postgres:
             sql = "INSERT INTO groups (name) VALUES (%s) RETURNING id, name, created_at"
             with self.cursor() as cur:
@@ -271,6 +395,7 @@ class RelationalDB:
         Delete group by UUID or name.
         Triggers CASCADE delete for all students and test records under this group.
         """
+        self.invalidate_cache()
         sel_sql = self._query("SELECT id, name FROM groups WHERE CAST(id AS TEXT) = %s OR LOWER(name) = LOWER(%s)")
         del_sql = self._query("DELETE FROM groups WHERE CAST(id AS TEXT) = %s")
 
@@ -329,6 +454,7 @@ class RelationalDB:
 
     def upsert_student(self, telegram_id, display_name, group_id, telegram_username=None):
         """Register or update student in relational database linked to group_id."""
+        self.invalidate_cache()
         clean_name = (display_name or "Student").strip()
         clean_username = (telegram_username or "").strip().lstrip("@") if telegram_username else None
         tg_id = int(telegram_id)
@@ -394,6 +520,7 @@ class RelationalDB:
         Hard-delete student by UUID or telegram_id.
         Triggers CASCADE delete for all test_results under this student.
         """
+        self.invalidate_cache()
         sel_sql = self._query("SELECT id, display_name, group_id, telegram_id FROM students WHERE CAST(id AS TEXT) = %s OR CAST(telegram_id AS TEXT) = %s")
         del_sql = self._query("DELETE FROM students WHERE CAST(id AS TEXT) = %s")
 
@@ -413,6 +540,7 @@ class RelationalDB:
 
     def record_test_result(self, student_id, group_id, total_score, rw_score=0, math_score=0):
         """Record a student test submission linked to student_id and group_id."""
+        self.invalidate_cache()
         if self.is_postgres:
             sql = """
                 INSERT INTO test_results (student_id, group_id, total_score, rw_score, math_score)

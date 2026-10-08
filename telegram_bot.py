@@ -13,7 +13,11 @@ import time
 import urllib.request
 import urllib.parse
 import urllib.error
+import http.client
+import ssl
 import threading
+from socketserver import ThreadingMixIn
+from concurrent.futures import ThreadPoolExecutor
 import html
 import traceback
 import re
@@ -151,8 +155,9 @@ def get_live_groups(db):
                     "student_count": rg.get("student_count", 0),
                     "created_at": rg.get("created_at")
                 })
-            db["groups"] = synced
-            save_db(db)
+            if db.get("groups") != synced:
+                db["groups"] = synced
+                save_db(db)
             return synced
     except Exception as e:
         print(f"RelationalDB get_live_groups sync error: {e}")
@@ -259,12 +264,51 @@ class TelegramBotClient:
     def __init__(self, token):
         self.token = token
         self.base_url = f"https://api.telegram.org/bot{token}"
+        self._conn = None
+        self._conn_lock = threading.Lock()
+
+    def _get_conn(self, timeout=8):
+        with self._conn_lock:
+            if self._conn is None:
+                ctx = ssl.create_default_context()
+                self._conn = http.client.HTTPSConnection("api.telegram.org", 443, context=ctx, timeout=timeout)
+            return self._conn
+
+    def _close_conn(self):
+        with self._conn_lock:
+            if self._conn is not None:
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+                self._conn = None
 
     def request(self, method, payload=None, timeout=6):
-        url = f"{self.base_url}/{method}"
-        headers = {"Content-Type": "application/json"}
+        url_path = f"/bot{self.token}/{method}"
         data = json.dumps(payload).encode("utf-8") if payload else None
-        req = urllib.request.Request(url, data=data, headers=headers)
+        headers = {
+            "Content-Type": "application/json",
+            "Connection": "keep-alive"
+        }
+
+        # Fast-path: Reuse persistent HTTPS connection (keep-alive avoids 200-400ms TLS handshake)
+        for attempt in range(2):
+            try:
+                conn = self._get_conn(timeout=timeout)
+                conn.request("POST" if data else "GET", url_path, body=data, headers=headers)
+                resp = conn.getresponse()
+                res_data = resp.read().decode("utf-8")
+                parsed = json.loads(res_data)
+                return parsed
+            except Exception:
+                self._close_conn()
+                if attempt == 0:
+                    continue
+                break
+
+        # Reliable fallback: urllib
+        url = f"{self.base_url}/{method}"
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 res_data = resp.read().decode("utf-8")
@@ -313,7 +357,7 @@ class TelegramBotClient:
         payload = {"callback_query_id": callback_query_id}
         if text:
             payload["text"] = text
-        return self.request("answerCallbackQuery", payload, timeout=5)
+        return self.request("answerCallbackQuery", payload, timeout=4)
 
 
 def make_url_button(label, url):
@@ -1522,8 +1566,12 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
 
         return self.send_json(404, {"ok": False, "error": "Endpoint not found"})
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
 def run_local_web_server(port=8000):
-    server = HTTPServer(("0.0.0.0", port), SATMasterHandler)
+    server = ThreadedHTTPServer(("0.0.0.0", port), SATMasterHandler)
     server.serve_forever()
 
 def main():
@@ -1695,6 +1743,7 @@ def main():
     print("=" * 60)
 
     last_offset = None
+    executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="tg_worker")
     print("🚀 Bot is live with sub-second instant response!")
     while True:
         try:
@@ -1703,12 +1752,14 @@ def main():
                 results = updates_res.get("result", [])
                 for upd in results:
                     last_offset = upd["update_id"] + 1
-                    try:
-                        handle_update(bot, upd, config, db)
-                    except Exception as err:
-                        import traceback
-                        print(f"❌ Error handling update {upd.get('update_id')}: {err}")
-                        traceback.print_exc()
+                    def _safe_handle(u=upd):
+                        try:
+                            handle_update(bot, u, config, db)
+                        except Exception as err:
+                            import traceback
+                            print(f"❌ Error handling update {u.get('update_id')}: {err}")
+                            traceback.print_exc()
+                    executor.submit(_safe_handle)
             else:
                 desc = updates_res.get("description", "")
                 if "Conflict" in desc:
