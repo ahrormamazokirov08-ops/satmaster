@@ -1482,6 +1482,75 @@ def handle_update(bot, update, config, db):
 
 WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 
+def is_admin_request(headers, query_params=None, body=None):
+    """
+    Checks if the requesting user has admin privileges.
+    Role Definition:
+    - Admin: Owner / Telegram ID 7957347033 or role === 'admin'
+    - Non-admin: role in ('teacher', 'student', 'guest') or non-admin user ID
+    """
+    if headers is None:
+        headers = {}
+    if query_params is None:
+        query_params = {}
+    if body is None:
+        body = {}
+
+    role = ""
+    for h in ("X-User-Role", "X-Role", "x-user-role", "x-role", "X-Admin-Role", "x-admin-role"):
+        val = headers.get(h)
+        if val:
+            role = str(val).strip().lower()
+            break
+
+    if not role:
+        q_role = query_params.get("role") or query_params.get("user_role")
+        if isinstance(q_role, list) and q_role:
+            role = str(q_role[0]).strip().lower()
+        elif isinstance(q_role, str):
+            role = q_role.strip().lower()
+
+    if not role and isinstance(body, dict):
+        b_role = body.get("role") or body.get("user_role")
+        if b_role:
+            role = str(b_role).strip().lower()
+
+    user_id = ""
+    for h in ("X-User-Id", "X-Telegram-Id", "x-user-id", "x-telegram-id"):
+        val = headers.get(h)
+        if val:
+            user_id = str(val).strip()
+            break
+
+    if not user_id:
+        q_uid = query_params.get("user_id") or query_params.get("uid") or query_params.get("telegram_id")
+        if isinstance(q_uid, list) and q_uid:
+            user_id = str(q_uid[0]).strip()
+        elif isinstance(q_uid, str):
+            user_id = q_uid.strip()
+
+    if not user_id and isinstance(body, dict):
+        b_uid = body.get("user_id") or body.get("uid") or body.get("telegram_id")
+        if b_uid:
+            user_id = str(b_uid).strip()
+
+    clean_uid = user_id.upper().replace("TG", "")
+
+    # Admin check: ID 7957347033 or explicit admin role
+    if clean_uid == "7957347033" or user_id == "7957347033" or role == "admin":
+        return True
+
+    # Explicit non-admin role: teacher, student, guest
+    if role in ("teacher", "student", "guest") or (role and role != "admin"):
+        return False
+
+    # Explicit non-admin user ID
+    if clean_uid and clean_uid != "7957347033":
+        return False
+
+    # Default to True for internal callers
+    return True
+
 class SATMasterHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
@@ -1492,7 +1561,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
     def send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Role, X-User-Id, X-Role, X-Admin-Role")
 
     def send_json(self, status_code, data):
         payload = json.dumps(data).encode("utf-8")
@@ -1607,6 +1676,10 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
 
         # 2. POST /api/groups - Create a new group (accepts { name })
         if clean_path == "/api/groups":
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            if not is_admin_request(self.headers, qs, body):
+                return self.send_json(403, {"ok": False, "error": "Admin privileges required"})
+
             action = body.get("action", "create")
             if action == "delete":
                 group_id = body.get("id") or body.get("name")
@@ -1764,6 +1837,10 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
         # 3. DELETE /api/groups/:id - Delete a group (triggers CASCADE delete for all students and test records)
         m_del_group = re.match(r"^/api/groups/([^/]+)$", clean_path)
         if m_del_group:
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            if not is_admin_request(self.headers, qs):
+                return self.send_json(403, {"ok": False, "error": "Admin privileges required"})
+
             group_id = m_del_group.group(1)
             try:
                 cleanup_group_students_and_messages(None, group_id)

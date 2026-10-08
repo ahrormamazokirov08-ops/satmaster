@@ -214,7 +214,7 @@
           <div class="text-3xl">👥</div>
           <h3 class="text-base font-bold text-white">No groups created yet</h3>
           <p class="text-xs text-slate-400 max-w-sm mx-auto">Click "+ Create New Class" to establish your first cohort.</p>
-          <button onclick="openCreateClassModal()" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg inline-block">
+          <button onclick="openCreateClassModal()" id="btn-empty-create-group" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg inline-block">
             + Create New Class
           </button>
         </div>
@@ -2396,11 +2396,13 @@
     let currentUserRole = 'guest';
 
     function isCurrentUserAdmin() {
-      if (typeof currentSession === 'undefined' || !currentSession) return false;
+      if (typeof currentSession === 'undefined' || !currentSession) {
+        return typeof currentUserRole !== 'undefined' && currentUserRole === 'admin';
+      }
       if (currentSession.role === 'admin' || (typeof currentUserRole !== 'undefined' && currentUserRole === 'admin')) {
         return true;
       }
-      const rawUid = String(currentSession.uid || '').trim();
+      const rawUid = String(currentSession.uid || currentSession.telegram_id || currentSession.id || '').trim();
       const cleanUid = rawUid.replace(/^TG/i, '');
       if (cleanUid === '7957347033' || rawUid === '7957347033') {
         return true;
@@ -2711,6 +2713,28 @@
         if (startTestCard) {
           startTestCard.classList.remove('lg:col-span-2');
           startTestCard.classList.add('col-span-full', 'lg:col-span-3');
+        }
+      }
+
+      // RESTRICT CREATE GROUP BUTTONS STRICTLY TO ADMIN
+      const btnCreateNewGroup = document.getElementById('btn-create-new-group');
+      if (btnCreateNewGroup) {
+        if (isAdmin) {
+          btnCreateNewGroup.classList.remove('hidden');
+          btnCreateNewGroup.style.display = '';
+        } else {
+          btnCreateNewGroup.classList.add('hidden');
+          btnCreateNewGroup.style.display = 'none';
+        }
+      }
+      const btnEmptyCreateGroup = document.getElementById('btn-empty-create-group');
+      if (btnEmptyCreateGroup) {
+        if (isAdmin) {
+          btnEmptyCreateGroup.classList.remove('hidden');
+          btnEmptyCreateGroup.style.display = '';
+        } else {
+          btnEmptyCreateGroup.classList.add('hidden');
+          btnEmptyCreateGroup.style.display = 'none';
         }
       }
 
@@ -3152,7 +3176,19 @@
       if (!groups || groups.length === 0) {
         grid.classList.add('hidden');
         grid.innerHTML = '';
-        if (emptyState) emptyState.classList.remove('hidden');
+        if (emptyState) {
+          emptyState.classList.remove('hidden');
+          const emptyBtn = document.getElementById('btn-empty-create-group');
+          if (emptyBtn) {
+            if (isCurrentUserAdmin()) {
+              emptyBtn.classList.remove('hidden');
+              emptyBtn.style.display = '';
+            } else {
+              emptyBtn.classList.add('hidden');
+              emptyBtn.style.display = 'none';
+            }
+          }
+        }
         return;
       }
 
@@ -3174,9 +3210,10 @@
             </div>
           </div>
           <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+            ${isCurrentUserAdmin() ? `
             <button type="button" onclick="confirmDeleteGroup('${g.id}', '${escapeJs(g.name)}')" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 py-1.5 rounded-lg border border-transparent hover:border-rose-500/20 text-xs font-semibold transition-all flex items-center gap-1">
               <span>🗑️</span><span>Delete Group</span>
-            </button>
+            </button>` : '<div></div>'}
             <button type="button" onclick="openGroupDetail('${g.id}', '${escapeJs(g.name)}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1">
               <span>View Cohort</span><span>→</span>
             </button>
@@ -3216,6 +3253,10 @@
 
     // Modal Create Group
     function openCreateGroupModal() {
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
+        return;
+      }
       const modal = document.getElementById('modal-create-group');
       const input = document.getElementById('new-group-name');
       if (modal) {
@@ -3234,6 +3275,11 @@
 
     function submitCreateGroup(e) {
       if (e) e.preventDefault();
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
+        closeCreateGroupModal();
+        return;
+      }
       const input = document.getElementById('new-group-name');
       const name = (input ? input.value : '').trim();
       if (!name) {
@@ -3249,11 +3295,18 @@
 
       fetch('/api/groups', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest',
+          'X-User-Id': (typeof currentSession !== 'undefined' && currentSession?.uid) || ''
+        },
         body: JSON.stringify({ name: name })
       })
       .then(res => {
-        if (!res.ok) throw new Error('Status ' + res.status);
+        if (!res.ok) {
+          if (res.status === 403) throw new Error("Access Denied: Only administrators can create or delete groups.");
+          throw new Error('Status ' + res.status);
+        }
         return res.json();
       })
       .then(data => {
@@ -3301,6 +3354,10 @@
 
     // Modal Delete Group
     function confirmDeleteGroup(groupId, groupName) {
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
+        return;
+      }
       pendingDeleteGroupId = groupId;
       pendingDeleteGroupName = groupName;
       const modal = document.getElementById('modal-delete-group-confirm');
@@ -3317,6 +3374,11 @@
     }
 
     function executeDeleteGroup() {
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
+        closeDeleteGroupModal();
+        return;
+      }
       if (!pendingDeleteGroupId) return;
       const gid = pendingDeleteGroupId;
       const gname = pendingDeleteGroupName;
@@ -3327,10 +3389,17 @@
       }
 
       fetch('/api/groups/' + encodeURIComponent(gid), {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'X-User-Role': (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest',
+          'X-User-Id': (typeof currentSession !== 'undefined' && currentSession?.uid) || ''
+        }
       })
       .then(res => {
-        if (!res.ok) throw new Error('Status ' + res.status);
+        if (!res.ok) {
+          if (res.status === 403) throw new Error("Access Denied: Only administrators can create or delete groups.");
+          throw new Error('Status ' + res.status);
+        }
         return res.json();
       })
       .then(data => {
@@ -3761,9 +3830,10 @@
               <div class="text-3xl">🏫</div>
               <h3 class="text-base font-bold text-white">No classes created yet</h3>
               <p class="text-xs text-slate-400 max-w-sm mx-auto">Click "+ Create New Class" above to set up your first class cohort and PIN code!</p>
+              ${isCurrentUserAdmin() ? `
               <button onclick="openCreateClassModal()" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg inline-block">
                 + Create New Class
-              </button>
+              </button>` : ''}
             </div>
           `;
         } else {
@@ -3782,7 +3852,7 @@
                 </div>
               </div>
               <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <button onclick="deleteClass('${c.id}')" class="text-rose-400 hover:underline text-[11px]">Delete Class</button>
+                ${isCurrentUserAdmin() ? `<button onclick="deleteClass('${c.id}')" class="text-rose-400 hover:underline text-[11px]">Delete Class</button>` : '<div></div>'}
                 <button onclick="switchTab('creator')" class="text-blue-400 font-semibold hover:underline">Assign HW →</button>
               </div>
             </div>
@@ -3862,8 +3932,8 @@
 
     // Modal Control Functions
     function openCreateClassModal() {
-      if (currentUserRole === 'student') {
-        showToast("🔒 Access Denied", "Students cannot create classes.", "error");
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
         return;
       }
       document.getElementById('create-class-modal').classList.remove('hidden');
@@ -3877,6 +3947,11 @@
 
     function handleSaveNewClass(e) {
       if (e) e.preventDefault();
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
+        closeCreateClassModal();
+        return;
+      }
       if (isCreatingClass) return; // Prevent duplicate clicks on mobile/desktop
 
       const nameInput = document.getElementById('new-class-name');
@@ -3925,7 +4000,11 @@
       // Execute POST /api/groups to save directly into database.py (Supabase)
       fetch('/api/groups', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest',
+          'X-User-Id': (typeof currentSession !== 'undefined' && currentSession?.uid) || ''
+        },
         body: JSON.stringify({
           action: 'create',
           name: name,
@@ -3937,7 +4016,10 @@
         })
       })
       .then(res => {
-        if (!res.ok) throw new Error('Server returned status ' + res.status);
+        if (!res.ok) {
+          if (res.status === 403) throw new Error("Access Denied: Only administrators can create or delete groups.");
+          throw new Error('Server returned status ' + res.status);
+        }
         return res.json();
       })
       .then(data => {
@@ -4004,21 +4086,37 @@
     }
 
     function deleteClass(id) {
+      if (!isCurrentUserAdmin()) {
+        showToast("🔒 Access Denied", "Access Denied: Only administrators can create or delete groups.", "error");
+        return;
+      }
       if (confirm("Are you sure you want to delete this class cohort?")) {
         const classes = getClasses();
         const target = classes.find(c => c.id === id || c.name === id);
         const targetId = target ? target.id : id;
 
         fetch('/api/groups/' + encodeURIComponent(targetId), {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'X-User-Role': (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest',
+            'X-User-Id': (typeof currentSession !== 'undefined' && currentSession?.uid) || ''
+          }
         })
         .then(res => {
           if (!res.ok) {
+            if (res.status === 403) throw new Error("Access Denied: Only administrators can create or delete groups.");
             return fetch('/api/groups', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'X-User-Role': (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest',
+                'X-User-Id': (typeof currentSession !== 'undefined' && currentSession?.uid) || ''
+              },
               body: JSON.stringify({ action: 'delete', id: targetId, name: target ? target.name : id })
-            }).then(r => r.json());
+            }).then(r => {
+              if (!r.ok && r.status === 403) throw new Error("Access Denied: Only administrators can create or delete groups.");
+              return r.json();
+            });
           }
           return res.json();
         })

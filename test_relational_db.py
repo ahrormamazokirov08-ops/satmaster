@@ -48,16 +48,18 @@ class FakeSocket:
         self.output_buffer.write(data)
 
 
-def http_req(method, path, body=None):
+def http_req(method, path, body=None, headers_dict=None):
     body_bytes = json.dumps(body).encode("utf-8") if body is not None else b""
     headers = [
         f"{method} {path} HTTP/1.1",
         "Host: localhost",
         "Content-Type: application/json",
         f"Content-Length: {len(body_bytes)}",
-        "",
-        ""
     ]
+    if headers_dict:
+        for k, v in headers_dict.items():
+            headers.append(f"{k}: {v}")
+    headers.extend(["", ""])
     raw_req = "\r\n".join(headers).encode("utf-8") + body_bytes
     sock = FakeSocket(raw_req)
     SATMasterHandler(sock, ("127.0.0.1", 12345), None)
@@ -388,6 +390,68 @@ def test_rest_api_endpoints():
         os.remove(TEST_DB_PATH)
 
 
+def test_rbac_access_controls():
+    print("\n" + "=" * 60)
+    print("TEST 3: Role-Based Access Control (Admin vs Teacher)")
+    print("=" * 60)
+
+    import telegram_bot
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+    test_db = RelationalDB(TEST_DB_PATH)
+    orig_rdb = telegram_bot.rdb
+    telegram_bot.rdb = test_db
+
+    # Create initial group as admin
+    grp = test_db.create_group("Cohort Math")
+    group_id = grp["id"]
+    stu = test_db.upsert_student(telegram_id=987654, display_name="Test Student", group_id=group_id)
+    student_id = stu["id"]
+
+    # 1. Teacher attempts to POST /api/groups -> 403 Forbidden
+    teacher_headers = {"X-User-Role": "teacher", "X-User-Id": "112233"}
+    status, data = http_req("POST", "/api/groups", {"name": "Unauthorized Group"}, headers_dict=teacher_headers)
+    assert status == 403, f"Expected 403 Forbidden for teacher POST /api/groups, got {status}"
+    assert data.get("ok") is False
+    assert "admin privileges required" in data.get("error", "").lower()
+    print("  [PASS] Teacher blocked from POST /api/groups -> 403 Forbidden")
+
+    # 2. Teacher attempts to DELETE /api/groups/:id -> 403 Forbidden
+    status, data = http_req("DELETE", f"/api/groups/{group_id}", headers_dict=teacher_headers)
+    assert status == 403, f"Expected 403 Forbidden for teacher DELETE /api/groups/:id, got {status}"
+    assert data.get("ok") is False
+    assert "admin privileges required" in data.get("error", "").lower()
+    print("  [PASS] Teacher blocked from DELETE /api/groups/:id -> 403 Forbidden")
+
+    # 3. Teacher attempts to DELETE /api/students/:id -> 200 OK (Allowed!)
+    status, data = http_req("DELETE", f"/api/students/{student_id}", headers_dict=teacher_headers)
+    assert status == 200, f"Expected 200 OK for teacher DELETE /api/students/:id, got {status}"
+    assert data.get("ok") is True
+    print("  [PASS] Teacher permitted to DELETE /api/students/:id -> 200 OK")
+
+    # 4. Admin attempts to POST /api/groups -> 201 Created
+    admin_headers = {"X-User-Role": "admin", "X-User-Id": "7957347033"}
+    status, data = http_req("POST", "/api/groups", {"name": "Authorized Admin Group"}, headers_dict=admin_headers)
+    assert status == 201, f"Expected 201 Created for admin POST /api/groups, got {status}"
+    admin_grp_id = data["group"]["id"]
+    print(f"  [PASS] Admin permitted to POST /api/groups -> 201 Created (ID: {admin_grp_id})")
+
+    # 5. Admin attempts to DELETE /api/groups/:id -> 200 OK
+    status, data = http_req("DELETE", f"/api/groups/{admin_grp_id}", headers_dict=admin_headers)
+    assert status == 200, f"Expected 200 OK for admin DELETE /api/groups/:id, got {status}"
+    assert data.get("ok") is True
+    print("  [PASS] Admin permitted to DELETE /api/groups/:id -> 200 OK")
+
+    print("\n" + "=" * 60)
+    print("ALL RBAC ACCESS CONTROL TESTS PASSED! 🔒")
+    print("=" * 60)
+
+    telegram_bot.rdb = orig_rdb
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+
+
 if __name__ == "__main__":
     test_schema_and_direct_cascades()
     test_rest_api_endpoints()
+    test_rbac_access_controls()
