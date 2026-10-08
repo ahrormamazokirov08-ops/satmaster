@@ -25,6 +25,12 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from datetime import datetime
 
 try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+try:
     from database import db as rdb
 except ImportError:
     import database
@@ -197,14 +203,24 @@ DEFAULT_CONFIG = {
 }
 
 def load_config():
+    cfg = DEFAULT_CONFIG.copy()
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-                return {**DEFAULT_CONFIG, **cfg}
+                loaded = json.load(f)
+                cfg.update(loaded)
         except Exception:
             pass
-    return DEFAULT_CONFIG.copy()
+    # Support environment variables override for Render/cloud deployments
+    if os.environ.get("BOT_TOKEN"):
+        cfg["bot_token"] = os.environ["BOT_TOKEN"]
+    elif os.environ.get("TELEGRAM_BOT_TOKEN"):
+        cfg["bot_token"] = os.environ["TELEGRAM_BOT_TOKEN"]
+    if os.environ.get("ADMIN_CHAT_ID"):
+        cfg["admin_chat_id"] = os.environ["ADMIN_CHAT_ID"]
+    if os.environ.get("WEB_APP_URL"):
+        cfg["web_app_url"] = os.environ["WEB_APP_URL"]
+    return cfg
 
 def save_config(cfg):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -1888,9 +1904,30 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-def run_local_web_server(port=8000):
-    server = ThreadedHTTPServer(("0.0.0.0", port), SATMasterHandler)
-    server.serve_forever()
+def run_local_web_server(port=None):
+    """
+    Run internal threaded HTTP server bound to 0.0.0.0 on the port from $PORT (default 8080).
+    Ensures compatibility with Render cloud hosting dynamic port assignment.
+    """
+    if port is None:
+        try:
+            port = int(os.environ.get("PORT", 8080))
+        except (ValueError, TypeError):
+            port = 8080
+    else:
+        try:
+            port = int(port)
+        except (ValueError, TypeError):
+            port = 8080
+
+    host = "0.0.0.0"
+    print(f"🌐 Threaded HTTP Server starting on http://{host}:{port} (PORT={port})...")
+    try:
+        server = ThreadedHTTPServer((host, port), SATMasterHandler)
+        print(f"✅ Threaded HTTP Server successfully listening on http://{host}:{port}")
+        server.serve_forever()
+    except Exception as e:
+        print(f"⚠️ Threaded HTTP Server on {host}:{port} encountered an error: {e}")
 
 def main():
     if "--test" in sys.argv:
@@ -2082,21 +2119,59 @@ def main():
     config = load_config()
     db = load_db()
 
-    token = config.get("bot_token")
+    # Dynamic port resolution for Render cloud hosting (default 8080 or PORT env)
+    try:
+        http_port = int(os.environ.get("PORT", 8080))
+    except (ValueError, TypeError):
+        http_port = 8080
+
+    if "--port" in sys.argv:
+        try:
+            p_idx = sys.argv.index("--port")
+            if p_idx + 1 < len(sys.argv):
+                http_port = int(sys.argv[p_idx + 1])
+        except (ValueError, IndexError):
+            pass
+
+    # Start the threaded internal HTTP server concurrently in the background.
+    # This ensures Render's dynamic PORT health checks pass immediately on 0.0.0.0
+    # and prevents the HTTP server loop from blocking the bot polling loop.
+    server_thread = threading.Thread(
+        target=run_local_web_server,
+        args=(http_port,),
+        daemon=True,
+        name="SATMaster-HTTP-Server"
+    )
+    server_thread.start()
+    print(f"🌐 Concurrent HTTP Server started in background on http://0.0.0.0:{http_port}")
+
+    token = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN") or config.get("bot_token")
     if not token and len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
         token = sys.argv[1]
         config["bot_token"] = token
         save_config(config)
 
     if not token:
-        print("Error: No bot token provided in bot_config.json")
+        print("Error: No bot token provided in bot_config.json or environment")
         sys.exit(1)
 
     bot = TelegramBotClient(token)
     me = bot.get_me()
     if not me.get("ok"):
-        print(f"❌ Failed to connect to Telegram: {me.get('description')}")
-        print("Please check your Bot Token.")
+        print(f"⚠️ Telegram connect attempt 1 returned: {me.get('description', 'Error')}. Retrying...")
+        for attempt in range(2, 6):
+            time.sleep(2)
+            me = bot.get_me()
+            if me.get("ok"):
+                break
+
+    if not me.get("ok"):
+        print(f"❌ Failed to connect to Telegram after retries: {me.get('description')}")
+        print("Please check your Bot Token or internet connection.")
+        if os.environ.get("PORT"):
+            print("⚠️ Keeping process alive for Render HTTP server health checks...")
+            while True:
+                time.sleep(60)
         sys.exit(1)
 
     bot_info = me.get("result", {})
@@ -2105,12 +2180,6 @@ def main():
     save_config(config)
 
     print(f"✅ Connected to Telegram Bot: @{bot_username} ({bot_info.get('first_name')})")
-
-    if "--serve" in sys.argv or "--web" in sys.argv:
-        t = threading.Thread(target=run_local_web_server, args=(8000,), daemon=True)
-        t.start()
-        print("🌐 Local Web Server started at: http://localhost:8000/index.html")
-
     print(f"🤖 Bot is now live and waiting for student registrations!")
     print(f"👉 Students: Open @{bot_username} and send /start")
     print(f"👉 Teacher: Select 'I am a Teacher' or send /admin {config.get('admin_password', 'satmaster2026')}")

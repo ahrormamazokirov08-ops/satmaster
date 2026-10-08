@@ -38,6 +38,24 @@
       "class": "SAT_Alpha_1",
       "registered_at": "2026-10-08T17:59:59.194620",
       "last_active": "2026-10-08T17:59:59.194668"
+    },
+    "1185684252": {
+      "telegram_id": 1185684252,
+      "student_id": "TG1185684252",
+      "name": "Foziljon",
+      "username": "",
+      "class": "SAT Masters 2026",
+      "registered_at": "2026-10-08T19:58:24.805877",
+      "last_active": "2026-10-08T19:58:24.805906"
+    },
+    "7148077470": {
+      "telegram_id": 7148077470,
+      "student_id": "TG7148077470",
+      "name": "Suhrobbek",
+      "username": "B_Suhrobbek",
+      "class": "SAT Masters 2026",
+      "registered_at": "2026-10-08T20:10:40.391224",
+      "last_active": "2026-10-08T20:10:40.391267"
     }
   },
   "teachers": {
