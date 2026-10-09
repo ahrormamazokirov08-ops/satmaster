@@ -36,17 +36,10 @@ except ImportError:
     import database
     rdb = database.db
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_config.json")
-DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "students_db.json")
-STATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_states.json")
-
-# In case it is run from another working directory
-if not os.path.exists(CONFIG_FILE):
-    CONFIG_FILE = os.path.join("/Users/macpro/Documents/new project", "bot_config.json")
-if not os.path.exists(DB_FILE):
-    DB_FILE = os.path.join("/Users/macpro/Documents/new project", "students_db.json")
-if not os.path.exists(STATES_FILE):
-    STATES_FILE = os.path.join("/Users/macpro/Documents/new project", "user_states.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, "bot_config.json")
+DB_FILE = os.path.join(BASE_DIR, "students_db.json")
+STATES_FILE = os.path.join(BASE_DIR, "user_states.json")
 
 def load_user_states():
     if os.path.exists(STATES_FILE):
@@ -74,11 +67,7 @@ def clear_user_state(user_id):
     user_states.pop(str(user_id), None)
     save_user_states(user_states)
 
-USER_MESSAGES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_messages.json")
-if not os.path.exists(USER_MESSAGES_FILE):
-    alt_m_file = os.path.join("/Users/macpro/Documents/new project", "user_messages.json")
-    if os.path.exists(alt_m_file):
-        USER_MESSAGES_FILE = alt_m_file
+USER_MESSAGES_FILE = os.path.join(BASE_DIR, "user_messages.json")
 
 def load_user_messages():
     if os.path.exists(USER_MESSAGES_FILE):
@@ -223,8 +212,11 @@ def load_config():
     return cfg
 
 def save_config(cfg):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print(f"⚠️ Notice: Unable to write config to {CONFIG_FILE}: {e}")
 
 def load_db():
     d = None
@@ -1496,7 +1488,7 @@ def handle_update(bot, update, config, db):
                 save_db(db)
             send_role_selection(bot, chat_id)
 
-WEB_DIR = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = BASE_DIR
 
 def is_admin_request(headers, query_params=None, body=None):
     """
