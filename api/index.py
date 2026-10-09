@@ -136,7 +136,7 @@ class handler(BaseHTTPRequestHandler):
         # 0. GET /api/auth/verify - Verify student exists and belongs to active group
         if clean_path == "/api/auth/verify":
             qs = urllib.parse.parse_qs(parsed_path.query)
-            ident = qs.get("uid", [None])[0] or qs.get("telegram_id", [None])[0] or qs.get("id", [None])[0] or qs.get("student_id", [None])[0]
+            ident = qs.get("uid", [None])[0] or qs.get("telegram_id", [None])[0] or qs.get("id", [None])[0] or qs.get("student_id", [None])[0] or self.headers.get("X-User-Id") or self.headers.get("X-Telegram-Id") or self.headers.get("x-user-id") or self.headers.get("x-telegram-id")
             if not ident:
                 return self.send_json(400, {"valid": False, "reason": "missing_identifier", "error": "Student identifier required (uid or telegram_id)"})
             try:
@@ -209,7 +209,7 @@ class handler(BaseHTTPRequestHandler):
 
         # 0. POST /api/auth/verify - Verify student exists and belongs to active group
         if clean_path == "/api/auth/verify":
-            ident = body.get("uid") or body.get("telegram_id") or body.get("id") or body.get("student_id")
+            ident = body.get("uid") or body.get("telegram_id") or body.get("id") or body.get("student_id") or self.headers.get("X-User-Id") or self.headers.get("X-Telegram-Id") or self.headers.get("x-user-id") or self.headers.get("x-telegram-id")
             if not ident:
                 return self.send_json(400, {"valid": False, "reason": "missing_identifier", "error": "Student identifier required (uid or telegram_id)"})
             try:

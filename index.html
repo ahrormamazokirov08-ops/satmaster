@@ -2545,6 +2545,49 @@
       }
     }
 
+    // ========================================================
+    // DUAL SESSION STORAGE & PERSISTENCE ENGINE
+    // ========================================================
+    function saveSessionToStorage(session) {
+      if (!session) return;
+      try {
+        const raw = JSON.stringify(session);
+        localStorage.setItem('satmaster_user_session', raw);
+        localStorage.setItem('satmaster_session', raw);
+        sessionStorage.setItem('satmaster_user_session', raw);
+        sessionStorage.setItem('satmaster_session', raw);
+      } catch (e) {
+        console.warn('[SATMaster] Session storage write notice:', e);
+      }
+    }
+
+    function getStoredSession() {
+      try {
+        const raw = localStorage.getItem('satmaster_user_session') ||
+                    localStorage.getItem('satmaster_session') ||
+                    sessionStorage.getItem('satmaster_user_session') ||
+                    sessionStorage.getItem('satmaster_session');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && parsed.isLoggedIn && parsed.uid) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('[SATMaster] Session storage read notice:', e);
+      }
+      return null;
+    }
+
+    function clearSessionStorage() {
+      try {
+        localStorage.removeItem('satmaster_user_session');
+        localStorage.removeItem('satmaster_session');
+        sessionStorage.removeItem('satmaster_user_session');
+        sessionStorage.removeItem('satmaster_session');
+      } catch (e) {}
+    }
+
     function startAuthHeartbeat(studentId) {
       stopAuthHeartbeat();
       if (!studentId) return;
@@ -2555,38 +2598,92 @@
           return;
         }
 
+        // Avoid polling while tab is inactive/backgrounded to prevent race conditions during mobile tab sleep
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          return;
+        }
+
         try {
-          const res = await verifyStudentAccount(studentId);
-          if (res && res.valid === false) {
-            console.warn('[SATMaster] Live heartbeat: student or group removed. Locking out session.');
-            lockoutStudentSession("Your student enrollment or class cohort has been removed. Session ended.");
+          // Heartbeat background poll: 1 retry on network glitch
+          const res = await verifyStudentAccount(studentId, 1, 1500);
+
+          if (res && res.isNetworkError) {
+            // Transient network failure or timeout: DO NOT kick out the student
+            console.warn('[SATMaster] Auth heartbeat network glitch, preserving active session:', res.error);
+            return;
+          }
+
+          if (res && res.valid === false && res.isExplicitlyDenied === true) {
+            // Server claims student or cohort deleted. Confirm with a backoff retry to eliminate false positives:
+            await new Promise(r => setTimeout(r, 2000));
+            const confirmRes = await verifyStudentAccount(studentId, 1, 1000);
+            if (confirmRes && confirmRes.valid === false && confirmRes.isExplicitlyDenied === true) {
+              console.warn('[SATMaster] Live heartbeat confirmed: student or group removed. Locking out session.');
+              lockoutStudentSession("Your student enrollment or class cohort has been removed. Session ended.");
+            }
           }
         } catch (err) {
-          console.warn('[SATMaster] Auth heartbeat poll error:', err);
+          console.warn('[SATMaster] Auth heartbeat poll exception, session preserved:', err);
         }
       }, 12000); // 12-second live heartbeat polling
     }
 
-    async function verifyStudentAccount(studentId) {
-      if (!studentId) return { valid: false, reason: 'missing_id' };
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const resp = await fetch(`/api/auth/verify?id=${encodeURIComponent(studentId)}`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        if (!resp.ok) {
-          return { valid: false, reason: 'server_rejected' };
+    async function verifyStudentAccount(studentId, maxRetries = 2, retryDelayMs = 1200) {
+      if (!studentId) return { valid: false, isExplicitlyDenied: true, reason: 'missing_id' };
+
+      let lastError = null;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+          // Exponential backoff
+          await new Promise(r => setTimeout(r, retryDelayMs * Math.pow(1.5, attempt - 1)));
         }
-        const data = await resp.json();
-        return data;
-      } catch (err) {
-        console.error('[SATMaster] Error verifying student account:', err);
-        return { valid: false, reason: 'network_error', error: err.message };
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const encodedId = encodeURIComponent(studentId);
+          const resp = await fetch(`/api/auth/verify?id=${encodedId}&uid=${encodedId}`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'X-User-Id': String(studentId),
+              'X-Telegram-Id': String(studentId)
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!resp.ok) {
+            lastError = new Error(`Server status HTTP ${resp.status}`);
+            continue;
+          }
+
+          const data = await resp.json();
+          if (data && data.valid === true) {
+            return { valid: true, isExplicitlyDenied: false, student: data.student };
+          }
+          if (data && data.valid === false && data.reason === 'not_found_or_deleted') {
+            return { valid: false, isExplicitlyDenied: true, reason: 'not_found_or_deleted' };
+          }
+          return {
+            valid: data ? data.valid === true : false,
+            isExplicitlyDenied: data ? data.valid === false : false,
+            reason: data?.reason || 'unknown',
+            student: data?.student
+          };
+        } catch (err) {
+          lastError = err;
+        }
       }
+
+      console.warn('[SATMaster] verifyStudentAccount exhausted retries:', lastError);
+      return {
+        valid: null,
+        isNetworkError: true,
+        isExplicitlyDenied: false,
+        reason: 'network_error',
+        error: lastError ? lastError.message : 'Network timeout or connection failure'
+      };
     }
 
     // ========================================================
@@ -2725,7 +2822,7 @@
         document.getElementById(id)?.classList.add('hidden');
       });
 
-      // Clear session from memory & localStorage immediately
+      // Clear session from memory & dual storage immediately
       currentSession = {
         isLoggedIn: false,
         role: 'guest',
@@ -2734,7 +2831,7 @@
         className: '',
         source: 'gateway'
       };
-      localStorage.removeItem('satmaster_session');
+      clearSessionStorage();
 
       // Update session state
       applyCurrentSession();
@@ -2795,8 +2892,8 @@
       const paramAdmin = params.get('admin');
 
       let candidate = null;
-      if (paramRole || tgUser || paramAdmin) {
-        // Authenticate from incoming Telegram link or WebApp
+      if (paramRole || paramUid || paramAdmin) {
+        // Authenticate from incoming Telegram link or explicit query
         let role = paramRole === 'teacher' ? 'teacher' : 'student';
         const rawCandidateUid = paramUid || (tgUser ? `TG${tgUser.id}` : '');
         const cleanCandidateUid = String(rawCandidateUid).replace(/^TG/i, '');
@@ -2815,15 +2912,26 @@
           className: className,
           source: tgUser ? 'telegram_webapp' : 'telegram_link'
         };
+        // Immediately persist candidate to dual storage so subsequent refreshes or navigation retain session!
+        saveSessionToStorage(candidate);
       } else {
-        // 3. Fallback: check stored active session
-        const stored = localStorage.getItem('satmaster_session');
-        if (stored) {
-          try {
-            candidate = JSON.parse(stored);
-          } catch(e) {
-            candidate = null;
-          }
+        // 3. Fallback: check persistent dual storage (localStorage + sessionStorage)
+        const stored = getStoredSession();
+        if (stored && stored.isLoggedIn && stored.uid) {
+          candidate = stored;
+        } else if (tgUser) {
+          // Telegram WebApp initData fallback when URL params are stripped
+          const tgUid = `TG${tgUser.id}`;
+          const isOwner = String(tgUser.id) === '7957347033';
+          candidate = {
+            isLoggedIn: true,
+            role: isOwner ? 'admin' : 'student',
+            uid: tgUid,
+            name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Telegram Student',
+            className: isOwner ? 'Staff' : 'SAT Prep Cohort',
+            source: 'telegram_webapp'
+          };
+          saveSessionToStorage(candidate);
         }
       }
 
@@ -2831,7 +2939,7 @@
         // Teachers and admins bypass student link gatekeeper
         if (candidate.role === 'admin' || candidate.role === 'teacher') {
           currentSession = candidate;
-          localStorage.setItem('satmaster_session', JSON.stringify(currentSession));
+          saveSessionToStorage(currentSession);
           document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
           applyCurrentSession();
           showSplashSuccess("Access Granted • Welcome back!");
@@ -2850,14 +2958,37 @@
             className: stu.group_name || candidate.className || 'SAT Prep Cohort',
             source: candidate.source || 'verified_student'
           };
-          localStorage.setItem('satmaster_session', JSON.stringify(currentSession));
+          saveSessionToStorage(currentSession);
           document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
           applyCurrentSession();
           startAuthHeartbeat(candidate.uid);
           showSplashSuccess("Access Granted • Welcome back!");
-        } else {
-          console.warn('[SATMaster] Student gatekeeper verification failed:', verifyRes);
+        } else if (verifyRes && verifyRes.isNetworkError) {
+          // Transient network glitch / timeout during initial check:
+          // DO NOT kick out! Keep the student session from storage
+          console.warn('[SATMaster] Startup verification network glitch, keeping active session:', verifyRes.error);
+          currentSession = candidate;
+          saveSessionToStorage(currentSession);
+          document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
+          applyCurrentSession();
+          startAuthHeartbeat(candidate.uid);
+          showSplashSuccess("Access Granted • Welcome back!");
+        } else if (verifyRes && verifyRes.valid === false && verifyRes.isExplicitlyDenied === true) {
+          console.warn('[SATMaster] Student gatekeeper verification explicitly denied:', verifyRes);
           lockoutStudentSession("You do not have an active registration, or your cohort access was removed.");
+        } else {
+          // Unrecognized response: if candidate has a valid stored UID, preserve session rather than abrupt lockout
+          if (candidate.uid) {
+            console.warn('[SATMaster] Ambiguous verification result, keeping stored session:', verifyRes);
+            currentSession = candidate;
+            saveSessionToStorage(currentSession);
+            document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
+            applyCurrentSession();
+            startAuthHeartbeat(candidate.uid);
+            showSplashSuccess("Access Granted • Welcome back!");
+          } else {
+            lockoutStudentSession("You do not have an active registration, or your cohort access was removed.");
+          }
         }
       } else {
         // Guest user on Gateway / Unregistered
@@ -2869,6 +3000,7 @@
           className: '',
           source: 'gateway'
         };
+        clearSessionStorage();
         document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
         applyCurrentSession();
         showSplashFailure(
@@ -2877,6 +3009,25 @@
         );
       }
     }
+
+    // Reconnection & Tab visibility handler: restore session cleanly on tab switch / window focus
+    function handleSessionVisibilityRestore() {
+      if (document.visibilityState === 'visible') {
+        const stored = getStoredSession();
+        if (stored && stored.isLoggedIn) {
+          if (!currentSession || !currentSession.isLoggedIn) {
+            console.log('[SATMaster] Restoring session from storage on tab focus:', stored.uid);
+            currentSession = stored;
+            applyCurrentSession();
+          }
+          if (currentSession.role === 'student' && !authHeartbeatInterval) {
+            startAuthHeartbeat(currentSession.uid);
+          }
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleSessionVisibilityRestore);
+    window.addEventListener('focus', handleSessionVisibilityRestore);
 
     function applyCurrentSession() {
       isLoggedIn = currentSession.isLoggedIn;
@@ -3148,7 +3299,7 @@
           source: 'demo'
         };
       }
-      localStorage.setItem('satmaster_session', JSON.stringify(currentSession));
+      saveSessionToStorage(currentSession);
       applyCurrentSession();
       showSplashSuccess("Access Granted • Welcome back!");
       showToast("✈️ Authenticated", `Signed in as ${currentSession.name} (${currentSession.role}).`, "success");
@@ -3205,7 +3356,7 @@
         className: '',
         source: 'gateway'
       };
-      localStorage.removeItem('satmaster_session');
+      clearSessionStorage();
       document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
       applyCurrentSession();
       showSplashFailure(
