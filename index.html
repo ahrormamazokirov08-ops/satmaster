@@ -88,6 +88,14 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600/30 pb-20 md:pb-8">
 
   <!-- ======================================================== -->
+  <!-- OFFLINE RECONNECTION PILL BANNER -->
+  <!-- ======================================================== -->
+  <div id="satmaster-offline-banner" class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] hidden items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/95 border border-amber-500/50 text-amber-300 shadow-2xl backdrop-blur-md text-xs font-bold transition-all duration-300 pointer-events-none">
+    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+    <span id="satmaster-offline-text">Offline — Reconnecting...</span>
+  </div>
+
+  <!-- ======================================================== -->
   <!-- SECURITY VERIFICATION SPLASH SCREEN & ACCESS CONTROLLER -->
   <!-- ======================================================== -->
   <div id="security-splash-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 p-4 transition-opacity duration-500 overflow-y-auto">
@@ -2588,6 +2596,223 @@
       } catch (e) {}
     }
 
+    // ========================================================
+    // WAKE-UP GRACE PERIOD & OFFLINE BANNER CONTROLLER
+    // ========================================================
+    let lastWakeUpTime = 0;
+    const WAKEUP_GRACE_BUFFER_MS = 10000; // 10-second radio reconnection grace window
+
+    function updateOnlineStatus() {
+      const banner = document.getElementById('satmaster-offline-banner');
+      const textEl = document.getElementById('satmaster-offline-text');
+      if (!banner || !textEl) return;
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        banner.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/95 border border-amber-500/50 text-amber-300 shadow-2xl backdrop-blur-md text-xs font-bold transition-all duration-300 pointer-events-none';
+        textEl.textContent = 'Offline — Reconnecting...';
+        banner.classList.remove('hidden');
+      } else {
+        if (!banner.classList.contains('hidden')) {
+          banner.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/95 border border-emerald-500/50 text-emerald-300 shadow-2xl backdrop-blur-md text-xs font-bold transition-all duration-300 pointer-events-none';
+          textEl.textContent = '✅ Connected — Back online';
+          setTimeout(() => {
+            banner.classList.add('hidden');
+          }, 2200);
+        }
+      }
+    }
+
+    window.addEventListener('offline', updateOnlineStatus);
+    window.addEventListener('online', updateOnlineStatus);
+
+    // ========================================================
+    // ACTIVE TEST PROGRESS AUTO-SAVE & RECOVERY ENGINE
+    // ========================================================
+    const TEST_PROGRESS_KEY = 'satmaster_active_test_progress';
+
+    function saveActiveTestProgress(type, data) {
+      try {
+        const payload = {
+          test_type: type,
+          test_id: String(data.test_id || ''),
+          current_question_index: Number(data.current_question_index || 0),
+          answers_map: data.answers_map || {},
+          time_remaining: data.time_remaining !== undefined ? Number(data.time_remaining) : 0,
+          saved_at: Date.now(),
+          meta: data.meta || {}
+        };
+        localStorage.setItem(TEST_PROGRESS_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.warn('[SATMaster] Test progress auto-save notice:', e);
+      }
+    }
+
+    function getActiveTestProgress() {
+      try {
+        const raw = localStorage.getItem(TEST_PROGRESS_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.test_id) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('[SATMaster] Test progress read notice:', e);
+      }
+      return null;
+    }
+
+    function clearActiveTestProgress() {
+      try {
+        localStorage.removeItem(TEST_PROGRESS_KEY);
+      } catch (e) {}
+    }
+
+    function saveRunnerTestProgress() {
+      if (!currentRunnerTest || !currentRunnerTest.assignment) return;
+      saveActiveTestProgress('runner', {
+        test_id: currentRunnerTest.assignment.id || currentRunnerTest.assignment.code,
+        current_question_index: currentRunnerTest.currentIdx || 0,
+        answers_map: { ...(currentRunnerTest.answers || {}) },
+        time_remaining: currentRunnerTest.timeRemainingSec !== undefined ? currentRunnerTest.timeRemainingSec : 0,
+        meta: {
+          assignmentId: currentRunnerTest.assignment.id,
+          assignmentCode: currentRunnerTest.assignment.code,
+          assignmentTitle: currentRunnerTest.assignment.title,
+          eliminations: currentRunnerTest.eliminations || {},
+          flagged: currentRunnerTest.flagged || {},
+          startTime: currentRunnerTest.startTime || Date.now(),
+          endTime: currentRunnerTest.endTime || null
+        }
+      });
+    }
+
+    function saveVocabTestProgress() {
+      if (!vocabTestState || !vocabTestState.active) return;
+      saveActiveTestProgress('vocab_unit', {
+        test_id: 'vocab_' + (vocabTestState.scopeId || 'bundle_1_2'),
+        current_question_index: vocabTestState.currentIdx || 0,
+        answers_map: Array.isArray(vocabTestState.userAnswers) ? [...vocabTestState.userAnswers] : { ...(vocabTestState.userAnswers || {}) },
+        time_remaining: vocabTestState.timerSeconds !== undefined ? vocabTestState.timerSeconds : 0,
+        meta: {
+          scopeId: vocabTestState.scopeId,
+          scopeName: vocabTestState.scopeName,
+          studentName: vocabTestState.studentName,
+          questions: vocabTestState.questions || [],
+          startTimestamp: vocabTestState.startTimestamp || null
+        }
+      });
+    }
+
+    function restoreActiveTestProgress() {
+      const prog = getActiveTestProgress();
+      if (!prog) return false;
+
+      // 1. SAT Runner / Homework Test Restoration
+      if (prog.test_type === 'runner') {
+        if (currentRunnerTest && currentRunnerTest.assignment && 
+            (currentRunnerTest.assignment.id === prog.test_id || currentRunnerTest.assignment.code === prog.test_id)) {
+          currentRunnerTest.currentIdx = prog.current_question_index || 0;
+          currentRunnerTest.answers = prog.answers_map || {};
+          if (prog.meta?.eliminations) currentRunnerTest.eliminations = prog.meta.eliminations;
+          if (prog.meta?.flagged) currentRunnerTest.flagged = prog.meta.flagged;
+          if (typeof prog.time_remaining === 'number' && prog.time_remaining > 0) {
+            currentRunnerTest.timeRemainingSec = prog.time_remaining;
+          }
+          if (prog.meta?.endTime) {
+            currentRunnerTest.endTime = prog.meta.endTime;
+          }
+          renderCurrentRunnerQuestion();
+          return true;
+        }
+
+        const assignments = (typeof getAssignments === 'function') ? getAssignments() : [];
+        const targetHw = assignments.find(a => (a.id === prog.test_id || a.code === prog.test_id || (prog.meta?.assignmentCode && a.code === prog.meta.assignmentCode)));
+        if (targetHw && typeof getQuestionById === 'function') {
+          const questions = (targetHw.questionIds || []).map(id => getQuestionById(id)).filter(Boolean);
+          if (questions.length > 0) {
+            currentRunnerTest = {
+              assignment: targetHw,
+              questions: questions,
+              currentIdx: Math.min(prog.current_question_index || 0, questions.length - 1),
+              answers: prog.answers_map || {},
+              eliminations: prog.meta?.eliminations || {},
+              flagged: prog.meta?.flagged || {},
+              timeRemainingSec: typeof prog.time_remaining === 'number' ? prog.time_remaining : ((targetHw.timeLimitMinutes || 20) * 60),
+              timerInterval: null,
+              startTime: prog.meta?.startTime || Date.now(),
+              endTime: prog.meta?.endTime || null
+            };
+
+            document.getElementById('student-portal-hub')?.classList.add('hidden');
+            document.getElementById('student-runner-container')?.classList.remove('hidden');
+            if (typeof switchTab === 'function') switchTab('student');
+
+            startRunnerTimer();
+            renderCurrentRunnerQuestion();
+            showToast("🔄 Progress Restored", `Recovered active drill: "${targetHw.title}".`, "info");
+            return true;
+          }
+        }
+      }
+
+      // 2. Vocabulary Unit Test Restoration
+      if (prog.test_type === 'vocab_unit') {
+        if (vocabTestState && vocabTestState.active) {
+          vocabTestState.currentIdx = prog.current_question_index || 0;
+          if (Array.isArray(prog.answers_map)) {
+            vocabTestState.userAnswers = [...prog.answers_map];
+          } else if (prog.answers_map && typeof prog.answers_map === 'object') {
+            vocabTestState.userAnswers = Object.values(prog.answers_map);
+          }
+          if (typeof prog.time_remaining === 'number') {
+            vocabTestState.timerSeconds = prog.time_remaining;
+          }
+          renderVocabTestQuestion();
+          return true;
+        }
+
+        if (prog.meta?.questions && prog.meta.questions.length > 0) {
+          const rawAns = prog.answers_map;
+          let userAnswersArr = new Array(prog.meta.questions.length).fill(null);
+          if (Array.isArray(rawAns)) {
+            userAnswersArr = [...rawAns];
+          } else if (rawAns && typeof rawAns === 'object') {
+            Object.keys(rawAns).forEach(k => {
+              const idx = parseInt(k);
+              if (!isNaN(idx) && idx < userAnswersArr.length) userAnswersArr[idx] = rawAns[k];
+            });
+          }
+
+          vocabTestState = {
+            active: true,
+            studentName: prog.meta?.studentName || (currentSession ? currentSession.name : '') || 'Student User',
+            scopeId: prog.meta?.scopeId || 'bundle_1_2',
+            scopeName: prog.meta?.scopeName || (typeof getScopeDisplayName === 'function' ? getScopeDisplayName(prog.meta?.scopeId || 'bundle_1_2') : 'Unit Test'),
+            questions: prog.meta.questions,
+            userAnswers: userAnswersArr,
+            currentIdx: Math.min(prog.current_question_index || 0, prog.meta.questions.length - 1),
+            timerSeconds: prog.time_remaining || 0,
+            timerInterval: null,
+            startTimestamp: prog.meta?.startTimestamp || null
+          };
+
+          document.getElementById('vocab-view-reports')?.classList.add('hidden');
+          document.getElementById('vocab-panel-test')?.classList.remove('hidden');
+          if (typeof switchTab === 'function') switchTab('vocab');
+
+          const headerScope = document.getElementById('test-header-scope');
+          if (headerScope) headerScope.innerText = vocabTestState.scopeName;
+
+          startTestTimer();
+          renderVocabTestQuestion();
+          showToast("🔄 Progress Restored", `Recovered active unit test: ${vocabTestState.scopeName}.`, "info");
+          return true;
+        }
+      }
+
+      return false;
+    }
+
     function startAuthHeartbeat(studentId) {
       stopAuthHeartbeat();
       if (!studentId) return;
@@ -2600,6 +2825,16 @@
 
         // Avoid polling while tab is inactive/backgrounded to prevent race conditions during mobile tab sleep
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          return;
+        }
+
+        // Suppress polling during the 10-second wake-up grace period
+        if (Date.now() - lastWakeUpTime < WAKEUP_GRACE_BUFFER_MS) {
+          return;
+        }
+
+        // Suppress polling while browser/device is offline
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
           return;
         }
 
@@ -2616,6 +2851,9 @@
           if (res && res.valid === false && res.isExplicitlyDenied === true) {
             // Server claims student or cohort deleted. Confirm with a backoff retry to eliminate false positives:
             await new Promise(r => setTimeout(r, 2000));
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+            if (Date.now() - lastWakeUpTime < WAKEUP_GRACE_BUFFER_MS) return;
+
             const confirmRes = await verifyStudentAccount(studentId, 1, 1000);
             if (confirmRes && confirmRes.valid === false && confirmRes.isExplicitlyDenied === true) {
               console.warn('[SATMaster] Live heartbeat confirmed: student or group removed. Locking out session.');
@@ -2630,6 +2868,17 @@
 
     async function verifyStudentAccount(studentId, maxRetries = 2, retryDelayMs = 1200) {
       if (!studentId) return { valid: false, isExplicitlyDenied: true, reason: 'missing_id' };
+
+      // Fast check: if offline, return network error immediately without calling fetch
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return {
+          valid: null,
+          isNetworkError: true,
+          isExplicitlyDenied: false,
+          reason: 'offline',
+          error: 'Browser is currently offline'
+        };
+      }
 
       let lastError = null;
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -2662,12 +2911,13 @@
           if (data && data.valid === true) {
             return { valid: true, isExplicitlyDenied: false, student: data.student };
           }
+          // Only an explicit server confirmation (status 200 && data.valid === false && data.reason === 'not_found_or_deleted')
           if (data && data.valid === false && data.reason === 'not_found_or_deleted') {
             return { valid: false, isExplicitlyDenied: true, reason: 'not_found_or_deleted' };
           }
           return {
             valid: data ? data.valid === true : false,
-            isExplicitlyDenied: data ? data.valid === false : false,
+            isExplicitlyDenied: data ? (data.valid === false && data.reason === 'not_found_or_deleted') : false,
             reason: data?.reason || 'unknown',
             student: data?.student
           };
@@ -2791,6 +3041,16 @@
     }
 
     function lockoutStudentSession(reasonMsg) {
+      // Guard: Never lock out if device is offline or within wake-up grace buffer (10s)
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        console.warn('[SATMaster] Lockout suppressed: device is currently offline');
+        return;
+      }
+      if (Date.now() - lastWakeUpTime < WAKEUP_GRACE_BUFFER_MS) {
+        console.warn('[SATMaster] Lockout suppressed: within wake-up grace period');
+        return;
+      }
+
       stopAuthHeartbeat();
 
       // Halt active test/quiz timers immediately
@@ -3013,6 +3273,15 @@
     // Reconnection & Tab visibility handler: restore session cleanly on tab switch / window focus
     function handleSessionVisibilityRestore() {
       if (document.visibilityState === 'visible') {
+        lastWakeUpTime = Date.now();
+        console.log('[SATMaster] Screen wake-up / focus detected. Grace buffer active (10s).');
+
+        // 1. Update online status
+        if (typeof updateOnlineStatus === 'function') {
+          updateOnlineStatus();
+        }
+
+        // 2. Restore credentials from storage if memory dropped
         const stored = getStoredSession();
         if (stored && stored.isLoggedIn) {
           if (!currentSession || !currentSession.isLoggedIn) {
@@ -3020,9 +3289,32 @@
             currentSession = stored;
             applyCurrentSession();
           }
-          if (currentSession.role === 'student' && !authHeartbeatInterval) {
-            startAuthHeartbeat(currentSession.uid);
+        }
+
+        // 3. Auto-recover active test progress if ongoing
+        if (typeof restoreActiveTestProgress === 'function') {
+          restoreActiveTestProgress();
+        }
+
+        // 4. Re-sync timers if in active session
+        if (typeof currentRunnerTest !== 'undefined' && currentRunnerTest && currentRunnerTest.assignment) {
+          if (!currentRunnerTest.timerInterval && currentRunnerTest.timeRemainingSec > 0) {
+            startRunnerTimer();
           }
+        }
+        if (typeof vocabTestState !== 'undefined' && vocabTestState && vocabTestState.active) {
+          if (!vocabTestState.timerInterval) {
+            startTestTimer();
+          }
+        }
+
+        // 5. Resume heartbeat safely AFTER the 10-second wake-up grace buffer
+        if (currentSession && currentSession.role === 'student' && !authHeartbeatInterval) {
+          setTimeout(() => {
+            if (document.visibilityState === 'visible' && !authHeartbeatInterval && (Date.now() - lastWakeUpTime >= WAKEUP_GRACE_BUFFER_MS)) {
+              startAuthHeartbeat(currentSession.uid);
+            }
+          }, WAKEUP_GRACE_BUFFER_MS);
         }
       }
     }
@@ -5455,8 +5747,10 @@
           flagged: {},
           timeRemainingSec: (targetHw.timeLimitMinutes || 20) * 60,
           timerInterval: null,
-          startTime: Date.now()
+          startTime: Date.now(),
+          endTime: Date.now() + ((targetHw.timeLimitMinutes || 20) * 60 * 1000)
         };
+        saveRunnerTestProgress();
 
         // Switch view states
         document.getElementById('student-portal-hub')?.classList.add('hidden');
@@ -5481,7 +5775,14 @@
         return;
       }
 
+      if (!currentRunnerTest.endTime) {
+        currentRunnerTest.endTime = Date.now() + (currentRunnerTest.timeRemainingSec * 1000);
+      }
+
       const updateTimerUI = () => {
+        if (currentRunnerTest.endTime) {
+          currentRunnerTest.timeRemainingSec = Math.max(0, Math.round((currentRunnerTest.endTime - Date.now()) / 1000));
+        }
         const sec = currentRunnerTest.timeRemainingSec;
         const mins = Math.floor(sec / 60);
         const remSec = sec % 60;
@@ -5498,10 +5799,20 @@
       updateTimerUI();
 
       currentRunnerTest.timerInterval = setInterval(() => {
-        if (currentRunnerTest.timeRemainingSec > 0) {
+        if (currentRunnerTest.endTime) {
+          currentRunnerTest.timeRemainingSec = Math.max(0, Math.round((currentRunnerTest.endTime - Date.now()) / 1000));
+        } else if (currentRunnerTest.timeRemainingSec > 0) {
           currentRunnerTest.timeRemainingSec -= 1;
-          updateTimerUI();
-        } else {
+        }
+
+        updateTimerUI();
+
+        // Periodic auto-save every 5 seconds
+        if (currentRunnerTest.timeRemainingSec % 5 === 0) {
+          saveRunnerTestProgress();
+        }
+
+        if (currentRunnerTest.timeRemainingSec <= 0) {
           clearInterval(currentRunnerTest.timerInterval);
           showToast("⏱️ Time Expired!", "Your test timer has reached zero. Submitting automatically...", "info");
           submitStudentTest();
@@ -5512,6 +5823,7 @@
     function confirmExitStudentTest() {
       if (confirm("Are you sure you want to exit? Your current test progress will be lost.")) {
         if (currentRunnerTest.timerInterval) clearInterval(currentRunnerTest.timerInterval);
+        clearActiveTestProgress();
         document.getElementById('student-runner-container')?.classList.add('hidden');
         document.getElementById('student-portal-hub')?.classList.remove('hidden');
         renderAvailableHomeworkForClass();
@@ -5686,6 +5998,7 @@
     function selectRunnerOption(letter) {
       const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
       currentRunnerTest.answers[q.id] = letter;
+      saveRunnerTestProgress();
       renderCurrentRunnerQuestion();
     }
 
@@ -5694,6 +6007,7 @@
       const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
       if (!currentRunnerTest.eliminations[q.id]) currentRunnerTest.eliminations[q.id] = {};
       currentRunnerTest.eliminations[q.id][letter] = !currentRunnerTest.eliminations[q.id][letter];
+      saveRunnerTestProgress();
       renderCurrentRunnerQuestion();
     }
 
@@ -5701,12 +6015,14 @@
       const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
       const val = document.getElementById('runner-spr-input')?.value.trim();
       currentRunnerTest.answers[q.id] = val;
+      saveRunnerTestProgress();
       renderRunnerPaletteDots();
     }
 
     function toggleCurrentQuestionFlag() {
       const q = currentRunnerTest.questions[currentRunnerTest.currentIdx];
       currentRunnerTest.flagged[q.id] = !currentRunnerTest.flagged[q.id];
+      saveRunnerTestProgress();
       renderCurrentRunnerQuestion();
     }
 
@@ -5714,6 +6030,7 @@
       const nextIdx = currentRunnerTest.currentIdx + delta;
       if (nextIdx >= 0 && nextIdx < currentRunnerTest.questions.length) {
         currentRunnerTest.currentIdx = nextIdx;
+        saveRunnerTestProgress();
         renderCurrentRunnerQuestion();
       } else if (nextIdx >= currentRunnerTest.questions.length) {
         openReviewModal();
@@ -5723,6 +6040,7 @@
     function jumpRunnerQuestion(index) {
       if (index >= 0 && index < currentRunnerTest.questions.length) {
         currentRunnerTest.currentIdx = index;
+        saveRunnerTestProgress();
         renderCurrentRunnerQuestion();
       }
     }
@@ -5768,6 +6086,7 @@
     function submitStudentTest() {
       closeReviewModal();
       if (currentRunnerTest.timerInterval) clearInterval(currentRunnerTest.timerInterval);
+      clearActiveTestProgress();
 
       const test = currentRunnerTest;
       const questions = test.questions;
@@ -7609,6 +7928,8 @@
       initAssignmentsAndGradebook();
       renderAvailableHomeworkForClass();
       updateDashboardStats();
+      if (typeof updateOnlineStatus === 'function') updateOnlineStatus();
+      if (typeof restoreActiveTestProgress === 'function') restoreActiveTestProgress();
     };
 
     // =========================================================================
@@ -7888,8 +8209,10 @@
         userAnswers: new Array(questions.length).fill(null),
         currentIdx: 0,
         timerSeconds: 0,
-        timerInterval: null
+        timerInterval: null,
+        startTimestamp: Date.now()
       };
+      saveVocabTestProgress();
 
       // Switch to test panel view
       document.getElementById('vocab-view-reports')?.classList.add('hidden');
@@ -7909,11 +8232,20 @@
 
     function startTestTimer() {
       if (vocabTestState.timerInterval) clearInterval(vocabTestState.timerInterval);
-      vocabTestState.timerSeconds = 0;
+      if (!vocabTestState.startTimestamp) {
+        vocabTestState.startTimestamp = Date.now() - ((vocabTestState.timerSeconds || 0) * 1000);
+      }
       updateTestTimerDisplay();
       vocabTestState.timerInterval = setInterval(() => {
-        vocabTestState.timerSeconds++;
+        if (vocabTestState.startTimestamp) {
+          vocabTestState.timerSeconds = Math.max(0, Math.round((Date.now() - vocabTestState.startTimestamp) / 1000));
+        } else {
+          vocabTestState.timerSeconds++;
+        }
         updateTestTimerDisplay();
+        if (vocabTestState.timerSeconds % 5 === 0) {
+          saveVocabTestProgress();
+        }
       }, 1000);
     }
 
@@ -8007,6 +8339,7 @@
 
     function selectVocabTestAnswer(optIdx) {
       vocabTestState.userAnswers[vocabTestState.currentIdx] = optIdx;
+      saveVocabTestProgress();
       renderVocabTestQuestion();
     }
 
@@ -8017,6 +8350,7 @@
         submitVocabUnitTest();
       } else {
         vocabTestState.currentIdx++;
+        saveVocabTestProgress();
         renderVocabTestQuestion();
       }
     }
@@ -8024,6 +8358,7 @@
     function prevVocabTestQuestion() {
       if (vocabTestState.currentIdx > 0) {
         vocabTestState.currentIdx--;
+        saveVocabTestProgress();
         renderVocabTestQuestion();
       }
     }
@@ -8038,6 +8373,7 @@
         clearInterval(vocabTestState.timerInterval);
         vocabTestState.timerInterval = null;
       }
+      clearActiveTestProgress();
       vocabTestState.active = false;
       document.getElementById('vocab-panel-test')?.classList.add('hidden');
       document.getElementById('vocab-view-reports')?.classList.remove('hidden');
@@ -8055,6 +8391,7 @@
         clearInterval(vocabTestState.timerInterval);
         vocabTestState.timerInterval = null;
       }
+      clearActiveTestProgress();
       vocabTestState.active = false;
 
       let correctCount = 0;
