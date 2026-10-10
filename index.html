@@ -193,7 +193,7 @@
       </button>
       <button onclick="switchTab('qbank')" id="nav-qbank" class="px-3.5 py-1.5 rounded-lg transition-all text-sky-400 hover:text-sky-300 flex items-center gap-1.5">
         <span>📖</span><span>Question Bank</span>
-        <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full">Draft</span>
+        <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 px-1.5 py-0.5 rounded-full">Practice</span>
       </button>
       <button onclick="switchTab('student')" id="nav-student" class="px-3.5 py-1.5 rounded-lg transition-all text-emerald-400 hover:text-emerald-300">
         📝 Student Portal
@@ -675,8 +675,241 @@
         </div>
       </div>
 
+      <!-- VIEW 0: BLUEBOOK QUESTION BANK PRACTICE SETUP -->
+      <div id="qb-setup-view" class="max-w-4xl mx-auto space-y-6">
+        <div class="bg-[#0f172a] border border-[#334155] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-8 text-white">
+          
+          <!-- Top Header / Banner -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#334155]">
+            <div class="flex items-center gap-3.5">
+              <div class="h-12 w-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-2xl text-white shadow-lg shadow-blue-600/30 font-black">
+                📖
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Question Bank Practice</h1>
+                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Official Bluebook</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">Configure your custom practice session with real College Board Digital SAT questions.</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2 self-end sm:self-auto">
+              <span class="text-xs font-semibold text-slate-400">Total Bank Questions:</span>
+              <span class="text-xs font-bold font-mono text-sky-400 bg-sky-950/60 px-2.5 py-1 rounded-lg border border-sky-800/40">3,770</span>
+            </div>
+          </div>
+
+          <!-- Section 1: Subject Tabs -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                1. Select Subject
+              </label>
+              <span class="text-[11px] text-slate-400" id="qb-subject-hint">Choose Reading &amp; Writing, Math, or Both</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-900 border border-[#334155]" id="qb-subject-tabs">
+              <button type="button" onclick="qbEngine.setSubject('rw')" id="qb-tab-rw" class="qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-md">
+                <span>📚</span><span>Reading &amp; Writing</span>
+              </button>
+              <button type="button" onclick="qbEngine.setSubject('math')" id="qb-tab-math" class="qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-400 hover:text-white">
+                <span>📐</span><span>Math</span>
+              </button>
+              <button type="button" onclick="qbEngine.setSubject('combined')" id="qb-tab-combined" class="qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-400 hover:text-white">
+                <span>⚡</span><span>Combined / All</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 2: Domain Checkbox Grid -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                2. Select Domains &amp; Topics
+              </label>
+              <button type="button" onclick="qbEngine.toggleAllDomains()" id="qb-btn-toggle-domains" class="text-xs font-bold text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1">
+                <span>Deselect All</span>
+              </button>
+            </div>
+
+            <!-- English Domains Container -->
+            <div id="qb-domains-rw-wrapper" class="space-y-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-pink-400 block">Reading &amp; Writing Domains</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="qb-domains-rw-grid">
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Information and Ideas" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Information and Ideas</span>
+                    <span class="text-[10px] text-slate-400">Central Ideas, Inferences, Command of Evidence</span>
+                  </div>
+                </label>
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Craft and Structure" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Craft and Structure</span>
+                    <span class="text-[10px] text-slate-400">Words in Context, Text Structure, Cross-Text Connections</span>
+                  </div>
+                </label>
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Standard English Conventions" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Standard English Conventions</span>
+                    <span class="text-[10px] text-slate-400">Boundaries, Form, Structure, Sense</span>
+                  </div>
+                </label>
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Expression of Ideas" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Expression of Ideas</span>
+                    <span class="text-[10px] text-slate-400">Rhetorical Synthesis, Transitions</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Math Domains Container -->
+            <div id="qb-domains-math-wrapper" class="hidden space-y-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-sky-400 block">Math Domains</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="qb-domains-math-grid">
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Algebra" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Algebra</span>
+                    <span class="text-[10px] text-slate-400">Linear equations, Linear functions, Systems of equations</span>
+                  </div>
+                </label>
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Advanced Math" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Advanced Math</span>
+                    <span class="text-[10px] text-slate-400">Nonlinear equations, Quadratic functions, Polynomials</span>
+                  </div>
+                </label>
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Problem-Solving and Data Analysis" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Problem-Solving &amp; Data Analysis</span>
+                    <span class="text-[10px] text-slate-400">Ratios, Rates, Proportions, Probability, Statistics</span>
+                  </div>
+                </label>
+                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-[#334155] cursor-pointer hover:border-slate-500 transition-all select-none">
+                  <input type="checkbox" value="Geometry and Trigonometry" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700 focus:ring-0 focus:ring-offset-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-200 block">Geometry and Trigonometry</span>
+                    <span class="text-[10px] text-slate-400">Lines, Angles, Triangles, Circles, Trigonometric ratios</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Difficulty Filter -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                3. Difficulty Filter
+              </label>
+              <span class="text-[11px] text-slate-400">Select one or more difficulties</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3" id="qb-difficulty-pills">
+              <!-- Easy Pill -->
+              <button type="button" onclick="qbEngine.toggleDifficulty('Easy')" id="qb-diff-Easy" class="qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-sm" data-diff="Easy">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                <span>Easy</span>
+              </button>
+              <!-- Medium Pill -->
+              <button type="button" onclick="qbEngine.toggleDifficulty('Medium')" id="qb-diff-Medium" class="qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-amber-500/15 border-amber-500/50 text-amber-300 shadow-sm" data-diff="Medium">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                <span>Medium</span>
+              </button>
+              <!-- Hard Pill -->
+              <button type="button" onclick="qbEngine.toggleDifficulty('Hard')" id="qb-diff-Hard" class="qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-rose-500/15 border-rose-500/50 text-rose-300 shadow-sm" data-diff="Hard">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                <span>Hard</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 4: Question Count Selector -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                4. Number of Questions
+              </label>
+              <span class="text-[11px] text-slate-400">Session length</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2" id="qb-count-selector">
+              <button type="button" onclick="qbEngine.setCount(5)" id="qb-count-5" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white" data-count="5">5</button>
+              <button type="button" onclick="qbEngine.setCount(10)" id="qb-count-10" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white" data-count="10">10</button>
+              <button type="button" onclick="qbEngine.setCount(15)" id="qb-count-15" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm" data-count="15">15</button>
+              <button type="button" onclick="qbEngine.setCount(20)" id="qb-count-20" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white" data-count="20">20</button>
+              <button type="button" onclick="qbEngine.setCount(30)" id="qb-count-30" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white" data-count="30">30</button>
+              <button type="button" onclick="qbEngine.setCount('custom')" id="qb-count-custom" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white" data-count="custom">Custom</button>
+              
+              <!-- Custom Input Wrapper -->
+              <div id="qb-custom-count-wrapper" class="hidden items-center gap-2 ml-2">
+                <input type="number" id="qb-custom-count-input" min="1" max="100" value="25" oninput="qbEngine.onCustomCountInput(this.value)" class="w-20 bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-white outline-none">
+                <span class="text-xs text-slate-400">questions</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Live Matching Counter & Start Button Footer -->
+          <div class="pt-6 border-t border-[#334155] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-lg shrink-0">
+                ⚡
+              </div>
+              <div>
+                <span id="qb-matching-count" class="text-sm sm:text-base font-extrabold text-white block">
+                  Calculating available questions...
+                </span>
+                <span class="text-[11px] text-slate-400 block" id="qb-pool-detail">
+                  Based on your active subject, domains, and difficulty filters
+                </span>
+              </div>
+            </div>
+
+            <button type="button" id="qb-btn-start" onclick="qbEngine.startPractice()" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
+              <span>Start Practice</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- VIEW 3: PRACTICE TEST CONTAINER PLACEHOLDER -->
+      <div id="qb-test-container" class="hidden max-w-4xl mx-auto space-y-6">
+        <div class="bg-[#0f172a] border border-[#334155] rounded-3xl p-8 sm:p-10 shadow-2xl text-center space-y-6 text-white">
+          <div class="h-16 w-16 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-3xl shadow-xl shadow-emerald-500/20 font-black">
+            🚀
+          </div>
+          <div class="space-y-2">
+            <span class="inline-block bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs px-3.5 py-1 rounded-full font-bold">
+              Practice Session Created &amp; Stored
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Ready for Step 3 Interface</h2>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto">
+              Your practice questions have been filtered, shuffled, and saved into <code class="text-sky-300 font-mono">sessionStorage.qb_active_session</code>.
+            </p>
+          </div>
+
+          <!-- Dynamic Session Summary Card -->
+          <div id="qb-session-summary-card" class="p-5 rounded-2xl bg-slate-900 border border-[#334155] max-w-lg mx-auto text-left text-xs space-y-2.5">
+            <!-- Populated dynamically by qbEngine -->
+          </div>
+
+          <div class="pt-2 flex justify-center gap-3">
+            <button type="button" onclick="qbEngine.returnToSetup()" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all flex items-center gap-1.5">
+              <span>← Return to Setup</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- VIEW 1: MAIN QUESTION BANK HUB -->
-      <div id="qbank-hub-view" class="space-y-8">
+      <div id="qbank-hub-view" class="hidden space-y-8">
         
         <!-- Header -->
         <div class="flex items-center justify-between">
@@ -6280,7 +6513,11 @@
       }
 
       if (tabName === 'qbank') {
-        initQBankView();
+        if (window.qbEngine) {
+          window.qbEngine.init();
+        } else {
+          initQBankView();
+        }
       }
     }
 
@@ -9001,7 +9238,8 @@
 
     // DRAFT / PUBLISH MANAGEMENT
     function isQBankPublished() {
-      return localStorage.getItem('satmaster_qbank_published') === 'true';
+      const val = localStorage.getItem('satmaster_qbank_published');
+      return val === null ? true : val === 'true';
     }
 
     function togglePublishQBank() {
@@ -9119,6 +9357,9 @@
 
     // HUB VIEW RENDERING (MATCHING SCREENSHOT)
     function initQBankView() {
+      if (window.qbEngine) {
+        window.qbEngine.init();
+      }
       const stats = getQBankStats();
 
       // 1. Reading & Writing Card Progress
@@ -9543,6 +9784,396 @@
       showToast("✅ Question Saved", `Successfully added new ${subject === 'rw' ? 'Reading & Writing' : 'Math'} question to the bank!`, "success");
       initQBankView();
     }
+
+    // =========================================================
+    // BLUEBOOK QUESTION BANK STATE ENGINE & PRACTICE GENERATOR
+    // =========================================================
+    window.qbEngine = {
+      activeSubject: 'rw',
+      activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
+      activeCount: 15,
+      isCustomCount: false,
+      questionsData: { rw: null, math: null },
+      isLoading: false,
+      isInitialized: false,
+
+      async init() {
+        const setupView = document.getElementById('qb-setup-view');
+        const testContainer = document.getElementById('qb-test-container');
+        const hubView = document.getElementById('qbank-hub-view');
+        const solverView = document.getElementById('qbank-solver-view');
+
+        if (setupView) setupView.classList.remove('hidden');
+        if (testContainer) testContainer.classList.add('hidden');
+        if (hubView) hubView.classList.add('hidden');
+        if (solverView) solverView.classList.add('hidden');
+
+        if (!this.isInitialized) {
+          this.isInitialized = true;
+          this.syncUI();
+          await this.loadQuestions();
+        } else {
+          this.updateMatchingCount();
+        }
+      },
+
+      async loadQuestions() {
+        if (this.questionsData.rw && this.questionsData.math) {
+          this.updateMatchingCount();
+          return;
+        }
+
+        this.isLoading = true;
+        const countEl = document.getElementById('qb-matching-count');
+        if (countEl) countEl.innerText = "⏳ Loading College Board question datasets...";
+
+        try {
+          const fetchWithFallback = async (relPath) => {
+            try {
+              const res = await fetch(relPath);
+              if (res.ok) return await res.json();
+            } catch (e) {}
+            const absRes = await fetch('/' + relPath);
+            if (absRes.ok) return await absRes.json();
+            throw new Error(`Failed to load ${relPath}`);
+          };
+
+          const [rwQuestions, mathQuestions] = await Promise.all([
+            fetchWithFallback('data/questions/reading_writing.json'),
+            fetchWithFallback('data/questions/math.json')
+          ]);
+
+          this.questionsData.rw = rwQuestions || [];
+          this.questionsData.math = mathQuestions || [];
+          this.isLoading = false;
+          this.updateMatchingCount();
+        } catch (err) {
+          console.error("[qbEngine] Error loading questions:", err);
+          this.isLoading = false;
+          if (countEl) {
+            countEl.innerHTML = `<span class="text-rose-400">⚠️ Unable to load question dataset files: ${err.message}</span>`;
+          }
+        }
+      },
+
+      setSubject(subj) {
+        if (!['rw', 'math', 'combined'].includes(subj)) return;
+        this.activeSubject = subj;
+
+        ['rw', 'math', 'combined'].forEach(s => {
+          const tab = document.getElementById(`qb-tab-${s}`);
+          if (tab) {
+            if (s === subj) {
+              tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-md";
+            } else {
+              tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+            }
+          }
+        });
+
+        const rwWrapper = document.getElementById('qb-domains-rw-wrapper');
+        const mathWrapper = document.getElementById('qb-domains-math-wrapper');
+
+        if (rwWrapper) {
+          if (subj === 'rw' || subj === 'combined') {
+            rwWrapper.classList.remove('hidden');
+          } else {
+            rwWrapper.classList.add('hidden');
+          }
+        }
+
+        if (mathWrapper) {
+          if (subj === 'math' || subj === 'combined') {
+            mathWrapper.classList.remove('hidden');
+          } else {
+            mathWrapper.classList.add('hidden');
+          }
+        }
+
+        this.updateToggleDomainsButtonText();
+        this.updateMatchingCount();
+      },
+
+      getActiveDomains() {
+        const active = new Set();
+        const getCheckedIn = (containerId) => {
+          const container = document.getElementById(containerId);
+          if (!container) return;
+          const cbs = container.querySelectorAll('input.qb-domain-cb');
+          cbs.forEach(cb => {
+            if (cb.checked) active.add(cb.value);
+          });
+        };
+
+        if (this.activeSubject === 'rw' || this.activeSubject === 'combined') {
+          getCheckedIn('qb-domains-rw-grid');
+        }
+        if (this.activeSubject === 'math' || this.activeSubject === 'combined') {
+          getCheckedIn('qb-domains-math-grid');
+        }
+        return active;
+      },
+
+      getVisibleDomainCheckboxes() {
+        const cbs = [];
+        if (this.activeSubject === 'rw' || this.activeSubject === 'combined') {
+          const c1 = document.getElementById('qb-domains-rw-grid');
+          if (c1) cbs.push(...c1.querySelectorAll('input.qb-domain-cb'));
+        }
+        if (this.activeSubject === 'math' || this.activeSubject === 'combined') {
+          const c2 = document.getElementById('qb-domains-math-grid');
+          if (c2) cbs.push(...c2.querySelectorAll('input.qb-domain-cb'));
+        }
+        return cbs;
+      },
+
+      toggleAllDomains() {
+        const cbs = this.getVisibleDomainCheckboxes();
+        if (!cbs || cbs.length === 0) return;
+
+        const allChecked = cbs.every(cb => cb.checked);
+        cbs.forEach(cb => {
+          cb.checked = !allChecked;
+        });
+
+        this.updateToggleDomainsButtonText();
+        this.updateMatchingCount();
+      },
+
+      updateToggleDomainsButtonText() {
+        const btn = document.getElementById('qb-btn-toggle-domains');
+        if (!btn) return;
+        const cbs = this.getVisibleDomainCheckboxes();
+        const allChecked = cbs.length > 0 && cbs.every(cb => cb.checked);
+        btn.innerHTML = allChecked ? "<span>Deselect All</span>" : "<span>Select All</span>";
+      },
+
+      onDomainChange() {
+        this.updateToggleDomainsButtonText();
+        this.updateMatchingCount();
+      },
+
+      toggleDifficulty(diff) {
+        if (this.activeDifficulties.has(diff)) {
+          if (this.activeDifficulties.size > 1) {
+            this.activeDifficulties.delete(diff);
+          }
+        } else {
+          this.activeDifficulties.add(diff);
+        }
+
+        this.syncDifficultyUI();
+        this.updateMatchingCount();
+      },
+
+      syncDifficultyUI() {
+        const colorConfigs = {
+          Easy: { active: 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300', dot: 'bg-emerald-400' },
+          Medium: { active: 'bg-amber-500/15 border-amber-500/50 text-amber-300', dot: 'bg-amber-400' },
+          Hard: { active: 'bg-rose-500/15 border-rose-500/50 text-rose-300', dot: 'bg-rose-400' }
+        };
+
+        ['Easy', 'Medium', 'Hard'].forEach(diff => {
+          const btn = document.getElementById(`qb-diff-${diff}`);
+          if (!btn) return;
+          const isAct = this.activeDifficulties.has(diff);
+          const conf = colorConfigs[diff];
+          if (isAct) {
+            btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${conf.active} shadow-sm`;
+          } else {
+            btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-slate-900 border-[#334155] text-slate-500 hover:text-slate-300`;
+          }
+        });
+      },
+
+      setCount(cnt) {
+        if (cnt === 'custom') {
+          this.isCustomCount = true;
+          const wrapper = document.getElementById('qb-custom-count-wrapper');
+          if (wrapper) wrapper.classList.remove('hidden');
+          const input = document.getElementById('qb-custom-count-input');
+          if (input) this.activeCount = parseInt(input.value) || 25;
+        } else {
+          this.isCustomCount = false;
+          this.activeCount = parseInt(cnt) || 15;
+          const wrapper = document.getElementById('qb-custom-count-wrapper');
+          if (wrapper) wrapper.classList.add('hidden');
+        }
+
+        this.syncCountUI();
+      },
+
+      onCustomCountInput(val) {
+        const num = parseInt(val);
+        if (!isNaN(num) && num > 0) {
+          this.activeCount = Math.min(100, Math.max(1, num));
+        }
+      },
+
+      syncCountUI() {
+        const counts = [5, 10, 15, 20, 30, 'custom'];
+        counts.forEach(c => {
+          const btn = document.getElementById(`qb-count-${c}`);
+          if (!btn) return;
+          const isAct = (c === 'custom' && this.isCustomCount) || (!this.isCustomCount && this.activeCount === c);
+          if (isAct) {
+            btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm";
+          } else {
+            btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white";
+          }
+        });
+      },
+
+      syncUI() {
+        this.syncDifficultyUI();
+        this.syncCountUI();
+        this.updateToggleDomainsButtonText();
+      },
+
+      getFilteredQuestions() {
+        let pool = [];
+        if (this.activeSubject === 'rw') {
+          pool = this.questionsData.rw || [];
+        } else if (this.activeSubject === 'math') {
+          pool = this.questionsData.math || [];
+        } else {
+          pool = [...(this.questionsData.rw || []), ...(this.questionsData.math || [])];
+        }
+
+        const activeDomains = this.getActiveDomains();
+        if (activeDomains.size === 0) return [];
+
+        const domainNorm = (d) => (d || '').toLowerCase().replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
+        const activeDomainNorms = new Set(Array.from(activeDomains).map(d => domainNorm(d)));
+
+        return pool.filter(q => {
+          const qDomNorm = domainNorm(q.domain);
+          const matchesDomain = activeDomainNorms.has(qDomNorm);
+          const matchesDiff = this.activeDifficulties.has(q.difficulty);
+          return matchesDomain && matchesDiff;
+        });
+      },
+
+      updateMatchingCount() {
+        const countEl = document.getElementById('qb-matching-count');
+        const poolDetailEl = document.getElementById('qb-pool-detail');
+        const startBtn = document.getElementById('qb-btn-start');
+
+        if (this.isLoading) return;
+
+        const filtered = this.getFilteredQuestions();
+        const totalCount = filtered.length;
+
+        if (countEl) {
+          if (totalCount > 0) {
+            countEl.innerHTML = `⚡ <span class="text-sky-300 font-black">${totalCount.toLocaleString()}</span> questions available matching your filters`;
+          } else {
+            countEl.innerHTML = `<span class="text-amber-400 font-bold">⚠️ 0 questions matching these filters</span>`;
+          }
+        }
+
+        if (poolDetailEl) {
+          const subjName = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined');
+          const diffList = Array.from(this.activeDifficulties).join(', ');
+          const domainCount = this.getActiveDomains().size;
+          poolDetailEl.innerText = `${subjName} • ${domainCount} active domain(s) • [${diffList}]`;
+        }
+
+        if (startBtn) {
+          startBtn.disabled = (totalCount === 0);
+        }
+      },
+
+      startPractice() {
+        const filtered = this.getFilteredQuestions();
+        if (!filtered || filtered.length === 0) {
+          if (typeof showToast === 'function') {
+            showToast("⚠️ No Matching Questions", "Please select at least one domain and difficulty with available questions.", "warning");
+          } else {
+            alert("No questions match your current filters.");
+          }
+          return;
+        }
+
+        let targetCount = this.isCustomCount
+          ? (parseInt(document.getElementById('qb-custom-count-input')?.value) || 25)
+          : this.activeCount;
+
+        targetCount = Math.max(1, Math.min(targetCount, filtered.length));
+
+        const shuffled = [...filtered];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        const selectedQuestions = shuffled.slice(0, targetCount);
+
+        const activeSession = {
+          questions: selectedQuestions,
+          currentIdx: 0,
+          answers: {},
+          timePerQuestion: {},
+          config: {
+            subject: this.activeSubject,
+            domains: Array.from(this.getActiveDomains()),
+            difficulties: Array.from(this.activeDifficulties),
+            requestedCount: targetCount,
+            totalAvailable: filtered.length
+          },
+          startedAt: Date.now()
+        };
+
+        sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
+
+        const setupView = document.getElementById('qb-setup-view');
+        const testContainer = document.getElementById('qb-test-container');
+        const summaryCard = document.getElementById('qb-session-summary-card');
+
+        if (setupView) setupView.classList.add('hidden');
+        if (testContainer) testContainer.classList.remove('hidden');
+
+        if (summaryCard) {
+          const subjTitle = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined (RW + Math)');
+          const domainsSummary = activeSession.config.domains.join(', ');
+          const diffSummary = activeSession.config.difficulties.join(', ');
+
+          summaryCard.innerHTML = `
+            <div class="flex items-center justify-between border-b border-[#334155] pb-2">
+              <span class="font-bold text-slate-300">Session Status</span>
+              <span class="font-extrabold text-emerald-400">● ACTIVE SESSION READY</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+              <div><span class="text-slate-400">Questions:</span> <strong class="text-white">${selectedQuestions.length} items</strong></div>
+              <div><span class="text-slate-400">Subject:</span> <strong class="text-sky-300">${subjTitle}</strong></div>
+              <div><span class="text-slate-400">Difficulties:</span> <strong class="text-amber-300">${diffSummary}</strong></div>
+              <div><span class="text-slate-400">Pool Available:</span> <strong class="text-slate-300">${filtered.length} matching</strong></div>
+            </div>
+            <div class="pt-1 text-[11px]">
+              <span class="text-slate-400 block mb-0.5">Active Domains:</span>
+              <span class="text-slate-200 font-medium">${domainsSummary}</span>
+            </div>
+            <div class="pt-2 border-t border-[#334155] text-[10px] text-slate-500 font-mono">
+              sessionStorage.qb_active_session: ${selectedQuestions.length} questions stored. Ready for Step 3 Interface.
+            </div>
+          `;
+        }
+
+        if (typeof showToast === 'function') {
+          showToast("🚀 Session Initialized", `${selectedQuestions.length} practice questions prepared and saved to sessionStorage!`, "success");
+        }
+      },
+
+      returnToSetup() {
+        const setupView = document.getElementById('qb-setup-view');
+        const testContainer = document.getElementById('qb-test-container');
+
+        if (testContainer) testContainer.classList.add('hidden');
+        if (setupView) setupView.classList.remove('hidden');
+
+        this.updateMatchingCount();
+      }
+    };
 
   </script>
 
