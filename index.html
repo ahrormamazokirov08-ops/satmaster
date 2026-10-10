@@ -7017,6 +7017,70 @@
     const vocabDictResponseCache = new Map(); // key: cleanWord.toLowerCase() -> Promise or array of entries
     let currentActiveAudio = null;
     let currentActiveAudioCleanup = null;
+    let currentAudioPlayToken = 0;
+    let mobileAudioUnlocked = false;
+    let sharedVocabAudio = null;
+
+    function getSharedVocabAudio() {
+      if (!sharedVocabAudio && typeof Audio !== 'undefined') {
+        try {
+          sharedVocabAudio = new Audio();
+        } catch (e) {
+          sharedVocabAudio = null;
+        }
+      }
+      return sharedVocabAudio;
+    }
+
+    // Synchronously unlock mobile audio context on user gesture (touch / click)
+    function unlockMobileAudio() {
+      if (mobileAudioUnlocked) return;
+      try {
+        const audioEl = getSharedVocabAudio() || (typeof Audio !== 'undefined' ? new Audio() : null);
+        if (!audioEl) return;
+        audioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        const p = audioEl.play();
+        if (p !== undefined) {
+          p.then(() => {
+            mobileAudioUnlocked = true;
+          }).catch(() => {
+            // Ignore unlock failure, will re-attempt on subsequent taps
+          });
+        }
+      } catch (e) {
+        // Suppress audio context errors
+      }
+    }
+
+    // Unlock on first global touch/click interaction as an extra safeguard
+    if (typeof window !== 'undefined') {
+      const handleFirstGesture = () => {
+        unlockMobileAudio();
+        window.removeEventListener('touchstart', handleFirstGesture);
+        window.removeEventListener('click', handleFirstGesture);
+      };
+      window.addEventListener('touchstart', handleFirstGesture, { passive: true });
+      window.addEventListener('click', handleFirstGesture, { passive: true });
+    }
+
+    function sanitizeAudioUrl(url) {
+      if (!url || typeof url !== 'string') return '';
+      let u = url.trim();
+      if (!u) return '';
+      if (u.startsWith('//')) {
+        u = 'https:' + u;
+      } else if (u.startsWith('http://')) {
+        u = u.replace(/^http:\/\//i, 'https://');
+      }
+      return u;
+    }
+
+    function getGoogleTtsAudioUrl(word, accent = 'US') {
+      const isUK = (accent || '').toUpperCase() === 'UK';
+      const lang = isUK ? 'en-GB' : 'en-US';
+      const clean = (word || '').trim();
+      return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(clean)}`;
+    }
 
     function applyAudioButtonFeedback(btnEl, accent) {
       if (!btnEl) return () => {};
@@ -7035,7 +7099,7 @@
         }
       };
 
-      const safetyTimer = setTimeout(cleanup, 4500);
+      const safetyTimer = setTimeout(cleanup, 8000);
       return () => {
         clearTimeout(safetyTimer);
         cleanup();
@@ -7051,9 +7115,8 @@
         if (Array.isArray(entry.phonetics)) {
           for (const ph of entry.phonetics) {
             if (ph.audio && typeof ph.audio === 'string') {
-              let u = ph.audio.trim();
+              const u = sanitizeAudioUrl(ph.audio);
               if (u) {
-                if (u.startsWith('//')) u = 'https:' + u;
                 urls.push(u);
               }
             }
@@ -7066,7 +7129,7 @@
       if (isUK) {
         // 1. Audio file ending in -uk.mp3
         const matchEndsUk = urls.find(u => /-uk\.mp3$/i.test(u) || u.toLowerCase().endsWith('-uk.mp3'));
-        if (matchEndsUk) return matchEndsUk;
+        if (matchEndsUk) return sanitizeAudioUrl(matchEndsUk);
 
         // 2. Audio file containing "uk" (and not -us / -au)
         const matchContainsUk = urls.find(u => {
@@ -7074,11 +7137,11 @@
           return (lower.includes('-uk.') || lower.includes('_uk_') || lower.includes('/uk') || lower.includes('en-gb') || lower.includes('uk')) &&
                  !lower.includes('-us') && !lower.includes('-au');
         });
-        if (matchContainsUk) return matchContainsUk;
+        if (matchContainsUk) return sanitizeAudioUrl(matchContainsUk);
       } else {
         // 1. Audio file ending in -us.mp3
         const matchEndsUs = urls.find(u => /-us\.mp3$/i.test(u) || u.toLowerCase().endsWith('-us.mp3'));
-        if (matchEndsUs) return matchEndsUs;
+        if (matchEndsUs) return sanitizeAudioUrl(matchEndsUs);
 
         // 2. Audio file containing "us" (and not -uk / -au)
         const matchContainsUs = urls.find(u => {
@@ -7086,12 +7149,12 @@
           return (lower.includes('-us.') || lower.includes('_us_') || lower.includes('/us') || lower.includes('en-us') || lower.includes('us')) &&
                  !lower.includes('-uk') && !lower.includes('-au');
         });
-        if (matchContainsUs) return matchContainsUs;
+        if (matchContainsUs) return sanitizeAudioUrl(matchContainsUs);
       }
 
       // Fallback: any .mp3 in phonetics
       const anyMp3 = urls.find(u => u.toLowerCase().endsWith('.mp3')) || urls[0];
-      return anyMp3 || null;
+      return sanitizeAudioUrl(anyMp3) || null;
     }
 
     async function getDictionaryAudioUrl(word, accent = 'US') {
@@ -7116,7 +7179,11 @@
       } else {
         const fetchPromise = (async () => {
           try {
-            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`);
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+            const fetchOpts = controller ? { signal: controller.signal } : {};
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`, fetchOpts);
+            if (timeoutId) clearTimeout(timeoutId);
             if (!res.ok) return null;
             return await res.json();
           } catch (err) {
@@ -7132,6 +7199,45 @@
       const audioUrl = extractDictionaryAudioUrl(entries, normAccent);
       vocabAudioCache.set(cacheKey, audioUrl);
       return audioUrl;
+    }
+
+    function playAudioStream(url, playToken) {
+      return new Promise((resolve, reject) => {
+        if (!url || playToken !== currentAudioPlayToken) {
+          return reject(new Error('Stale or missing audio stream'));
+        }
+        try {
+          const audio = getSharedVocabAudio() || new Audio();
+          currentActiveAudio = audio;
+          audio.preload = 'auto';
+
+          let settled = false;
+          const finishOnce = (isSuccess, err) => {
+            if (settled) return;
+            settled = true;
+            audio.onended = null;
+            audio.onerror = null;
+            if (currentActiveAudio === audio) {
+              currentActiveAudio = null;
+            }
+            if (isSuccess) resolve();
+            else reject(err || new Error('Audio playback failure'));
+          };
+
+          audio.onended = () => finishOnce(true);
+          audio.onerror = (e) => finishOnce(false, e);
+
+          audio.src = url;
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              finishOnce(false, err);
+            });
+          }
+        } catch (err) {
+          reject(err);
+        }
+      });
     }
 
     function fallbackSpeakWord(word, accent = 'US', cleanup = null) {
@@ -7201,6 +7307,10 @@
       const cleanWord = word.trim();
       if (!cleanWord) return;
 
+      // 1. Synchronously unlock mobile audio context on user gesture
+      unlockMobileAudio();
+
+      const playToken = ++currentAudioPlayToken;
       const targetBtn = btnEl || window.event?.currentTarget || (window.event?.target ? window.event.target.closest('button, span') : null);
 
       if (currentActiveAudioCleanup) {
@@ -7209,6 +7319,8 @@
       }
       if (currentActiveAudio) {
         try {
+          currentActiveAudio.onended = null;
+          currentActiveAudio.onerror = null;
           currentActiveAudio.pause();
           currentActiveAudio.currentTime = 0;
         } catch (e) {}
@@ -7221,37 +7333,41 @@
       const cleanup = applyAudioButtonFeedback(targetBtn, accent);
       currentActiveAudioCleanup = cleanup;
 
+      let playedSuccessfully = false;
+
+      // Step 1: Try Native Dictionary API MP3 via pure HTML5 audio
       try {
-        const audioUrl = await getDictionaryAudioUrl(cleanWord, accent);
-        if (audioUrl) {
-          const audio = new Audio(audioUrl);
-          currentActiveAudio = audio;
+        const dictUrl = await getDictionaryAudioUrl(cleanWord, accent);
+        if (playToken !== currentAudioPlayToken) return;
 
-          audio.onended = () => {
-            cleanup();
-            if (currentActiveAudio === audio) currentActiveAudio = null;
-          };
-
-          audio.onerror = (err) => {
-            console.warn("Native MP3 playback failed, falling back to TTS:", err);
-            if (currentActiveAudio === audio) currentActiveAudio = null;
-            fallbackSpeakWord(cleanWord, accent, cleanup);
-          };
-
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((err) => {
-              console.warn("Audio element autoplay restricted, falling back to TTS:", err);
-              if (currentActiveAudio === audio) currentActiveAudio = null;
-              fallbackSpeakWord(cleanWord, accent, cleanup);
-            });
-          }
-        } else {
-          fallbackSpeakWord(cleanWord, accent, cleanup);
+        if (dictUrl) {
+          await playAudioStream(dictUrl, playToken);
+          playedSuccessfully = true;
         }
       } catch (err) {
-        console.warn("Audio processing error, falling back to TTS:", err);
+        console.warn("Native Dictionary MP3 stream failed, attempting Google TTS:", err);
+      }
+
+      if (playToken !== currentAudioPlayToken) return;
+
+      // Step 2: Primary Fallback — Google Translate direct TTS stream via HTML5 audio
+      if (!playedSuccessfully) {
+        try {
+          const ttsUrl = getGoogleTtsAudioUrl(cleanWord, accent);
+          await playAudioStream(ttsUrl, playToken);
+          playedSuccessfully = true;
+        } catch (err) {
+          console.warn("Google TTS stream failed, attempting speech synthesis:", err);
+        }
+      }
+
+      if (playToken !== currentAudioPlayToken) return;
+
+      // Step 3: Last Resort Fallback — SpeechSynthesis (without noisy alerts)
+      if (!playedSuccessfully) {
         fallbackSpeakWord(cleanWord, accent, cleanup);
+      } else {
+        cleanup();
       }
     }
 
