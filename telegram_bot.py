@@ -1590,6 +1590,34 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
         if not clean_path:
             clean_path = "/"
 
+        # GET /api/tts - Backend audio proxy for open audio streaming without client CORS / WebView blocks
+        if clean_path == "/api/tts":
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            word = qs.get("word", [""])[0].strip()
+            lang = qs.get("lang", ["en-US"])[0].strip()
+            if not word:
+                return self.send_json(400, {"ok": False, "error": "Missing word parameter"})
+            try:
+                enc_word = urllib.parse.quote(word)
+                type_val = "1" if ("gb" in lang.lower() or "uk" in lang.lower()) else "2"
+                tts_url = f"https://dict.youdao.com/dictvoice?audio={enc_word}&type={type_val}"
+                req = urllib.request.Request(
+                    tts_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    audio_bytes = resp.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "audio/mpeg")
+                self.send_header("Content-Length", str(len(audio_bytes)))
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.send_cors_headers()
+                self.end_headers()
+                self.wfile.write(audio_bytes)
+                return
+            except Exception as e:
+                return self.send_json(502, {"ok": False, "error": f"TTS proxy failed: {str(e)}"})
+
         # 0. GET /api/auth/verify - Verify student exists and belongs to active group
         if clean_path == "/api/auth/verify":
             qs = urllib.parse.parse_qs(parsed_path.query)

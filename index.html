@@ -6,11 +6,14 @@
   <meta name="theme-color" content="#020617" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>SATMaster — Digital SAT Class & Auth Suite</title>
-  <!-- Telegram WebApp SDK -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <!-- Telegram WebApp SDK with Cache Busting -->
+  <script src="https://telegram.org/js/telegram-web-app.js?v=1.0.5"></script>
+  <!-- Tailwind CSS CDN with Cache Busting -->
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js?v=1.0.5"></script>
   <style>
     html, body {
       touch-action: manipulation;
@@ -1769,8 +1772,17 @@
                   <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">SAT Reading Context:</span>
                   <p id="fc-sentence" class="text-[11px] text-slate-300 italic mt-0.5 bg-slate-950 p-2.5 rounded-lg border border-slate-800">"The researcher adopted a pragmatic approach to the data analysis, focusing strictly on empirical findings."</p>
                 </div>
-                <div class="flex gap-4 text-[11px]">
+                <div class="flex items-center justify-between text-[11px]">
                   <div><span class="text-slate-400">Synonyms:</span> <span id="fc-synonyms" class="text-purple-300">practical, realistic, sensible</span></div>
+                  <!-- Back Side Companion Audio Buttons -->
+                  <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                    <button type="button" onclick="speakCurrentFlashcardWord('US', this)" title="Listen (US 🇺🇸)" class="px-2 py-0.5 rounded-md bg-slate-950/90 hover:bg-purple-600/40 text-purple-300 border border-slate-800 text-[10px] font-bold transition-all flex items-center gap-1 hover:border-purple-400">
+                      <span>🔊</span><span>🇺🇸</span>
+                    </button>
+                    <button type="button" onclick="speakCurrentFlashcardWord('UK', this)" title="Listen (UK 🇬🇧)" class="px-2 py-0.5 rounded-md bg-slate-950/90 hover:bg-indigo-600/40 text-indigo-300 border border-slate-800 text-[10px] font-bold transition-all flex items-center gap-1 hover:border-indigo-400">
+                      <span>🔊</span><span>🇬🇧</span>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="w-full text-center text-[10px] text-slate-500">SAT Context Flashcard</div>
@@ -4572,6 +4584,14 @@
 
     // TOAST NOTIFICATION SYSTEM
     function showToast(title, message, type = 'success') {
+      // Completely suppress any audio unavailable or unsupported Web Speech toasts permanently
+      if (
+        (title && /audio/i.test(title)) ||
+        (message && (/web speech/i.test(message) || /audio/i.test(message)))
+      ) {
+        console.warn("Suppressed audio toast notification:", title, message);
+        return;
+      }
       const container = document.getElementById('toast-container');
       if (!container) return;
 
@@ -7075,11 +7095,13 @@
       return u;
     }
 
-    function getGoogleTtsAudioUrl(word, accent = 'US') {
-      const isUK = (accent || '').toUpperCase() === 'UK';
-      const lang = isUK ? 'en-GB' : 'en-US';
+    function getOpenDictAudioUrl(word, accent = 'US') {
       const clean = (word || '').trim();
-      return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(clean)}`;
+      if (!clean) return '';
+      const isUK = (accent || '').toUpperCase() === 'UK';
+      // Open educational audio endpoint (type 1 = UK, type 2 = US)
+      // Free of Android WebView 403 / CORS restrictions
+      return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(clean)}&type=${isUK ? 1 : 2}`;
     }
 
     function applyAudioButtonFeedback(btnEl, accent) {
@@ -7180,14 +7202,15 @@
         const fetchPromise = (async () => {
           try {
             const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-            const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+            // 1800ms abort so when Cloudflare 522 occurs, it rapidly shifts to open audio stream
+            const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
             const fetchOpts = controller ? { signal: controller.signal } : {};
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`, fetchOpts);
             if (timeoutId) clearTimeout(timeoutId);
             if (!res.ok) return null;
             return await res.json();
           } catch (err) {
-            console.warn("Dictionary API fetch error, fallback to TTS:", err);
+            console.warn("Dictionary API fetch error, fallback to open audio stream:", err);
             return null;
           }
         })();
@@ -7263,7 +7286,6 @@
         let chosenVoice = null;
         if (voices.length > 0) {
           if (isUK) {
-            // Filter for preferred soft UK voices: "Google UK English Female", "Daniel", "Serena", "Oliver", or lang en-GB
             chosenVoice = voices.find(v => v.name.includes("Google UK English Female")) ||
                           voices.find(v => v.name.toLowerCase().includes("daniel")) ||
                           voices.find(v => v.name.toLowerCase().includes("serena")) ||
@@ -7271,7 +7293,6 @@
                           voices.find(v => v.lang === 'en-GB') ||
                           voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith('en-gb'));
           } else {
-            // Filter for preferred soft US voices: "Google US English", "Samantha", "Alex", "Ava", or lang en-US
             chosenVoice = voices.find(v => v.name.includes("Google US English")) ||
                           voices.find(v => v.name.toLowerCase().includes("samantha")) ||
                           voices.find(v => v.name.toLowerCase().includes("alex")) ||
@@ -7335,7 +7356,7 @@
 
       let playedSuccessfully = false;
 
-      // Step 1: Try Native Dictionary API MP3 via pure HTML5 audio
+      // Tier 1: Try Native Dictionary API MP3 via pure HTML5 audio
       try {
         const dictUrl = await getDictionaryAudioUrl(cleanWord, accent);
         if (playToken !== currentAudioPlayToken) return;
@@ -7345,27 +7366,48 @@
           playedSuccessfully = true;
         }
       } catch (err) {
-        console.warn("Native Dictionary MP3 stream failed, attempting Google TTS:", err);
+        console.warn("Native Dictionary MP3 stream failed, falling back to open audio stream:", err);
       }
 
       if (playToken !== currentAudioPlayToken) return;
 
-      // Step 2: Primary Fallback — Google Translate direct TTS stream via HTML5 audio
+      // Tier 2: Open Audio Stream (Dict.org / open educational audio, NO 403 or CORS blocks)
       if (!playedSuccessfully) {
         try {
-          const ttsUrl = getGoogleTtsAudioUrl(cleanWord, accent);
-          await playAudioStream(ttsUrl, playToken);
-          playedSuccessfully = true;
+          const openAudioUrl = getOpenDictAudioUrl(cleanWord, accent);
+          if (openAudioUrl) {
+            await playAudioStream(openAudioUrl, playToken);
+            playedSuccessfully = true;
+          }
         } catch (err) {
-          console.warn("Google TTS stream failed, attempting speech synthesis:", err);
+          console.warn("Open audio stream failed, falling back to backend proxy:", err);
         }
       }
 
       if (playToken !== currentAudioPlayToken) return;
 
-      // Step 3: Last Resort Fallback — SpeechSynthesis (without noisy alerts)
+      // Tier 3: Backend Audio Proxy (/api/tts)
       if (!playedSuccessfully) {
-        fallbackSpeakWord(cleanWord, accent, cleanup);
+        try {
+          const isUK = (accent || '').toUpperCase() === 'UK';
+          const proxyUrl = `/api/tts?word=${encodeURIComponent(cleanWord)}&lang=${isUK ? 'en-GB' : 'en-US'}`;
+          await playAudioStream(proxyUrl, playToken);
+          playedSuccessfully = true;
+        } catch (err) {
+          console.warn("Backend audio proxy failed, falling back to speech synthesis:", err);
+        }
+      }
+
+      if (playToken !== currentAudioPlayToken) return;
+
+      // Tier 4: SpeechSynthesis Last Resort (fails completely silently, NO toast notifications)
+      if (!playedSuccessfully) {
+        try {
+          fallbackSpeakWord(cleanWord, accent, cleanup);
+        } catch (err) {
+          console.warn("Speech synthesis error, failing silently:", err);
+          cleanup();
+        }
       } else {
         cleanup();
       }
@@ -7383,8 +7425,10 @@
       const targetBtn = btnEl || window.event?.currentTarget || (window.event?.target ? window.event.target.closest('button, span') : null);
       const activeList = getWordsForLesson(currentActiveLesson);
       const w = activeList[currentFlashcardIdx];
-      if (w && w.word) {
-        speakWord(w.word, accent, targetBtn);
+      const wordFromDom = document.getElementById('fc-word')?.innerText?.trim();
+      const wordToSpeak = (w && w.word) ? w.word : wordFromDom;
+      if (wordToSpeak) {
+        speakWord(wordToSpeak, accent, targetBtn);
       }
     }
 
