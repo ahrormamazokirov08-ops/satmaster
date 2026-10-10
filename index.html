@@ -7032,81 +7032,12 @@
       return (str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
-    // In-memory audio URL and dictionary API caches for instant repeat playback
-    const vocabAudioCache = new Map(); // key: `${cleanWord.toLowerCase()}__${accent.toUpperCase()}` -> string URL or null
-    const vocabDictResponseCache = new Map(); // key: cleanWord.toLowerCase() -> Promise or array of entries
-    let currentActiveAudio = null;
+    // Instant Synchronous Audio Engine for Telegram Mobile WebViews
     let currentActiveAudioCleanup = null;
-    let currentAudioPlayToken = 0;
-    let mobileAudioUnlocked = false;
-    let sharedVocabAudio = null;
-
-    function getSharedVocabAudio() {
-      if (!sharedVocabAudio && typeof Audio !== 'undefined') {
-        try {
-          sharedVocabAudio = new Audio();
-        } catch (e) {
-          sharedVocabAudio = null;
-        }
-      }
-      return sharedVocabAudio;
-    }
-
-    // Synchronously unlock mobile audio context on user gesture (touch / click)
-    function unlockMobileAudio() {
-      if (mobileAudioUnlocked) return;
-      try {
-        const audioEl = getSharedVocabAudio() || (typeof Audio !== 'undefined' ? new Audio() : null);
-        if (!audioEl) return;
-        audioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-        const p = audioEl.play();
-        if (p !== undefined) {
-          p.then(() => {
-            mobileAudioUnlocked = true;
-          }).catch(() => {
-            // Ignore unlock failure, will re-attempt on subsequent taps
-          });
-        }
-      } catch (e) {
-        // Suppress audio context errors
-      }
-    }
-
-    // Unlock on first global touch/click interaction as an extra safeguard
-    if (typeof window !== 'undefined') {
-      const handleFirstGesture = () => {
-        unlockMobileAudio();
-        window.removeEventListener('touchstart', handleFirstGesture);
-        window.removeEventListener('click', handleFirstGesture);
-      };
-      window.addEventListener('touchstart', handleFirstGesture, { passive: true });
-      window.addEventListener('click', handleFirstGesture, { passive: true });
-    }
-
-    function sanitizeAudioUrl(url) {
-      if (!url || typeof url !== 'string') return '';
-      let u = url.trim();
-      if (!u) return '';
-      if (u.startsWith('//')) {
-        u = 'https:' + u;
-      } else if (u.startsWith('http://')) {
-        u = u.replace(/^http:\/\//i, 'https://');
-      }
-      return u;
-    }
-
-    function getOpenDictAudioUrl(word, accent = 'US') {
-      const clean = (word || '').trim();
-      if (!clean) return '';
-      const isUK = (accent || '').toUpperCase() === 'UK';
-      // Open educational audio endpoint (type 1 = UK, type 2 = US)
-      // Free of Android WebView 403 / CORS restrictions
-      return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(clean)}&type=${isUK ? 1 : 2}`;
-    }
 
     function applyAudioButtonFeedback(btnEl, accent) {
       if (!btnEl) return () => {};
-      const isUK = (accent || '').toUpperCase() === 'UK';
+      const isUK = (accent || '').toLowerCase() === 'uk';
       const animClass = isUK ? 'audio-btn-playing-uk' : 'audio-btn-playing';
       btnEl.classList.add(animClass);
 
@@ -7121,295 +7052,88 @@
         }
       };
 
-      const safetyTimer = setTimeout(cleanup, 8000);
+      const safetyTimer = setTimeout(cleanup, 6000);
       return () => {
         clearTimeout(safetyTimer);
         cleanup();
       };
     }
 
-    function extractDictionaryAudioUrl(entries, accent = 'US') {
-      if (!Array.isArray(entries)) return null;
-      const isUK = (accent || '').toUpperCase() === 'UK';
-      const urls = [];
-
-      for (const entry of entries) {
-        if (Array.isArray(entry.phonetics)) {
-          for (const ph of entry.phonetics) {
-            if (ph.audio && typeof ph.audio === 'string') {
-              const u = sanitizeAudioUrl(ph.audio);
-              if (u) {
-                urls.push(u);
-              }
-            }
-          }
-        }
-      }
-
-      if (urls.length === 0) return null;
-
-      if (isUK) {
-        // 1. Audio file ending in -uk.mp3
-        const matchEndsUk = urls.find(u => /-uk\.mp3$/i.test(u) || u.toLowerCase().endsWith('-uk.mp3'));
-        if (matchEndsUk) return sanitizeAudioUrl(matchEndsUk);
-
-        // 2. Audio file containing "uk" (and not -us / -au)
-        const matchContainsUk = urls.find(u => {
-          const lower = u.toLowerCase();
-          return (lower.includes('-uk.') || lower.includes('_uk_') || lower.includes('/uk') || lower.includes('en-gb') || lower.includes('uk')) &&
-                 !lower.includes('-us') && !lower.includes('-au');
-        });
-        if (matchContainsUk) return sanitizeAudioUrl(matchContainsUk);
-      } else {
-        // 1. Audio file ending in -us.mp3
-        const matchEndsUs = urls.find(u => /-us\.mp3$/i.test(u) || u.toLowerCase().endsWith('-us.mp3'));
-        if (matchEndsUs) return sanitizeAudioUrl(matchEndsUs);
-
-        // 2. Audio file containing "us" (and not -uk / -au)
-        const matchContainsUs = urls.find(u => {
-          const lower = u.toLowerCase();
-          return (lower.includes('-us.') || lower.includes('_us_') || lower.includes('/us') || lower.includes('en-us') || lower.includes('us')) &&
-                 !lower.includes('-uk') && !lower.includes('-au');
-        });
-        if (matchContainsUs) return sanitizeAudioUrl(matchContainsUs);
-      }
-
-      // Fallback: any .mp3 in phonetics
-      const anyMp3 = urls.find(u => u.toLowerCase().endsWith('.mp3')) || urls[0];
-      return sanitizeAudioUrl(anyMp3) || null;
-    }
-
-    async function getDictionaryAudioUrl(word, accent = 'US') {
-      const cleanWord = (word || '').trim();
-      if (!cleanWord) return null;
-
-      const normWord = cleanWord.toLowerCase();
-      const normAccent = (accent || 'US').toUpperCase();
-      const cacheKey = `${normWord}__${normAccent}`;
-
-      if (vocabAudioCache.has(cacheKey)) {
-        return vocabAudioCache.get(cacheKey);
-      }
-
-      let entries = null;
-      if (vocabDictResponseCache.has(normWord)) {
-        try {
-          entries = await vocabDictResponseCache.get(normWord);
-        } catch (e) {
-          entries = null;
-        }
-      } else {
-        const fetchPromise = (async () => {
-          try {
-            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-            // 1800ms abort so when Cloudflare 522 occurs, it rapidly shifts to open audio stream
-            const timeoutId = controller ? setTimeout(() => controller.abort(), 1800) : null;
-            const fetchOpts = controller ? { signal: controller.signal } : {};
-            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`, fetchOpts);
-            if (timeoutId) clearTimeout(timeoutId);
-            if (!res.ok) return null;
-            return await res.json();
-          } catch (err) {
-            console.warn("Dictionary API fetch error, fallback to open audio stream:", err);
-            return null;
-          }
-        })();
-
-        vocabDictResponseCache.set(normWord, fetchPromise);
-        entries = await fetchPromise;
-      }
-
-      const audioUrl = extractDictionaryAudioUrl(entries, normAccent);
-      vocabAudioCache.set(cacheKey, audioUrl);
-      return audioUrl;
-    }
-
-    function playAudioStream(url, playToken) {
-      return new Promise((resolve, reject) => {
-        if (!url || playToken !== currentAudioPlayToken) {
-          return reject(new Error('Stale or missing audio stream'));
-        }
-        try {
-          const audio = getSharedVocabAudio() || new Audio();
-          currentActiveAudio = audio;
-          audio.preload = 'auto';
-
-          let settled = false;
-          const finishOnce = (isSuccess, err) => {
-            if (settled) return;
-            settled = true;
-            audio.onended = null;
-            audio.onerror = null;
-            if (currentActiveAudio === audio) {
-              currentActiveAudio = null;
-            }
-            if (isSuccess) resolve();
-            else reject(err || new Error('Audio playback failure'));
-          };
-
-          audio.onended = () => finishOnce(true);
-          audio.onerror = (e) => finishOnce(false, e);
-
-          audio.src = url;
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((err) => {
-              finishOnce(false, err);
-            });
-          }
-        } catch (err) {
-          reject(err);
-        }
-      });
-    }
-
-    function fallbackSpeakWord(word, accent = 'US', cleanup = null) {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-        if (typeof cleanup === 'function') cleanup();
-        return;
-      }
-      try {
-        window.speechSynthesis.cancel();
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-
-        const utterance = new SpeechSynthesisUtterance(word);
-        utterance.rate = 0.88;
-        utterance.pitch = 1.0;
-
-        const isUK = (accent || '').toUpperCase() === 'UK';
-        const targetLang = isUK ? 'en-GB' : 'en-US';
-        utterance.lang = targetLang;
-
-        const voices = window.speechSynthesis.getVoices() || [];
-        let chosenVoice = null;
-        if (voices.length > 0) {
-          if (isUK) {
-            chosenVoice = voices.find(v => v.name.includes("Google UK English Female")) ||
-                          voices.find(v => v.name.toLowerCase().includes("daniel")) ||
-                          voices.find(v => v.name.toLowerCase().includes("serena")) ||
-                          voices.find(v => v.name.toLowerCase().includes("oliver")) ||
-                          voices.find(v => v.lang === 'en-GB') ||
-                          voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith('en-gb'));
-          } else {
-            chosenVoice = voices.find(v => v.name.includes("Google US English")) ||
-                          voices.find(v => v.name.toLowerCase().includes("samantha")) ||
-                          voices.find(v => v.name.toLowerCase().includes("alex")) ||
-                          voices.find(v => v.name.toLowerCase().includes("ava")) ||
-                          voices.find(v => v.lang === 'en-US') ||
-                          voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith('en-us'));
-          }
-        }
-        if (chosenVoice) {
-          utterance.voice = chosenVoice;
-        }
-
-        utterance.onend = () => {
-          if (typeof cleanup === 'function') cleanup();
-        };
-        utterance.onerror = (err) => {
-          console.warn("Speech synthesis utterance error:", err);
-          if (typeof cleanup === 'function') cleanup();
-        };
-
-        window.speechSynthesis.speak(utterance);
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (err) {
-        console.warn("Speech synthesis error", err);
-        if (typeof cleanup === 'function') cleanup();
-      }
-    }
-
-    async function speakWord(word, accent = 'US', btnEl = null) {
+    function speakWord(word, accent = 'US', btnEl = null) {
       if (!word || typeof word !== 'string') return;
-      const cleanWord = word.trim();
-      if (!cleanWord) return;
+      const rawWord = word.trim();
+      if (!rawWord) return;
 
-      // 1. Synchronously unlock mobile audio context on user gesture
-      unlockMobileAudio();
+      const normAccent = (accent || 'US').toLowerCase();
+      const isUK = normAccent === 'uk';
+      const cleanWord = encodeURIComponent(rawWord.toLowerCase());
 
-      const playToken = ++currentAudioPlayToken;
       const targetBtn = btnEl || window.event?.currentTarget || (window.event?.target ? window.event.target.closest('button, span') : null);
 
       if (currentActiveAudioCleanup) {
         try { currentActiveAudioCleanup(); } catch (e) {}
         currentActiveAudioCleanup = null;
       }
-      if (currentActiveAudio) {
-        try {
-          currentActiveAudio.onended = null;
-          currentActiveAudio.onerror = null;
-          currentActiveAudio.pause();
-          currentActiveAudio.currentTime = 0;
-        } catch (e) {}
-        currentActiveAudio = null;
-      }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        try { window.speechSynthesis.cancel(); } catch (e) {}
-      }
-
       const cleanup = applyAudioButtonFeedback(targetBtn, accent);
       currentActiveAudioCleanup = cleanup;
 
-      let playedSuccessfully = false;
+      // Single persistent audio element (required for instant mobile Telegram WebView playback)
+      if (!window.satAudio) {
+        window.satAudio = new Audio();
+      }
 
-      // Tier 1: Try Native Dictionary API MP3 via pure HTML5 audio
+      // Stop any existing stream
       try {
-        const dictUrl = await getDictionaryAudioUrl(cleanWord, accent);
-        if (playToken !== currentAudioPlayToken) return;
+        window.satAudio.pause();
+        window.satAudio.currentTime = 0;
+      } catch (e) {}
 
-        if (dictUrl) {
-          await playAudioStream(dictUrl, playToken);
-          playedSuccessfully = true;
+      window.satAudio.onended = () => {
+        cleanup();
+        if (currentActiveAudioCleanup === cleanup) {
+          currentActiveAudioCleanup = null;
         }
-      } catch (err) {
-        console.warn("Native Dictionary MP3 stream failed, falling back to open audio stream:", err);
-      }
+      };
 
-      if (playToken !== currentAudioPlayToken) return;
-
-      // Tier 2: Open Audio Stream (Dict.org / open educational audio, NO 403 or CORS blocks)
-      if (!playedSuccessfully) {
-        try {
-          const openAudioUrl = getOpenDictAudioUrl(cleanWord, accent);
-          if (openAudioUrl) {
-            await playAudioStream(openAudioUrl, playToken);
-            playedSuccessfully = true;
-          }
-        } catch (err) {
-          console.warn("Open audio stream failed, falling back to backend proxy:", err);
-        }
-      }
-
-      if (playToken !== currentAudioPlayToken) return;
-
-      // Tier 3: Backend Audio Proxy (/api/tts)
-      if (!playedSuccessfully) {
-        try {
-          const isUK = (accent || '').toUpperCase() === 'UK';
-          const proxyUrl = `/api/tts?word=${encodeURIComponent(cleanWord)}&lang=${isUK ? 'en-GB' : 'en-US'}`;
-          await playAudioStream(proxyUrl, playToken);
-          playedSuccessfully = true;
-        } catch (err) {
-          console.warn("Backend audio proxy failed, falling back to speech synthesis:", err);
-        }
-      }
-
-      if (playToken !== currentAudioPlayToken) return;
-
-      // Tier 4: SpeechSynthesis Last Resort (fails completely silently, NO toast notifications)
-      if (!playedSuccessfully) {
-        try {
-          fallbackSpeakWord(cleanWord, accent, cleanup);
-        } catch (err) {
-          console.warn("Speech synthesis error, failing silently:", err);
+      let fallbackTried = false;
+      window.satAudio.onerror = (err) => {
+        if (!fallbackTried) {
+          fallbackTried = true;
+          const proxyUrl = `/api/tts?word=${cleanWord}&lang=${isUK ? 'en-GB' : 'en-US'}`;
+          window.satAudio.src = proxyUrl;
+          window.satAudio.play().catch(e => {
+            console.warn('Backend proxy play failed:', e);
+            cleanup();
+          });
+        } else {
+          console.warn('Audio playback error:', err);
           cleanup();
         }
-      } else {
-        cleanup();
+      };
+
+      // Direct open audio endpoint (No CORS / 403 blocks in mobile WebViews)
+      const primaryUrl = isUK
+        ? `https://dict.youdao.com/dictvoice?audio=${cleanWord}&type=1`
+        : `https://dict.youdao.com/dictvoice?audio=${cleanWord}&type=2`;
+
+      // Synchronous play immediately on click to preserve mobile gesture activation
+      window.satAudio.src = primaryUrl;
+      const playPromise = window.satAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Audio play failed:', err);
+          if (!fallbackTried) {
+            fallbackTried = true;
+            const proxyUrl = `/api/tts?word=${cleanWord}&lang=${isUK ? 'en-GB' : 'en-US'}`;
+            window.satAudio.src = proxyUrl;
+            window.satAudio.play().catch(proxyErr => {
+              console.warn('Backend proxy play failed:', proxyErr);
+              cleanup();
+            });
+          } else {
+            cleanup();
+          }
+        });
       }
     }
 
@@ -7430,12 +7154,6 @@
       if (wordToSpeak) {
         speakWord(wordToSpeak, accent, targetBtn);
       }
-    }
-
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = function() {
-        window.speechSynthesis.getVoices();
-      };
     }
 
     function renderLessonWordList(lessonId) {
