@@ -10,8 +10,6 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>SATMaster — Digital SAT Class & Auth Suite</title>
-  <!-- Telegram WebApp SDK with Cache Busting -->
-  <script src="https://telegram.org/js/telegram-web-app.js?v=1.0.5"></script>
   <!-- Tailwind CSS CDN with Cache Busting -->
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js?v=1.0.5"></script>
   <style>
@@ -202,14 +200,14 @@
       </button>
     </nav>
 
-    <!-- User Profile Status Bar (Telegram Authenticated) -->
+    <!-- User Profile Status Bar -->
     <div class="flex items-center gap-2" id="user-status-bar">
       <div class="text-right hidden sm:block">
         <span class="text-xs font-bold text-white block" id="display-user-name">Authenticating...</span>
-        <span class="text-[10px] text-slate-400 font-medium" id="display-user-role">Telegram Bot Session</span>
+        <span class="text-[10px] text-slate-400 font-medium" id="display-user-role">Web Session</span>
       </div>
       <button type="button" onclick="showSessionInfoModal()" id="btn-session-info" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold border border-slate-700 flex items-center gap-1.5">
-        <span>✈️ Bot Session</span>
+        <span>👤 Session</span>
       </button>
       <button type="button" onclick="logoutUser()" id="btn-logout" class="hidden px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-xs font-semibold border border-rose-800/40">
         Exit
@@ -2348,8 +2346,8 @@
     <div class="max-w-md w-full p-6 rounded-2xl border border-sky-500/30 bg-slate-900 space-y-4 text-left shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
         <div class="flex items-center gap-2">
-          <span class="text-xl">✈️</span>
-          <h3 class="text-base font-bold text-white">Telegram Bot Session</h3>
+          <span class="text-xl">👤</span>
+          <h3 class="text-base font-bold text-white">Active Session</h3>
         </div>
         <button onclick="closeSessionInfoModal()" class="text-slate-400 hover:text-white">✕</button>
       </div>
@@ -3136,26 +3134,7 @@
       // 0. Activate Checking state on splash screen immediately
       showSplashChecking();
 
-      // 1. Check for Telegram WebApp environment
-      let tgUser = null;
-      if (window.Telegram && window.Telegram.WebApp) {
-        try {
-          window.Telegram.WebApp.ready();
-          if (typeof window.Telegram.WebApp.expand === 'function') {
-            window.Telegram.WebApp.expand();
-          }
-          if (typeof window.Telegram.WebApp.enableClosingConfirmation === 'function') {
-            window.Telegram.WebApp.enableClosingConfirmation();
-          }
-          if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-            tgUser = window.Telegram.WebApp.initDataUnsafe.user;
-          }
-        } catch(e) {
-          console.warn('Telegram WebApp setup notice:', e);
-        }
-      }
-
-      // 2. Check URL Query Parameters: ?role=student&uid=TG123&name=Alex+Chen&class=SAT-Group-A&admin=true
+      // 1. Check URL Query Parameters: ?role=student&uid=TG123&name=Alex+Chen&class=SAT-Group-A&admin=true
       const params = new URLSearchParams(window.location.search);
       const paramRole = params.get('role');
       const paramUid = params.get('uid') || params.get('id');
@@ -3165,15 +3144,15 @@
 
       let candidate = null;
       if (paramRole || paramUid || paramAdmin) {
-        // Authenticate from incoming Telegram link or explicit query
+        // Authenticate from incoming URL query parameters
         let role = paramRole === 'teacher' ? 'teacher' : 'student';
-        const rawCandidateUid = paramUid || (tgUser ? `TG${tgUser.id}` : '');
+        const rawCandidateUid = paramUid || '';
         const cleanCandidateUid = String(rawCandidateUid).replace(/^TG/i, '');
-        if (paramAdmin === 'true' || paramRole === 'admin' || cleanCandidateUid === '7957347033' || (tgUser && String(tgUser.id) === '7957347033')) {
+        if (paramAdmin === 'true' || paramRole === 'admin' || cleanCandidateUid === '7957347033') {
           role = 'admin';
         }
-        const name = paramName || (tgUser ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim() : (role === 'admin' ? 'SAT Admin (Owner)' : (role === 'teacher' ? 'SAT Instructor' : 'Student User')));
-        const uid = paramUid || (tgUser ? `TG${tgUser.id}` : `STU${Math.floor(100000 + Math.random() * 900000)}`);
+        const name = paramName || (role === 'admin' ? 'SAT Admin (Owner)' : (role === 'teacher' ? 'SAT Instructor' : 'Student User'));
+        const uid = paramUid || `STU${Math.floor(100000 + Math.random() * 900000)}`;
         const className = paramClass || (role === 'student' ? 'SAT Prep Cohort' : 'Staff');
 
         candidate = {
@@ -3182,28 +3161,15 @@
           uid: uid,
           name: name,
           className: className,
-          source: tgUser ? 'telegram_webapp' : 'telegram_link'
+          source: 'browser_link'
         };
         // Immediately persist candidate to dual storage so subsequent refreshes or navigation retain session!
         saveSessionToStorage(candidate);
       } else {
-        // 3. Fallback: check persistent dual storage (localStorage + sessionStorage)
+        // 2. Fallback: check persistent dual storage (localStorage + sessionStorage)
         const stored = getStoredSession();
         if (stored && stored.isLoggedIn && stored.uid) {
           candidate = stored;
-        } else if (tgUser) {
-          // Telegram WebApp initData fallback when URL params are stripped
-          const tgUid = `TG${tgUser.id}`;
-          const isOwner = String(tgUser.id) === '7957347033';
-          candidate = {
-            isLoggedIn: true,
-            role: isOwner ? 'admin' : 'student',
-            uid: tgUid,
-            name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Telegram Student',
-            className: isOwner ? 'Staff' : 'SAT Prep Cohort',
-            source: 'telegram_webapp'
-          };
-          saveSessionToStorage(candidate);
         }
       }
 
@@ -3356,7 +3322,7 @@
         }
       } else {
         if (displayUser) displayUser.innerText = 'Guest (Not Linked)';
-        if (displayRole) displayRole.innerText = 'Open via Telegram Bot';
+        if (displayRole) displayRole.innerText = 'Open via Web Link';
         if (btnLogout) btnLogout.classList.add('hidden');
       }
 
@@ -3638,7 +3604,7 @@
           </div>
         </div>
         <p class="text-[11px] text-slate-400 leading-relaxed">
-          💡 This session was automatically established via your Telegram Bot. Daily test limits and gradebook submissions are keyed directly to your unique ID.
+          💡 This session is authenticated for your SAT account. Daily test limits and gradebook submissions are keyed directly to your unique ID.
         </p>
       `;
 

@@ -501,9 +501,7 @@ class TelegramBotClient:
 
 
 def make_url_button(label, url):
-    """Telegram inline buttons strictly require https for web_app. For http, use url."""
-    if url.startswith("https://"):
-        return {"text": label, "web_app": {"url": url}}
+    """Return standard browser URL inline button."""
     return {"text": label, "url": url}
 
 def generate_student_link(web_base_url, student_id, name, class_name):
@@ -614,14 +612,13 @@ def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False
         "👉 Tap a button below to open your tests and practice on any phone or computer:"
     )
 
-    buttons = []
-    if student_link.startswith("https://"):
-        buttons.append([{"text": "📱 Open in Telegram (App)", "web_app": {"url": student_link}}])
-    buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": student_link}])
-    buttons.append([
-        {"text": "✏️ Update Name", "callback_data": "reset_role"},
-        {"text": "🔄 Refresh Link", "callback_data": "relink_student"}
-    ])
+    buttons = [
+        [{"text": "🚀 Open Web App (Safari / Chrome)", "url": student_link}],
+        [
+            {"text": "✏️ Update Name", "callback_data": "reset_role"},
+            {"text": "🔄 Refresh Link", "callback_data": "relink_student"}
+        ]
+    ]
 
     keyboard = {"inline_keyboard": buttons}
     res = bot.send_message(chat_id, msg, reply_markup=keyboard)
@@ -666,10 +663,9 @@ def send_admin_hub(bot, chat_id, config, db):
         f"🔗 <b>Admin Platform Portal:</b>\n{admin_link}"
     )
 
-    admin_buttons = []
-    if admin_link.startswith("https://"):
-        admin_buttons.append([{"text": "👑 Open Admin App (Telegram)", "web_app": {"url": admin_link}}])
-    admin_buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": admin_link}])
+    admin_buttons = [
+        [{"text": "👑 Open Admin Portal (Safari / Chrome)", "url": admin_link}]
+    ]
     admin_buttons.extend([
         [
             {"text": "🏫 View Groups", "callback_data": "cmd_groups"},
@@ -710,14 +706,13 @@ def send_teacher_hub(bot, chat_id, teacher_record, config, db):
         f"🔗 <b>Teacher Workspace:</b>\n{teacher_link}"
     )
 
-    t_buttons = []
-    if teacher_link.startswith("https://"):
-        t_buttons.append([{"text": "👨‍🏫 Open Teacher App (Telegram)", "web_app": {"url": teacher_link}}])
-    t_buttons.append([{"text": "🌐 Open in Safari / Chrome Browser", "url": teacher_link}])
-    t_buttons.append([
-        {"text": "👥 My Students", "callback_data": "cmd_students"},
-        {"text": "📊 My Group Stats", "callback_data": "cmd_stats"}
-    ])
+    t_buttons = [
+        [{"text": "👨‍🏫 Open Teacher Portal (Safari / Chrome)", "url": teacher_link}],
+        [
+            {"text": "👥 My Students", "callback_data": "cmd_students"},
+            {"text": "📊 My Group Stats", "callback_data": "cmd_stats"}
+        ]
+    ]
 
     keyboard = {"inline_keyboard": t_buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
@@ -810,10 +805,9 @@ def handle_update(bot, update, config, db):
                 "👉 <i>To authenticate directly in this Telegram bot, send:</i>\n"
                 "<code>/admin satmaster2026</code>"
             )
-            buttons = []
-            if teacher_link.startswith("https://"):
-                buttons.append([{"text": "👨‍🏫 Open Teacher App (Telegram)", "web_app": {"url": teacher_link}}])
-            buttons.append([{"text": "🌐 Open Teacher Dashboard in Browser", "url": teacher_link}])
+            buttons = [
+                [{"text": "🌐 Open Teacher Dashboard (Safari / Chrome)", "url": teacher_link}]
+            ]
             bot.send_message(chat_id, msg, reply_markup={"inline_keyboard": buttons})
             return
 

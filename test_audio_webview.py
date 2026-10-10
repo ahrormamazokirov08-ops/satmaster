@@ -97,9 +97,9 @@ def test_instant_audio_webview():
     print("\n--- Test 6: Cache-Busting Meta Headers & Version Queries ---")
     assert 'meta http-equiv="Cache-Control"' in html, "Missing Cache-Control meta tag in head"
     assert 'meta http-equiv="Pragma"' in html, "Missing Pragma meta tag in head"
-    assert "telegram-web-app.js?v=1.0.5" in html, "Missing ?v=1.0.5 on telegram-web-app.js"
+    assert "telegram-web-app.js" not in html, "telegram-web-app.js must be decoupled from index.html"
     assert "tailwindcss.min.js?v=1.0.5" in html, "Missing ?v=1.0.5 on tailwindcss.min.js"
-    print("✅ Cache-busting meta headers and ?v=1.0.5 query parameters verified: PASS")
+    print("✅ Cache-busting meta headers and decoupled WebApp SDK verified: PASS")
 
     print("\n🎉 ALL INSTANT AUDIO & TELEGRAM WEBVIEW TESTS PASSED!")
 
