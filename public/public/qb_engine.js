@@ -157,9 +157,9 @@ window.qbEngine = {
       const tab = document.getElementById(`qb-tab-${s}`);
       if (tab) {
         if (s === subj) {
-          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-md";
+          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm";
         } else {
-          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50";
         }
       }
     });
@@ -262,9 +262,9 @@ window.qbEngine = {
 
   syncDifficultyUI() {
     const colorConfigs = {
-      Easy: { active: 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300', dot: 'bg-emerald-400' },
-      Medium: { active: 'bg-amber-500/15 border-amber-500/50 text-amber-300', dot: 'bg-amber-400' },
-      Hard: { active: 'bg-rose-500/15 border-rose-500/50 text-rose-300', dot: 'bg-rose-400' }
+      Easy: { active: 'bg-emerald-50 border-emerald-400 text-emerald-800 font-bold', dot: 'bg-emerald-500' },
+      Medium: { active: 'bg-amber-50 border-amber-400 text-amber-800 font-bold', dot: 'bg-amber-500' },
+      Hard: { active: 'bg-rose-50 border-rose-400 text-rose-800 font-bold', dot: 'bg-rose-500' }
     };
 
     ['Easy', 'Medium', 'Hard'].forEach(diff => {
@@ -275,7 +275,7 @@ window.qbEngine = {
       if (isAct) {
         btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${conf.active} shadow-sm`;
       } else {
-        btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-slate-900 border-[#334155] text-slate-500 hover:text-slate-300`;
+        btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-xs`;
       }
     });
   },
@@ -313,7 +313,7 @@ window.qbEngine = {
       if (isAct) {
         btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm";
       } else {
-        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-slate-900 border-[#334155] text-slate-300 hover:text-white";
+        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs";
       }
     });
   },
