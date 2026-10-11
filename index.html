@@ -17,7 +17,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- Question Bank State Engine Module with Cache-Buster -->
-  <script src="public/qb_engine.js?v=2.2.1"></script>
+  <script src="public/qb_engine.js?v=2.2.0"></script>
   <style>
     html, body {
       touch-action: manipulation;
@@ -1421,110 +1421,8 @@
 
       </div>
 
-      <!-- VIEW 2: INTERACTIVE PRACTICE SOLVER SCREEN (POWERED BY 1,845 RW & 1,925 MATH QUESTIONS) -->
-      <div id="qbank-solver-view" class="hidden space-y-6">
-        
-        <!-- Solver Top Navigation & Progress Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800">
-          <div class="flex items-center gap-3">
-            <button type="button" onclick="exitQBankSolver()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-              <span>Back to Question Bank</span>
-            </button>
-            <span id="solver-subject-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30">
-              Reading &amp; Writing
-            </span>
-            <span id="solver-domain-badge" class="hidden md:inline px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-              Craft and Structure
-            </span>
-          </div>
-
-          <div class="flex items-center gap-3 self-end sm:self-auto">
-            <span id="solver-difficulty-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-              Medium
-            </span>
-            <span id="solver-qindex-badge" class="text-xs font-mono text-slate-400">
-              Question 1 of 1,845
-            </span>
-            <button type="button" id="btn-save-question" onclick="toggleSaveCurrentQuestion()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700" title="Bookmark / Save Question">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Question Content Container -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          <!-- Left Column: Passage / Stimulus (for Reading & Writing) -->
-          <div id="solver-passage-container" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <span>📄</span><span>Passage / Context</span>
-              </span>
-              <span id="solver-passage-source" class="text-[11px] text-slate-500 italic">Digital SAT Resource</span>
-            </div>
-            <div id="solver-passage-text" class="text-sm text-slate-200 leading-relaxed font-serif space-y-3">
-              <!-- Dynamic Passage Text -->
-            </div>
-          </div>
-
-          <!-- Right Column: Question Stem & Options -->
-          <div id="solver-question-container" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
-            
-            <!-- Question Prompt -->
-            <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-sky-400 block mb-1.5" id="solver-prompt-domain">Question Prompt</span>
-              <h3 id="solver-question-prompt" class="text-base sm:text-lg font-bold text-white leading-snug">
-                <!-- Dynamic Question Prompt -->
-              </h3>
-            </div>
-
-            <!-- Choice Options (A, B, C, D) -->
-            <div id="solver-options-list" class="space-y-3">
-              <!-- Dynamically populated options -->
-            </div>
-
-            <!-- SPR Grid-in Input Container (For Math) -->
-            <div id="solver-spr-container" class="hidden space-y-3">
-              <label class="text-xs text-slate-300 font-semibold block">Student-Produced Response (Grid-in):</label>
-              <input type="text" id="solver-spr-input" placeholder="Enter numerical answer (e.g. 2.5 or 5/2 or 220)" class="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner">
-              <p class="text-[11px] text-slate-400">Accepted formats: whole numbers, decimals, or reduced fractions.</p>
-            </div>
-
-            <!-- Action Buttons: Previous, Check Answer & Next -->
-            <div class="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
-              <button type="button" id="btn-prev-question" onclick="prevQBankQuestion()" class="hidden px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 active:scale-95 transition-all flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                <span>Previous</span>
-              </button>
-              
-              <div class="flex items-center gap-3 ml-auto">
-                <button type="button" id="btn-check-answer" onclick="checkQBankAnswer()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-                  Check Answer
-                </button>
-                <button type="button" id="btn-next-question" onclick="nextQBankQuestion()" class="hidden px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5">
-                  <span>Next Question</span>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Instant Feedback & Explanation Card (Hidden initially) -->
-            <div id="solver-feedback-card" class="hidden p-5 rounded-2xl border space-y-3 transition-all">
-              <div class="flex items-center gap-2">
-                <span id="feedback-icon" class="text-lg">✅</span>
-                <h4 id="feedback-title" class="text-sm font-bold text-white">Correct!</h4>
-              </div>
-              <div id="feedback-explanation" class="text-xs text-slate-300 leading-relaxed">
-                <!-- Dynamic explanation -->
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
+      <!-- VIEW 2: (LEGACY SOLVER RETIRED - Replaced by authentic Bluebook Practice Simulator #qb-setup-view & #qb-test-container) -->
+      <div id="qbank-solver-view" class="hidden"></div>
 
     </section>
 
@@ -5397,57 +5295,305 @@
     // =========================================================
 
     const DEFAULT_QBANK = {
-      rw: [],
-      math: []
+      rw: [
+        {
+          id: 'rw-wic-01',
+          section: 'rw',
+          domain: 'Craft and Structure',
+          skill: 'Words in Context',
+          difficulty: 'Medium',
+          source: 'History of Astronomy',
+          passage: 'In the early 1900s, astrophysicist Cecilia Payne-Gaposchkin proposed that stars are composed primarily of hydrogen and helium. At the time, prevailing dogma maintained that stars shared an identical chemical composition with Earth. Consequently, leading astronomers initially dismissed her conclusions as _______, insisting that such heavy reliance on hydrogen was physically implausible.',
+          prompt: 'Which choice completes the text with the most logical and precise word or phrase?',
+          type: 'multiple-choice',
+          options: {
+            A: 'erroneous',
+            B: 'unprecedented',
+            C: 'inconsequential',
+            D: 'provisional'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. The text explains that the prevailing belief was that stars had the same composition as Earth. Because Payne-Gaposchkin\'s finding contradicted this dogma, astronomers dismissed her conclusions as incorrect or mistaken ("erroneous"). Choice B ("unprecedented") means never done before, which doesn\'t explain dismissal. Choice C ("inconsequential") means unimportant, whereas they considered it fundamentally flawed. Choice D ("provisional") means temporary, which contradicts outright dismissal.'
+        },
+        {
+          id: 'rw-wic-02',
+          section: 'rw',
+          domain: 'Craft and Structure',
+          skill: 'Words in Context',
+          difficulty: 'Hard',
+          source: 'Literary Criticism',
+          passage: 'Although critics predicted that the author\'s unconventional narrative structure—interweaving three divergent timelines without explicit chapter headings—would confuse readers, the public response proved remarkably _______. Within days of publication, readers praised the seamless thematic cohesion of the novel.',
+          prompt: 'Which choice completes the text with the most logical and precise word or phrase?',
+          type: 'multiple-choice',
+          options: {
+            A: 'perfunctory',
+            B: 'laudatory',
+            C: 'equated',
+            D: 'ambivalent'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. The sentence sets up a contrast with "Although critics predicted... would confuse readers". The second sentence clarifies that readers "praised the seamless thematic cohesion." Thus, the public response was full of praise, which is precisely what "laudatory" means. "Perfunctory" (carried out with minimum effort), "equated" (made equal), and "ambivalent" (having mixed feelings) do not match praise.'
+        },
+        {
+          id: 'rw-tsp-01',
+          section: 'rw',
+          domain: 'Craft and Structure',
+          skill: 'Text Structure and Purpose',
+          difficulty: 'Medium',
+          source: 'Forest Ecology Research',
+          passage: 'Biologists have long observed that certain fungal species form symbiotic mycorrhizal networks connecting disparate trees across forest floors. Traditionally, researchers believed these networks operated strictly as passive conduit channels for nutrient exchange. However, a 2023 study led by Dr. Elena Ramos demonstrated that fungal hubs actively regulate resource allocation, prioritizing saplings stressed by drought over mature, self-sufficient trees.',
+          prompt: 'Which choice best describes the overall structure of the text?',
+          type: 'multiple-choice',
+          options: {
+            A: 'It summarizes a historical hypothesis, highlights an empirical study that refuted it, and describes how that study was designed.',
+            B: 'It introduces a natural biological phenomenon, outlines a long-held belief about its function, and presents recent findings that challenge that belief.',
+            C: 'It argues that current forest management policies overlook the importance of fungi, citing experimental evidence.',
+            D: 'It contrasts two competing contemporary theories regarding fungal resource sharing in arid environments.'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. Sentence 1 introduces mycorrhizal networks (a natural phenomenon). Sentence 2 states what researchers "traditionally believed" (passive exchange). Sentence 3 uses "However" to present Dr. Ramos\'s 2023 findings that challenge that belief. Choice A is incorrect because the passage does not detail how the study was designed.'
+        },
+        {
+          id: 'rw-sec-01',
+          section: 'rw',
+          domain: 'Standard English Conventions',
+          skill: 'Boundaries (Punctuation)',
+          difficulty: 'Medium',
+          source: 'Computer Science History',
+          passage: 'In 1965, computer scientist Gordon Moore predicted that the number of transistors on a microchip would double approximately every two _______ this exponential growth trajectory, dubbed Moore’s Law, drove technological revolution for over half a century.',
+          prompt: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+          type: 'multiple-choice',
+          options: {
+            A: 'years, and',
+            B: 'years; and,',
+            C: 'years;',
+            D: 'years,'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. The sentence connects two complete independent clauses: the first describes Moore\'s prediction, and the second describes the impact of Moore\'s Law. A semicolon correctly joins two independent clauses without a coordinating conjunction.'
+        },
+        {
+          id: 'rw-sec-02',
+          section: 'rw',
+          domain: 'Standard English Conventions',
+          skill: 'Boundaries & Modifiers',
+          difficulty: 'Hard',
+          source: 'Marine Biology Studies',
+          passage: 'Artificial beachfront lighting confuses newly hatched sea _______ orienting toward the brighter artificial glow inland rather than the natural moonlight reflecting off the ocean surface, their survival rates plunge dramatically.',
+          prompt: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+          type: 'multiple-choice',
+          options: {
+            A: 'turtles, and',
+            B: 'turtles; consequently,',
+            C: 'turtles,',
+            D: 'turtles, because'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. The semicolon separates two independent clauses, and the conjunctive adverb "consequently," followed by a comma, logically establishes cause and effect between artificial lighting confusion and the subsequent behavioral trap.'
+        },
+        {
+          id: 'rw-eoi-01',
+          section: 'rw',
+          domain: 'Expression of Ideas',
+          skill: 'Transitions',
+          difficulty: 'Medium',
+          source: 'Paleoethnobotany',
+          passage: 'Archaeologists traditionally relied on macroscopic plant remains—such as charred seeds and wood fragments—to reconstruct prehistoric diets. However, microfossil analysis has recently revealed evidence of plant use that leaves no visible macroscopic trace. _______, microscopic starch grains embedded in the dental calculus of Neanderthal skeletons have demonstrated regular consumption of cooked barley and water lilies.',
+          prompt: 'Which choice completes the text with the most logical transition?',
+          type: 'multiple-choice',
+          options: {
+            A: 'Consequently,',
+            B: 'In contrast,',
+            C: 'Specifically,',
+            D: 'Furthermore,'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. The preceding sentence introduces the general principle that microfossil analysis reveals invisible plant use. The final sentence gives a concrete, detailed instance of that principle (Neanderthal dental calculus showing barley). "Specifically" introduces this exact elaboration.'
+        },
+        {
+          id: 'rw-eoi-02',
+          section: 'rw',
+          domain: 'Expression of Ideas',
+          skill: 'Rhetorical Synthesis',
+          difficulty: 'Medium',
+          source: 'Marine Ecology Research Notes',
+          passage: 'While researching a topic, a student has taken the following notes:\n• The Great Barrier Reef spans over 2,300 kilometers along Australia’s northeastern coast.\n• It is home to more than 1,500 fish species and 400 hard coral types.\n• Coral bleaching occurs when thermal stress causes corals to expel symbiotic zooxanthellae algae.\n• Mass bleaching events were documented in 1998, 2002, 2016, 2017, and 2020.\n• Marine biologists advocate for targeted coral propagation and thermal-tolerant strain breeding.',
+          prompt: 'The student wants to emphasize the frequency of recent environmental threats facing the reef. Which choice most effectively uses the relevant information from the notes to accomplish this goal?',
+          type: 'multiple-choice',
+          options: {
+            A: 'Spanning 2,300 kilometers, the Great Barrier Reef provides habitat for over 1,500 species of fish and 400 coral types.',
+            B: 'Thermal stress causes corals to expel symbiotic algae, leading to widespread bleaching events along the coast.',
+            C: 'Between 1998 and 2020, the Great Barrier Reef endured five separate mass coral bleaching events driven by rising ocean temperatures.',
+            D: 'Marine biologists recommend breeding thermal-tolerant coral strains to mitigate ecosystem degradation.'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct because it directly satisfies the rhetorical goal: highlighting that five separate mass coral bleaching events struck between 1998 and 2020.'
+        }
+      ],
+      math: [
+        {
+          id: 'm-alg-01',
+          section: 'math',
+          domain: 'Algebra',
+          skill: 'Linear Equations in One Variable',
+          difficulty: 'Easy',
+          source: 'SAT Core Algebra',
+          passage: 'Consider the linear equation:\n3(2x - 4) = 5x + 7',
+          prompt: 'What value of x satisfies the given equation?',
+          type: 'multiple-choice',
+          options: {
+            A: '3',
+            B: '5',
+            C: '19',
+            D: '23'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. Expanding: 6x - 12 = 5x + 7. Subtracting 5x gives x - 12 = 7. Adding 12 gives x = 19. Check: 3(2(19) - 4) = 3(38 - 4) = 3(34) = 102. Right side: 5(19) + 7 = 95 + 7 = 102.'
+        },
+        {
+          id: 'm-alg-02',
+          section: 'math',
+          domain: 'Algebra',
+          skill: 'Systems of Two Linear Equations',
+          difficulty: 'Medium',
+          source: 'SAT Systems Modeling',
+          passage: 'Consider the following system of linear equations:\n\n2x + 5y = 31\n4x - y = 7',
+          prompt: 'What is the value of (x + y)?',
+          type: 'multiple-choice',
+          options: {
+            A: '5',
+            B: '8',
+            C: '10',
+            D: '12'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. From the second equation: y = 4x - 7. Substitute into the first equation: 2x + 5(4x - 7) = 31 => 2x + 20x - 35 = 31 => 22x = 66 => x = 3. Then y = 4(3) - 7 = 5. Therefore, x + y = 3 + 5 = 8.'
+        },
+        {
+          id: 'm-spr-01',
+          section: 'math',
+          domain: 'Algebra',
+          skill: 'Linear Functions & Rates',
+          difficulty: 'Medium',
+          source: 'Print Shop Pricing Model',
+          passage: 'A local print shop charges a flat setup fee of $15 plus $0.25 per booklet printed. If a school club spent a total of $70 on an order of booklets, how many booklets were printed?',
+          prompt: 'Enter your numerical answer below (e.g. 220):',
+          type: 'spr',
+          correct: '220',
+          acceptedAnswers: ['220'],
+          explanation: 'The cost model is C = 15 + 0.25n. Set C = 70: 70 = 15 + 0.25n => 55 = 0.25n => n = 55 / 0.25 = 220 booklets. Therefore, 220 booklets were printed.'
+        },
+        {
+          id: 'm-spr-02',
+          section: 'math',
+          domain: 'Advanced Math',
+          skill: 'Quadratic Equations (SPR)',
+          difficulty: 'Medium',
+          source: 'Quadratic Root Determination',
+          passage: 'Consider the factored quadratic equation:\n(2x - 5)(x + 4) = 0 and x > 0',
+          prompt: 'What is the value of x? (Enter as a decimal or fraction, e.g., 2.5 or 5/2)',
+          type: 'spr',
+          correct: '2.5',
+          acceptedAnswers: ['2.5', '5/2'],
+          explanation: 'By the zero-product property: 2x - 5 = 0 or x + 4 = 0. Solving 2x - 5 = 0 yields x = 5/2 = 2.5. Solving x + 4 = 0 yields x = -4. Since x > 0, we select the positive root: x = 2.5 (or 5/2).'
+        },
+        {
+          id: 'm-adv-01',
+          section: 'math',
+          domain: 'Advanced Math',
+          skill: 'Nonlinear Functions (Vertex Form)',
+          difficulty: 'Medium',
+          source: 'Parabola Vertex Analysis',
+          passage: 'The graph of the quadratic function f(x) = -2(x - 4)² + 18 is a parabola in the xy-plane.',
+          prompt: 'Which of the following statements about this graph is true?',
+          type: 'multiple-choice',
+          options: {
+            A: 'The parabola opens upward and has a minimum value of 18 at x = 4.',
+            B: 'The parabola opens downward and has a maximum value of 18 at x = 4.',
+            C: 'The parabola opens downward and has a maximum value of 4 at x = 18.',
+            D: 'The parabola opens upward and has a minimum value of -2 at x = 4.'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. In vertex form f(x) = a(x - h)² + k, the vertex is at (h, k) = (4, 18). Because a = -2 is negative, the parabola opens downward, meaning its maximum value is 18 occurring at x = 4.'
+        },
+        {
+          id: 'm-adv-02',
+          section: 'math',
+          domain: 'Advanced Math',
+          skill: 'Equivalent Algebraic Expressions',
+          difficulty: 'Hard',
+          source: 'Polynomial Difference of Cubes',
+          passage: 'Consider the algebraic rational expression:\n(x³ - 8) / (x - 2) for all x ≠ 2.',
+          prompt: 'Which of the following is equivalent to the expression for all x ≠ 2?',
+          type: 'multiple-choice',
+          options: {
+            A: 'x² - 4',
+            B: 'x² + 4',
+            C: 'x² + 2x + 4',
+            D: 'x² - 2x + 4'
+          },
+          correct: 'C',
+          explanation: 'Choice C is correct. Using the difference of cubes factorization: a³ - b³ = (a - b)(a² + ab + b²). With a = x, b = 2: (x³ - 8) = (x - 2)(x² + 2x + 4). Dividing by (x - 2) leaves x² + 2x + 4.'
+        },
+        {
+          id: 'm-psda-01',
+          section: 'math',
+          domain: 'Problem-Solving and Data Analysis',
+          skill: 'Percentages & Ratios',
+          difficulty: 'Medium',
+          source: 'Financial Valuation Modeling',
+          passage: 'A vintage guitar was originally purchased for $800. In its first year, its market value increased by 20%. In its second year, its new value decreased by 15%.',
+          prompt: 'What was the guitar\'s market value at the end of the second year?',
+          type: 'multiple-choice',
+          options: {
+            A: '$816',
+            B: '$840',
+            C: '$805',
+            D: '$780'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. Year 1: $800 × (1 + 0.20) = $960. Year 2: $960 × (1 - 0.15) = $816. Common trap: combining +20% and -15% as a net +5% ($840, Choice B), which fails because percentages compound sequentially.'
+        },
+        {
+          id: 'm-geom-01',
+          section: 'math',
+          domain: 'Geometry and Trigonometry',
+          skill: 'Circles & Coordinate Geometry',
+          difficulty: 'Hard',
+          source: 'Circle Coordinate Geometry',
+          passage: 'In the xy-plane, the equation of a circle is x² + y² - 6x + 8y = 24.',
+          prompt: 'What are the coordinates of the center and the radius of this circle?',
+          type: 'multiple-choice',
+          options: {
+            A: 'Center: (3, -4), Radius: 7',
+            B: 'Center: (-3, 4), Radius: 7',
+            C: 'Center: (3, -4), Radius: 49',
+            D: 'Center: (-3, 4), Radius: √24'
+          },
+          correct: 'A',
+          explanation: 'Choice A is correct. Complete the square for both x and y: (x² - 6x + 9) + (y² + 8y + 16) = 24 + 9 + 16 => (x - 3)² + (y + 4)² = 49. In standard circle form (x - h)² + (y - k)² = r²: Center = (3, -4) and Radius = √49 = 7.'
+        },
+        {
+          id: 'm-geom-02',
+          section: 'math',
+          domain: 'Geometry and Trigonometry',
+          skill: 'Right Triangle Trigonometry',
+          difficulty: 'Medium',
+          source: 'Cofunction Identities',
+          passage: 'In right triangle ABC, angle C is the right angle. If sin(A) = 3/5, what is the value of cos(B)?',
+          prompt: 'What is the value of cos(B)?',
+          type: 'multiple-choice',
+          options: {
+            A: '4/5',
+            B: '3/5',
+            C: '3/4',
+            D: '5/3'
+          },
+          correct: 'B',
+          explanation: 'Choice B is correct. In any right triangle, acute angles A and B are complementary (A + B = 90°). By the fundamental trigonometric identity sin(θ) = cos(90° - θ), sin(A) = cos(B). Since sin(A) = 3/5, cos(B) = 3/5.'
+        }
+      ]
     };
-
-    async function ensureQBankDataLoaded() {
-      if (window.qbEngine && window.qbEngine.questionsData && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.math) {
-        DEFAULT_QBANK.rw = window.qbEngine.questionsData.rw;
-        DEFAULT_QBANK.math = window.qbEngine.questionsData.math;
-        return window.qbEngine.questionsData;
-      }
-      if (window.qbEngine && typeof window.qbEngine.loadQuestions === 'function') {
-        await window.qbEngine.loadQuestions();
-        if (window.qbEngine.questionsData) {
-          DEFAULT_QBANK.rw = window.qbEngine.questionsData.rw || [];
-          DEFAULT_QBANK.math = window.qbEngine.questionsData.math || [];
-        }
-        return window.qbEngine.questionsData;
-      }
-      try {
-        const fetchWithFallback = async (relPath) => {
-          const candidates = [
-            relPath,
-            '/' + relPath,
-            './' + relPath,
-            '../' + relPath,
-            'public/' + relPath,
-            '/public/' + relPath
-          ];
-          for (const path of candidates) {
-            try {
-              const res = await fetch(path);
-              if (res.ok) return await res.json();
-            } catch (e) {}
-          }
-          throw new Error(`Failed to load ${relPath}`);
-        };
-
-        const [rw, math] = await Promise.all([
-          fetchWithFallback('data/questions/reading_writing.json'),
-          fetchWithFallback('data/questions/math.json')
-        ]);
-        DEFAULT_QBANK.rw = rw || [];
-        DEFAULT_QBANK.math = math || [];
-        if (window.qbEngine) {
-          window.qbEngine.questionsData = { rw, math };
-        }
-        return { rw, math };
-      } catch (e) {
-        console.warn('Could not load question datasets:', e);
-      }
-    }
 
     function getAllBankQuestions() {
       if (window.qbEngine && window.qbEngine.questionsData && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.math) {
@@ -8112,7 +8258,6 @@
       updateDashboardStats();
       if (typeof updateOnlineStatus === 'function') updateOnlineStatus();
       if (typeof restoreActiveTestProgress === 'function') restoreActiveTestProgress();
-      if (typeof ensureQBankDataLoaded === 'function') ensureQBankDataLoaded().catch(() => {});
     };
 
     // =========================================================================
@@ -9372,6 +9517,10 @@
     }
 
     function openBluebookSimulator(subject) {
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(subject);
+        return;
+      }
       const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
       const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
       if (isStudent && !isPub) {
@@ -9646,55 +9795,20 @@
       }).join('');
     }
 
-    // SOLVER & PRACTICE INTERACTION (CONNECTING ALL 1,845 RW & 1,925 MATH QUESTIONS)
+    // SOLVER & PRACTICE INTERACTION (ROUTED DIRECTLY TO AUTHENTIC BLUEBOOK PRACTICE SETUP)
     function openPracticeModule(subject) {
-      startQBankPractice(subject);
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(subject);
+      } else {
+        openBluebookSimulator(subject);
+      }
     }
 
-    async function startQBankPractice(subject) {
-      const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
-      const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-      if (isStudent && !isPub) {
-        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
-        if (typeof switchTab === 'function') switchTab('vocab');
-        return;
-      }
-
-      const qbSection = document.getElementById('tab-qbank');
-      if (!qbSection || qbSection.classList.contains('hidden')) {
-        if (typeof switchTab === 'function') switchTab('qbank');
-      }
-
-      activeQBankSubject = (subject && ['rw', 'math'].includes(subject)) ? subject : 'rw';
-
-      // Ensure data is loaded
-      await ensureQBankDataLoaded();
-
-      currentQBankQuestions = getAllQuestionsForSubject(activeQBankSubject);
-      if (!currentQBankQuestions || currentQBankQuestions.length === 0) {
-        showToast("⚠️ Loading Questions", "Please wait a moment while the question bank loads...", "info");
-        return;
-      }
-
-      currentQBankIndex = 0;
-      selectedOptionLetter = null;
-      isCurrentAnswerChecked = false;
-
-      // Cleanly swap views
-      const hubView = document.getElementById('qbank-hub-view');
-      const solverView = document.getElementById('qbank-solver-view');
-      const setupView = document.getElementById('qb-setup-view');
-      const testContainer = document.getElementById('qb-test-container');
-
-      if (hubView) hubView.classList.add('hidden');
-      if (setupView) setupView.classList.add('hidden');
-      if (testContainer) testContainer.classList.add('hidden');
-      if (solverView) solverView.classList.remove('hidden');
-
-      renderCurrentQBankQuestion();
-
-      if (solverView) {
-        solverView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    function startQBankPractice(subject) {
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(subject);
+      } else {
+        openBluebookSimulator(subject);
       }
     }
 
@@ -9704,347 +9818,22 @@
       initQBankView();
     }
 
-    function formatPassageHtml(raw) {
-      if (!raw) return '';
-      let text = raw.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
-        return `<img src="${url}" alt="${alt || 'Figure'}" class="max-w-full h-auto rounded-xl border border-slate-700 bg-white/5 my-3 shadow-md mx-auto block" loading="lazy" />`;
-      });
-      return text.split(/\n\n+/).map(p => `<p class="mb-3">${p.replace(/\n/g, '<br>')}</p>`).join('');
-    }
-
-    function formatQuestionText(raw) {
-      if (!raw) return '';
-      return raw.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
-        return `<img src="${url}" alt="${alt || 'Figure'}" class="max-w-full h-auto rounded-xl border border-slate-700 bg-white/5 my-3 shadow-md mx-auto block" loading="lazy" />`;
-      });
-    }
-
-    function renderKaTeXInView(el) {
-      if (!el) return;
-      if (typeof window.renderMathInElement === 'function') {
-        try {
-          window.renderMathInElement(el, {
-            delimiters: [
-              { left: '$$', right: '$$', display: true },
-              { left: '$', right: '$', display: false },
-              { left: '\\(', right: '\\)', display: false },
-              { left: '\\[', right: '\\]', display: true }
-            ],
-            throwOnError: false
-          });
-        } catch(e) {}
-      }
-    }
-
     function renderCurrentQBankQuestion() {
-      if (!currentQBankQuestions || currentQBankQuestions.length === 0) {
-        showToast("ℹ️ Empty Subject", "No questions available in this bank yet.", "info");
-        exitQBankSolver();
-        return;
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(activeQBankSubject || 'rw');
       }
-
-      if (currentQBankIndex < 0) currentQBankIndex = 0;
-      if (currentQBankIndex >= currentQBankQuestions.length) currentQBankIndex = currentQBankQuestions.length - 1;
-
-      const q = currentQBankQuestions[currentQBankIndex];
-      selectedOptionLetter = null;
-      isCurrentAnswerChecked = false;
-
-      // 1. Badges
-      const subjBadge = document.getElementById('solver-subject-badge');
-      const domBadge = document.getElementById('solver-domain-badge');
-      const diffBadge = document.getElementById('solver-difficulty-badge');
-      const qIndexBadge = document.getElementById('solver-qindex-badge');
-      const btnSave = document.getElementById('btn-save-question');
-
-      if (subjBadge) {
-        if (activeQBankSubject === 'rw' || q.subject === 'Reading and Writing') {
-          subjBadge.innerText = 'Reading & Writing';
-          subjBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30';
-        } else {
-          subjBadge.innerText = 'Math';
-          subjBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30';
-        }
-      }
-
-      if (domBadge) {
-        domBadge.innerText = q.domain || (activeQBankSubject === 'rw' ? 'Craft and Structure' : 'Algebra');
-      }
-
-      if (diffBadge) {
-        const diff = q.difficulty || 'Medium';
-        diffBadge.innerText = diff;
-        if (diff === 'Easy') {
-          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-        } else if (diff === 'Hard') {
-          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
-        } else {
-          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-        }
-      }
-
-      if (qIndexBadge) {
-        qIndexBadge.innerText = `Question ${(currentQBankIndex + 1).toLocaleString()} of ${currentQBankQuestions.length.toLocaleString()}`;
-      }
-
-      // Bookmark Status
-      const stats = getQBankStats();
-      const isSaved = stats.saved && stats.saved.includes(q.id);
-      if (btnSave) {
-        btnSave.className = isSaved 
-          ? 'p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 transition-colors'
-          : 'p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700';
-      }
-
-      // 2. Passage Column
-      const passageCol = document.getElementById('solver-passage-container');
-      const questionCol = document.getElementById('solver-question-container');
-      const passageText = document.getElementById('solver-passage-text');
-      const passageSource = document.getElementById('solver-passage-source');
-
-      const hasPassage = Boolean(q.passage && q.passage.trim());
-      if (hasPassage) {
-        if (passageCol) passageCol.classList.remove('hidden');
-        if (questionCol) {
-          questionCol.className = 'lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6';
-        }
-        if (passageText) {
-          passageText.innerHTML = formatPassageHtml(q.passage);
-        }
-        if (passageSource) {
-          passageSource.innerText = q.skill || q.domain || 'Digital SAT Literature / Context';
-        }
-      } else {
-        if (passageCol) passageCol.classList.add('hidden');
-        if (questionCol) {
-          questionCol.className = 'lg:col-span-12 max-w-3xl mx-auto w-full p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6';
-        }
-      }
-
-      // 3. Question Stem & Prompt
-      const promptDomain = document.getElementById('solver-prompt-domain');
-      const promptEl = document.getElementById('solver-question-prompt');
-      if (promptDomain) {
-        promptDomain.innerText = (q.skill || q.domain || 'Digital SAT Question').toUpperCase();
-      }
-      if (promptEl) {
-        promptEl.innerHTML = formatQuestionText(q.prompt);
-      }
-
-      // 4. Options or SPR Grid-in
-      const optionsList = document.getElementById('solver-options-list');
-      const sprContainer = document.getElementById('solver-spr-container');
-      const sprInput = document.getElementById('solver-spr-input');
-
-      const isSPR = Boolean(q.is_spr || q.type === 'spr');
-
-      if (isSPR) {
-        if (optionsList) optionsList.classList.add('hidden');
-        if (sprContainer) sprContainer.classList.remove('hidden');
-        if (sprInput) {
-          sprInput.value = '';
-          sprInput.className = 'w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner';
-          sprInput.disabled = false;
-        }
-      } else {
-        if (sprContainer) sprContainer.classList.add('hidden');
-        if (optionsList && q.options) {
-          optionsList.classList.remove('hidden');
-          const letters = ['A', 'B', 'C', 'D'];
-          optionsList.innerHTML = letters.map(letter => {
-            const optText = q.options[letter] || '';
-            return `
-              <div onclick="selectQBankOption('${letter}')" id="opt-card-${letter}" class="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none">
-                <span id="opt-badge-${letter}" class="w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors">
-                  ${letter}
-                </span>
-                <span class="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed">${formatQuestionText(optText)}</span>
-              </div>
-            `;
-          }).join('');
-        }
-      }
-
-      // 5. Action Buttons & Feedback Card
-      const btnCheck = document.getElementById('btn-check-answer');
-      const btnNext = document.getElementById('btn-next-question');
-      const btnPrev = document.getElementById('btn-prev-question');
-      const feedbackCard = document.getElementById('solver-feedback-card');
-
-      if (btnCheck) btnCheck.classList.remove('hidden');
-      if (btnNext) btnNext.classList.add('hidden');
-      if (feedbackCard) feedbackCard.classList.add('hidden');
-
-      if (btnPrev) {
-        if (currentQBankIndex > 0) btnPrev.classList.remove('hidden');
-        else btnPrev.classList.add('hidden');
-      }
-
-      renderKaTeXInView(document.getElementById('qbank-solver-view'));
     }
 
     function selectQBankOption(letter) {
-      if (isCurrentAnswerChecked) return;
-      selectedOptionLetter = letter;
-
-      ['A', 'B', 'C', 'D'].forEach(l => {
-        const card = document.getElementById(`opt-card-${l}`);
-        const badge = document.getElementById(`opt-badge-${l}`);
-        if (card && badge) {
-          if (l === letter) {
-            card.className = 'p-3.5 sm:p-4 rounded-2xl bg-blue-950/40 border-2 border-blue-500 shadow-lg shadow-blue-500/10 cursor-pointer flex items-start gap-3.5 transition-all select-none';
-            badge.className = 'w-7 h-7 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-md';
-          } else {
-            card.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none';
-            badge.className = 'w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors';
-          }
-        }
-      });
-    }
-
-    function isSPREqual(studentVal, correctVal) {
-      if (window.qbEngine && typeof window.qbEngine.isSPREqual === 'function') {
-        return window.qbEngine.isSPREqual(studentVal, correctVal);
-      }
-      if (!studentVal || !correctVal) return false;
-      const sStr = String(studentVal).trim().toLowerCase();
-      const cStr = String(correctVal).trim().toLowerCase();
-      if (sStr === cStr) return true;
-
-      const parseVal = (v) => {
-        if (v.includes('/')) {
-          const parts = v.split('/');
-          if (parts.length === 2) {
-            const num = parseFloat(parts[0]);
-            const den = parseFloat(parts[1]);
-            if (den !== 0 && !isNaN(num) && !isNaN(den)) return num / den;
-          }
-        }
-        const fl = parseFloat(v);
-        return isNaN(fl) ? null : fl;
-      };
-
-      const sNum = parseVal(sStr);
-      const cNum = parseVal(cStr);
-      if (sNum !== null && cNum !== null) {
-        return Math.abs(sNum - cNum) < 0.001;
-      }
-      return false;
+      // Legacy solver obsolete - authentic Bluebook simulator active
     }
 
     function checkQBankAnswer() {
-      if (isCurrentAnswerChecked) return;
-      const q = currentQBankQuestions[currentQBankIndex];
-      const correctAns = q.correct_answer || q.correct || '';
-      const rationale = q.rationale || q.explanation || 'Review the passage details and rule conventions carefully.';
-
-      let isCorrect = false;
-      const isSPR = Boolean(q.is_spr || q.type === 'spr');
-
-      if (isSPR) {
-        const sprInput = document.getElementById('solver-spr-input');
-        const val = sprInput ? sprInput.value.trim() : '';
-        if (!val) {
-          showToast("⚠️ Enter an Answer", "Please type your numerical answer before checking!", "error");
-          return;
-        }
-        isCurrentAnswerChecked = true;
-        isCorrect = isSPREqual(val, correctAns);
-        if (sprInput) {
-          sprInput.disabled = true;
-          sprInput.className = isCorrect 
-            ? 'w-full bg-emerald-950/50 border-2 border-emerald-500 rounded-2xl p-4 text-base font-mono font-bold text-emerald-300 outline-none shadow-xl'
-            : 'w-full bg-rose-950/50 border-2 border-rose-500 rounded-2xl p-4 text-base font-mono font-bold text-rose-300 outline-none shadow-xl';
-        }
-      } else {
-        if (!selectedOptionLetter) {
-          showToast("⚠️ Select an Answer", "Please choose an option (A, B, C, or D) before checking!", "error");
-          return;
-        }
-        isCurrentAnswerChecked = true;
-        isCorrect = (selectedOptionLetter === correctAns);
-      }
-
-      // Highlight cards
-      ['A', 'B', 'C', 'D'].forEach(l => {
-        const card = document.getElementById(`opt-card-${l}`);
-        const badge = document.getElementById(`opt-badge-${l}`);
-        if (!card || !badge) return;
-
-        if (l === correctAns) {
-          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-emerald-950/50 border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 flex items-start gap-3.5';
-          badge.className = 'w-7 h-7 rounded-xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-xs shrink-0 shadow-md';
-        } else if (l === selectedOptionLetter && !isCorrect) {
-          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-rose-950/50 border-2 border-rose-500 shadow-xl shadow-rose-500/10 flex items-start gap-3.5';
-          badge.className = 'w-7 h-7 rounded-xl bg-rose-500 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-md';
-        } else {
-          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-950/50 border border-slate-900 opacity-50 flex items-start gap-3.5';
-          badge.className = 'w-7 h-7 rounded-xl bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-xs shrink-0';
-        }
-      });
-
-      // Update Statistics
-      const stats = getQBankStats();
-      stats.attempted += 1;
-      if (isCorrect) {
-        stats.correct += 1;
-        if (activeQBankSubject === 'rw' || q.subject === 'Reading and Writing') stats.rwSolved = (stats.rwSolved || 0) + 1;
-        else stats.mathSolved = (stats.mathSolved || 0) + 1;
-      } else {
-        stats.wrong += 1;
-      }
-
-      const todayEntry = stats.history.find(h => h.day === 'Today');
-      if (todayEntry) {
-        if (isCorrect) todayEntry.correct += 1;
-        else todayEntry.wrong += 1;
-        todayEntry.total += 1;
-      }
-      saveQBankStats(stats);
-
-      // Feedback Card
-      const feedbackCard = document.getElementById('solver-feedback-card');
-      const feedbackIcon = document.getElementById('feedback-icon');
-      const feedbackTitle = document.getElementById('feedback-title');
-      const feedbackExpl = document.getElementById('feedback-explanation');
-
-      if (feedbackCard) {
-        feedbackCard.classList.remove('hidden');
-        if (isCorrect) {
-          feedbackCard.className = 'p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 space-y-2 shadow-xl';
-          if (feedbackIcon) feedbackIcon.innerText = '🎉';
-          if (feedbackTitle) feedbackTitle.innerHTML = '<span class="text-emerald-400">Correct! Great Job!</span>';
-        } else {
-          feedbackCard.className = 'p-5 rounded-2xl border border-rose-500/40 bg-rose-950/30 space-y-2 shadow-xl';
-          if (feedbackIcon) feedbackIcon.innerText = '❌';
-          if (feedbackTitle) feedbackTitle.innerHTML = `<span class="text-rose-400">Incorrect. The correct answer is Choice ${correctAns}.</span>`;
-        }
-        if (feedbackExpl) {
-          feedbackExpl.innerHTML = `<strong>Official Rationale:</strong><div class="mt-1 text-slate-200 leading-relaxed whitespace-pre-line">${formatQuestionText(rationale)}</div>`;
-          renderKaTeXInView(feedbackExpl);
-        }
-      }
-
-      // Swap Buttons
-      document.getElementById('btn-check-answer')?.classList.add('hidden');
-      document.getElementById('btn-next-question')?.classList.remove('hidden');
+      // Legacy solver obsolete - authentic Bluebook simulator active
     }
 
     function nextQBankQuestion() {
-      if (currentQBankIndex + 1 < currentQBankQuestions.length) {
-        currentQBankIndex += 1;
-        renderCurrentQBankQuestion();
-      } else {
-        showToast("🏆 Subject Practice Complete!", `You have finished all questions in this bank! Great job.`, "success");
-        exitQBankSolver();
-      }
-    }
-
-    function prevQBankQuestion() {
-      if (currentQBankIndex > 0) {
-        currentQBankIndex -= 1;
-        renderCurrentQBankQuestion();
-      }
+      // Legacy solver obsolete - authentic Bluebook simulator active
     }
 
     function toggleSaveCurrentQuestion() {
@@ -10172,13 +9961,6 @@
           if (typeof switchTab === 'function') switchTab('qbank');
         }
 
-        const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
-
-        if (typeof startQBankPractice === 'function') {
-          startQBankPractice(targetSubj);
-          return;
-        }
-
         const hubView = document.getElementById('qbank-hub-view');
         const solverView = document.getElementById('qbank-solver-view');
         const testContainer = document.getElementById('qb-test-container');
@@ -10188,6 +9970,8 @@
         if (solverView) solverView.classList.add('hidden');
         if (testContainer) testContainer.classList.add('hidden');
         if (setupView) setupView.classList.remove('hidden');
+
+        const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
 
         if (!this.isInitialized) {
           this.init(targetSubj);

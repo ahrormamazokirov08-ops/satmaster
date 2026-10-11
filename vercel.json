@@ -1,13 +1,9 @@
 {
-  "framework": null,
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "version": 2,
+  "cleanUrls": true,
+  "routes": [
+    { "src": "/data/(.*)", "dest": "/data/$1" },
+    { "src": "/public/(.*)", "dest": "/public/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
