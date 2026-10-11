@@ -15,6 +15,49 @@ window.qbEngine = {
   isInitialized: false,
   timerInterval: null,
   isTimerHidden: false,
+  openSetup(subject) {
+    const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+    const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+    if (isStudent && !isPub) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+      }
+      const setupView = document.getElementById('qb-setup-view');
+      const testContainer = document.getElementById('qb-test-container');
+      if (setupView) setupView.classList.add('hidden');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (typeof switchTab === 'function') switchTab('vocab');
+      return;
+    }
+
+    const qbSection = document.getElementById('tab-qbank');
+    if (!qbSection || qbSection.classList.contains('hidden')) {
+      if (typeof switchTab === 'function') switchTab('qbank');
+    }
+
+    const hubView = document.getElementById('qbank-hub-view');
+    const solverView = document.getElementById('qbank-solver-view');
+    const testContainer = document.getElementById('qb-test-container');
+    const setupView = document.getElementById('qb-setup-view');
+
+    if (hubView) hubView.classList.add('hidden');
+    if (solverView) solverView.classList.add('hidden');
+    if (testContainer) testContainer.classList.add('hidden');
+    if (setupView) setupView.classList.remove('hidden');
+
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+
+    if (!this.isInitialized) {
+      this.init(targetSubj);
+    } else {
+      this.setSubject(targetSubj);
+      this.updateMatchingCount();
+    }
+
+    if (setupView) {
+      setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
 
   async init(defaultSubj) {
     // Check if student lockout is active

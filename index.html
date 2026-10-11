@@ -17,7 +17,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- Question Bank State Engine Module with Cache-Buster -->
-  <script src="public/qb_engine.js?v=2.1.0"></script>
+  <script src="public/qb_engine.js?v=2.2.0"></script>
   <style>
     html, body {
       touch-action: manipulation;
@@ -1266,16 +1266,16 @@
               <div>
                 <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Reading &amp; Writing</h2>
                 <div class="flex items-center justify-between text-xs font-semibold text-pink-100 mt-2">
-                  <span id="rw-stat-label">0 of 1,845 solved</span>
-                  <span id="rw-stat-pct" class="font-bold">0%</span>
+                  <span id="rw-stat-label">1,845 questions</span>
+                  <span id="rw-stat-pct" class="font-bold">Official Bank</span>
                 </div>
                 <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
-                  <div id="rw-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 0%"></div>
+                  <div id="rw-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 100%"></div>
                 </div>
               </div>
 
               <div class="pt-2">
-                <button type="button" onclick="openBluebookSimulator('rw')" id="btn-open-qbank-rw" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                <button type="button" onclick="qbEngine.openSetup('rw')" id="btn-open-qbank-rw" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <span>Open</span>
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
                 </button>
@@ -1299,16 +1299,16 @@
               <div>
                 <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Math</h2>
                 <div class="flex items-center justify-between text-xs font-semibold text-sky-100 mt-2">
-                  <span id="math-stat-label">0 of 1,925 solved</span>
-                  <span id="math-stat-pct" class="font-bold">0%</span>
+                  <span id="math-stat-label">1,925 questions</span>
+                  <span id="math-stat-pct" class="font-bold">Official Bank</span>
                 </div>
                 <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
-                  <div id="math-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 0%"></div>
+                  <div id="math-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 100%"></div>
                 </div>
               </div>
 
               <div class="pt-2">
-                <button type="button" onclick="openBluebookSimulator('math')" id="btn-open-qbank-math" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                <button type="button" onclick="qbEngine.openSetup('math')" id="btn-open-qbank-math" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <span>Open</span>
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
                 </button>
@@ -1421,103 +1421,8 @@
 
       </div>
 
-      <!-- VIEW 2: INTERACTIVE PRACTICE SOLVER SCREEN -->
-      <div id="qbank-solver-view" class="hidden space-y-6">
-        
-        <!-- Solver Top Navigation & Progress Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800">
-          <div class="flex items-center gap-3">
-            <button type="button" onclick="exitQBankSolver()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-              <span>Back to Question Bank</span>
-            </button>
-            <span id="solver-subject-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30">
-              Reading &amp; Writing
-            </span>
-            <span id="solver-domain-badge" class="hidden md:inline px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-              Craft &amp; Structure
-            </span>
-          </div>
-
-          <div class="flex items-center gap-3 self-end sm:self-auto">
-            <span id="solver-difficulty-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-              Medium
-            </span>
-            <span id="solver-qindex-badge" class="text-xs font-mono text-slate-400">
-              Question 1 of 10
-            </span>
-            <button type="button" id="btn-save-question" onclick="toggleSaveCurrentQuestion()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700" title="Bookmark / Save Question">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Question Content Container -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          <!-- Left Column: Passage / Stimulus (for Reading & Writing) -->
-          <div id="solver-passage-container" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <span>📄</span><span>Passage / Context</span>
-              </span>
-              <span id="solver-passage-source" class="text-[11px] text-slate-500 italic">Historical / Science Literature</span>
-            </div>
-            <div id="solver-passage-text" class="text-sm text-slate-200 leading-relaxed font-serif space-y-3">
-              <!-- Dynamic Passage Text -->
-            </div>
-          </div>
-
-          <!-- Right Column: Question Stem & Options -->
-          <div id="solver-question-container" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
-            
-            <!-- Question Prompt -->
-            <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-sky-400 block mb-1.5" id="solver-prompt-domain">Question Prompt</span>
-              <h3 id="solver-question-prompt" class="text-base sm:text-lg font-bold text-white leading-snug">
-                <!-- Dynamic Question Prompt -->
-              </h3>
-            </div>
-
-            <!-- Choice Options (A, B, C, D) -->
-            <div id="solver-options-list" class="space-y-3">
-              <!-- Dynamically populated options -->
-            </div>
-
-            <!-- SPR Grid-in Input Container (For Math) -->
-            <div id="solver-spr-container" class="hidden space-y-3">
-              <label class="text-xs text-slate-300 font-semibold block">Student-Produced Response (Grid-in):</label>
-              <input type="text" id="solver-spr-input" placeholder="Enter numerical answer (e.g. 2.5 or 5/2 or 220)" class="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner">
-              <p class="text-[11px] text-slate-400">Accepted formats: whole numbers, decimals, or reduced fractions.</p>
-            </div>
-
-            <!-- Action Buttons: Check Answer & Next -->
-            <div class="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
-              <button type="button" id="btn-check-answer" onclick="checkQBankAnswer()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-                Check Answer
-              </button>
-              <button type="button" id="btn-next-question" onclick="nextQBankQuestion()" class="hidden px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5">
-                <span>Next Question</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-              </button>
-            </div>
-
-            <!-- Instant Feedback & Explanation Card (Hidden initially) -->
-            <div id="solver-feedback-card" class="hidden p-5 rounded-2xl border space-y-3 transition-all">
-              <div class="flex items-center gap-2">
-                <span id="feedback-icon" class="text-lg">✅</span>
-                <h4 id="feedback-title" class="text-sm font-bold text-white">Correct!</h4>
-              </div>
-              <p id="feedback-explanation" class="text-xs text-slate-300 leading-relaxed">
-                <!-- Dynamic explanation -->
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
+      <!-- VIEW 2: (LEGACY SOLVER RETIRED - Replaced by authentic Bluebook Practice Simulator #qb-setup-view & #qb-test-container) -->
+      <div id="qbank-solver-view" class="hidden"></div>
 
     </section>
 
@@ -9612,6 +9517,10 @@
     }
 
     function openBluebookSimulator(subject) {
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(subject);
+        return;
+      }
       const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
       const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
       if (isStudent && !isPub) {
@@ -9798,9 +9707,17 @@
       const rwLabel = document.getElementById('rw-stat-label');
       const rwPctEl = document.getElementById('rw-stat-pct');
       const rwBar = document.getElementById('rw-stat-bar');
-      if (rwLabel) rwLabel.innerText = `${rwSolved.toLocaleString()} of ${rwTotal.toLocaleString()} solved`;
-      if (rwPctEl) rwPctEl.innerText = `${rwPct}%`;
-      if (rwBar) rwBar.style.width = `${Math.max(rwPct, 0)}%`;
+      if (rwLabel) {
+        if (rwSolved > 0) {
+          rwLabel.innerText = `${rwSolved.toLocaleString()} of ${rwTotal.toLocaleString()} solved`;
+          if (rwPctEl) rwPctEl.innerText = `${rwPct}%`;
+          if (rwBar) rwBar.style.width = `${Math.max(rwPct, 0)}%`;
+        } else {
+          rwLabel.innerText = `${rwTotal.toLocaleString()} questions`;
+          if (rwPctEl) rwPctEl.innerText = "Official Bank";
+          if (rwBar) rwBar.style.width = "100%";
+        }
+      }
 
       // 2. Math Card Progress
       const mathTotal = 1925;
@@ -9809,9 +9726,17 @@
       const mathLabel = document.getElementById('math-stat-label');
       const mathPctEl = document.getElementById('math-stat-pct');
       const mathBar = document.getElementById('math-stat-bar');
-      if (mathLabel) mathLabel.innerText = `${mathSolved.toLocaleString()} of ${mathTotal.toLocaleString()} solved`;
-      if (mathPctEl) mathPctEl.innerText = `${mathPct}%`;
-      if (mathBar) mathBar.style.width = `${Math.max(mathPct, 0)}%`;
+      if (mathLabel) {
+        if (mathSolved > 0) {
+          mathLabel.innerText = `${mathSolved.toLocaleString()} of ${mathTotal.toLocaleString()} solved`;
+          if (mathPctEl) mathPctEl.innerText = `${mathPct}%`;
+          if (mathBar) mathBar.style.width = `${Math.max(mathPct, 0)}%`;
+        } else {
+          mathLabel.innerText = `${mathTotal.toLocaleString()} questions`;
+          if (mathPctEl) mathPctEl.innerText = "Official Bank";
+          if (mathBar) mathBar.style.width = "100%";
+        }
+      }
 
       // 3. 4-Metric Boxes
       const elAtt = document.getElementById('qa-attempted-num');
@@ -9870,9 +9795,21 @@
       }).join('');
     }
 
-    // SOLVER & PRACTICE INTERACTION
+    // SOLVER & PRACTICE INTERACTION (ROUTED DIRECTLY TO AUTHENTIC BLUEBOOK PRACTICE SETUP)
+    function openPracticeModule(subject) {
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(subject);
+      } else {
+        openBluebookSimulator(subject);
+      }
+    }
+
     function startQBankPractice(subject) {
-      openBluebookSimulator(subject);
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(subject);
+      } else {
+        openBluebookSimulator(subject);
+      }
     }
 
     function exitQBankSolver() {
@@ -9882,236 +9819,21 @@
     }
 
     function renderCurrentQBankQuestion() {
-      if (!currentQBankQuestions || currentQBankQuestions.length === 0) {
-        showToast("ℹ️ Empty Subject", "No questions available in this bank yet. Use 'Add Custom Question' to add some!", "info");
-        exitQBankSolver();
-        return;
+      if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
+        window.qbEngine.openSetup(activeQBankSubject || 'rw');
       }
-
-      const q = currentQBankQuestions[currentQBankIndex];
-      selectedOptionLetter = null;
-      isCurrentAnswerChecked = false;
-
-      // 1. Badges
-      const subjBadge = document.getElementById('solver-subject-badge');
-      const domBadge = document.getElementById('solver-domain-badge');
-      const diffBadge = document.getElementById('solver-difficulty-badge');
-      const qIndexBadge = document.getElementById('solver-qindex-badge');
-      const btnSave = document.getElementById('btn-save-question');
-
-      if (subjBadge) {
-        if (activeQBankSubject === 'rw') {
-          subjBadge.innerText = 'Reading & Writing';
-          subjBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30';
-        } else {
-          subjBadge.innerText = 'Math';
-          subjBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30';
-        }
-      }
-      if (domBadge) domBadge.innerText = q.domain || (activeQBankSubject === 'rw' ? 'Reading Comprehension' : 'Algebra');
-      if (diffBadge) {
-        diffBadge.innerText = q.difficulty || 'Medium';
-        if (q.difficulty === 'Easy') {
-          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-        } else if (q.difficulty === 'Hard') {
-          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
-        } else {
-          diffBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-        }
-      }
-      if (qIndexBadge) qIndexBadge.innerText = `Question ${currentQBankIndex + 1} of ${currentQBankQuestions.length}`;
-
-      // Bookmark Status
-      const stats = getQBankStats();
-      const isSaved = stats.saved && stats.saved.includes(q.id);
-      if (btnSave) {
-        btnSave.className = isSaved 
-          ? 'p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 transition-colors'
-          : 'p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition-colors border border-slate-700';
-      }
-
-      // 2. Passage Column
-      const passageCol = document.getElementById('solver-passage-container');
-      const passageText = document.getElementById('solver-passage-text');
-      const passageSource = document.getElementById('solver-passage-source');
-
-      if (q.passage && q.passage.trim()) {
-        if (passageCol) passageCol.classList.remove('hidden');
-        if (passageText) passageText.innerHTML = `<p>${q.passage.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
-        if (passageSource) passageSource.innerText = q.source || 'Digital SAT Resource';
-      } else {
-        if (passageCol) passageCol.classList.add('hidden');
-      }
-
-      // 3. Question Stem & Prompt
-      const promptDomain = document.getElementById('solver-prompt-domain');
-      const promptEl = document.getElementById('solver-question-prompt');
-      if (promptDomain) promptDomain.innerText = q.skill || q.domain || 'Digital SAT Question';
-      if (promptEl) promptEl.innerText = q.prompt;
-
-      // 4. Options or SPR Grid-in
-      const optionsList = document.getElementById('solver-options-list');
-      const sprContainer = document.getElementById('solver-spr-container');
-      const sprInput = document.getElementById('solver-spr-input');
-
-      if (q.type === 'spr') {
-        if (optionsList) optionsList.classList.add('hidden');
-        if (sprContainer) sprContainer.classList.remove('hidden');
-        if (sprInput) {
-          sprInput.value = '';
-          sprInput.className = 'w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-2xl p-4 text-base font-mono font-bold text-white placeholder-slate-500 outline-none shadow-inner';
-          sprInput.disabled = false;
-        }
-      } else {
-        if (sprContainer) sprContainer.classList.add('hidden');
-        if (optionsList && q.options) {
-          optionsList.classList.remove('hidden');
-          const letters = ['A', 'B', 'C', 'D'];
-          optionsList.innerHTML = letters.map(letter => {
-            const optText = q.options[letter] || '';
-            return `
-              <div onclick="selectQBankOption('${letter}')" id="opt-card-${letter}" class="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none">
-                <span id="opt-badge-${letter}" class="w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors">
-                  ${letter}
-                </span>
-                <span class="text-xs sm:text-sm text-slate-200 mt-1 leading-relaxed">${optText}</span>
-              </div>
-            `;
-          }).join('');
-        }
-      }
-
-      // 5. Action Buttons & Feedback Card
-      const btnCheck = document.getElementById('btn-check-answer');
-      const btnNext = document.getElementById('btn-next-question');
-      const feedbackCard = document.getElementById('solver-feedback-card');
-
-      if (btnCheck) btnCheck.classList.remove('hidden');
-      if (btnNext) btnNext.classList.add('hidden');
-      if (feedbackCard) feedbackCard.classList.add('hidden');
     }
 
     function selectQBankOption(letter) {
-      if (isCurrentAnswerChecked) return;
-      selectedOptionLetter = letter;
-
-      ['A', 'B', 'C', 'D'].forEach(l => {
-        const card = document.getElementById(`opt-card-${l}`);
-        const badge = document.getElementById(`opt-badge-${l}`);
-        if (card && badge) {
-          if (l === letter) {
-            card.className = 'p-3.5 sm:p-4 rounded-2xl bg-blue-950/40 border-2 border-blue-500 shadow-lg shadow-blue-500/10 cursor-pointer flex items-start gap-3.5 transition-all select-none';
-            badge.className = 'w-7 h-7 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-md';
-          } else {
-            card.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 cursor-pointer flex items-start gap-3.5 transition-all select-none';
-            badge.className = 'w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs shrink-0 transition-colors';
-          }
-        }
-      });
+      // Legacy solver obsolete - authentic Bluebook simulator active
     }
 
     function checkQBankAnswer() {
-      if (isCurrentAnswerChecked) return;
-      const q = currentQBankQuestions[currentQBankIndex];
-
-      let isCorrect = false;
-      if (q.type === 'spr') {
-        const sprInput = document.getElementById('solver-spr-input');
-        const val = sprInput ? sprInput.value.trim() : '';
-        if (!val) {
-          showToast("⚠️ Enter an Answer", "Please type your numerical answer before checking!", "error");
-          return;
-        }
-        isCurrentAnswerChecked = true;
-        isCorrect = isAnswerCorrect(q, val);
-        if (sprInput) {
-          sprInput.disabled = true;
-          sprInput.className = isCorrect 
-            ? 'w-full bg-emerald-950/50 border-2 border-emerald-500 rounded-2xl p-4 text-base font-mono font-bold text-emerald-300 outline-none shadow-xl'
-            : 'w-full bg-rose-950/50 border-2 border-rose-500 rounded-2xl p-4 text-base font-mono font-bold text-rose-300 outline-none shadow-xl';
-        }
-      } else {
-        if (!selectedOptionLetter) {
-          showToast("⚠️ Select an Answer", "Please choose an option (A, B, C, or D) before checking!", "error");
-          return;
-        }
-        isCurrentAnswerChecked = true;
-        isCorrect = (selectedOptionLetter === q.correct);
-      }
-
-      // Highlight cards
-      ['A', 'B', 'C', 'D'].forEach(l => {
-        const card = document.getElementById(`opt-card-${l}`);
-        const badge = document.getElementById(`opt-badge-${l}`);
-        if (!card || !badge) return;
-
-        if (l === q.correct) {
-          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-emerald-950/50 border-2 border-emerald-500 shadow-xl shadow-emerald-500/10 flex items-start gap-3.5';
-          badge.className = 'w-7 h-7 rounded-xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-xs shrink-0 shadow-md';
-        } else if (l === selectedOptionLetter && !isCorrect) {
-          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-rose-950/50 border-2 border-rose-500 shadow-xl shadow-rose-500/10 flex items-start gap-3.5';
-          badge.className = 'w-7 h-7 rounded-xl bg-rose-500 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-md';
-        } else {
-          card.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-950/50 border border-slate-900 opacity-50 flex items-start gap-3.5';
-          badge.className = 'w-7 h-7 rounded-xl bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-xs shrink-0';
-        }
-      });
-
-      // Update Statistics
-      const stats = getQBankStats();
-      stats.attempted += 1;
-      if (isCorrect) {
-        stats.correct += 1;
-        if (activeQBankSubject === 'rw') stats.rwSolved = (stats.rwSolved || 0) + 1;
-        else stats.mathSolved = (stats.mathSolved || 0) + 1;
-      } else {
-        stats.wrong += 1;
-      }
-
-      // Update today's entry in history
-      const todayEntry = stats.history.find(h => h.day === 'Today');
-      if (todayEntry) {
-        if (isCorrect) todayEntry.correct += 1;
-        else todayEntry.wrong += 1;
-        todayEntry.total += 1;
-      }
-      saveQBankStats(stats);
-
-      // Feedback Card
-      const feedbackCard = document.getElementById('solver-feedback-card');
-      const feedbackIcon = document.getElementById('feedback-icon');
-      const feedbackTitle = document.getElementById('feedback-title');
-      const feedbackExpl = document.getElementById('feedback-explanation');
-
-      if (feedbackCard) {
-        feedbackCard.classList.remove('hidden');
-        if (isCorrect) {
-          feedbackCard.className = 'p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 space-y-2 shadow-xl';
-          if (feedbackIcon) feedbackIcon.innerText = '🎉';
-          if (feedbackTitle) feedbackTitle.innerHTML = '<span class="text-emerald-400">Correct! Great Job!</span>';
-        } else {
-          feedbackCard.className = 'p-5 rounded-2xl border border-rose-500/40 bg-rose-950/30 space-y-2 shadow-xl';
-          if (feedbackIcon) feedbackIcon.innerText = '❌';
-          if (feedbackTitle) feedbackTitle.innerHTML = `<span class="text-rose-400">Incorrect. The correct answer is Choice ${q.correct}.</span>`;
-        }
-        if (feedbackExpl) {
-          feedbackExpl.innerHTML = `<strong>Explanation:</strong> ${q.explanation || 'Review the passage details and rule conventions carefully.'}`;
-        }
-      }
-
-      // Swap Buttons
-      document.getElementById('btn-check-answer')?.classList.add('hidden');
-      document.getElementById('btn-next-question')?.classList.remove('hidden');
+      // Legacy solver obsolete - authentic Bluebook simulator active
     }
 
     function nextQBankQuestion() {
-      if (currentQBankIndex + 1 < currentQBankQuestions.length) {
-        currentQBankIndex += 1;
-        renderCurrentQBankQuestion();
-      } else {
-        showToast("🏆 Subject Practice Complete!", `You have finished all questions in this bank! Great job.`, "success");
-        exitQBankSolver();
-      }
+      // Legacy solver obsolete - authentic Bluebook simulator active
     }
 
     function toggleSaveCurrentQuestion() {
@@ -10218,6 +9940,50 @@
       isInitialized: false,
       timerInterval: null,
       isTimerHidden: false,
+
+      openSetup(subject) {
+        const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+        const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+        if (isStudent && !isPub) {
+          if (typeof showToast === 'function') {
+            showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+          }
+          const setupView = document.getElementById('qb-setup-view');
+          const testContainer = document.getElementById('qb-test-container');
+          if (setupView) setupView.classList.add('hidden');
+          if (testContainer) testContainer.classList.add('hidden');
+          if (typeof switchTab === 'function') switchTab('vocab');
+          return;
+        }
+
+        const qbSection = document.getElementById('tab-qbank');
+        if (!qbSection || qbSection.classList.contains('hidden')) {
+          if (typeof switchTab === 'function') switchTab('qbank');
+        }
+
+        const hubView = document.getElementById('qbank-hub-view');
+        const solverView = document.getElementById('qbank-solver-view');
+        const testContainer = document.getElementById('qb-test-container');
+        const setupView = document.getElementById('qb-setup-view');
+
+        if (hubView) hubView.classList.add('hidden');
+        if (solverView) solverView.classList.add('hidden');
+        if (testContainer) testContainer.classList.add('hidden');
+        if (setupView) setupView.classList.remove('hidden');
+
+        const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+
+        if (!this.isInitialized) {
+          this.init(targetSubj);
+        } else {
+          this.setSubject(targetSubj);
+          this.updateMatchingCount();
+        }
+
+        if (setupView) {
+          setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
 
       async init(defaultSubj) {
         const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');

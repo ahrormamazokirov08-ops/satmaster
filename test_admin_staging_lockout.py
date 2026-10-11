@@ -147,9 +147,9 @@ class TestAdminStagingAndStudentLockout(unittest.TestCase):
         self.assertIn('id="btn-qb-back-overview"', self.html, "#qb-setup-view must have Back to Overview button")
         self.assertIn("returnToQBankOverview()", self.html, "Back button must call returnToQBankOverview()")
 
-        # 3. RW and Math card Open buttons wire to openBluebookSimulator
-        self.assertIn("openBluebookSimulator('rw')", self.html, "RW Open button must call openBluebookSimulator('rw')")
-        self.assertIn("openBluebookSimulator('math')", self.html, "Math Open button must call openBluebookSimulator('math')")
+        # 3. RW and Math card Open buttons wire to qbEngine.openSetup
+        self.assertIn("qbEngine.openSetup('rw')", self.html, "RW Open button must call qbEngine.openSetup('rw')")
+        self.assertIn("qbEngine.openSetup('math')", self.html, "Math Open button must call qbEngine.openSetup('math')")
 
         # 4. switchTab('qbank') triggers openBluebookSimulator
         self.assertIn("openBluebookSimulator();", self.html, "switchTab('qbank') must trigger openBluebookSimulator()")
