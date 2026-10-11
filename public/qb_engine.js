@@ -17,6 +17,21 @@ window.qbEngine = {
   isTimerHidden: false,
 
   async init() {
+    // Check if student lockout is active
+    const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+    const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+    if (isStudent && !isPub) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+      }
+      const setupView = document.getElementById('qb-setup-view');
+      const testContainer = document.getElementById('qb-test-container');
+      if (setupView) setupView.classList.add('hidden');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (typeof switchTab === 'function') switchTab('vocab');
+      return;
+    }
+
     // Show setup view, hide test container and legacy views
     const setupView = document.getElementById('qb-setup-view');
     const testContainer = document.getElementById('qb-test-container');
@@ -49,12 +64,20 @@ window.qbEngine = {
 
     try {
       const fetchWithFallback = async (relPath) => {
-        try {
-          const res = await fetch(relPath);
-          if (res.ok) return await res.json();
-        } catch (e) {}
-        const absRes = await fetch('/' + relPath);
-        if (absRes.ok) return await absRes.json();
+        const candidates = [
+          relPath,
+          '/' + relPath,
+          './' + relPath,
+          '../' + relPath,
+          'public/' + relPath,
+          '/public/' + relPath
+        ];
+        for (const path of candidates) {
+          try {
+            const res = await fetch(path);
+            if (res.ok) return await res.json();
+          } catch (e) {}
+        }
         throw new Error(`Failed to load ${relPath}`);
       };
 
@@ -308,6 +331,20 @@ window.qbEngine = {
   },
 
   startPractice() {
+    const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+    const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+    if (isStudent && !isPub) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+      }
+      const setupView = document.getElementById('qb-setup-view');
+      const testContainer = document.getElementById('qb-test-container');
+      if (setupView) setupView.classList.add('hidden');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (typeof switchTab === 'function') switchTab('vocab');
+      return;
+    }
+
     const filtered = this.getFilteredQuestions();
     if (!filtered || filtered.length === 0) {
       if (typeof showToast === 'function') {

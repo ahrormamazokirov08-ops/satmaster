@@ -195,9 +195,9 @@
       <button onclick="switchTab('vocab')" id="nav-vocab" class="px-3.5 py-1.5 rounded-lg transition-all text-purple-400 hover:text-purple-300">
         📚 SAT Vocab
       </button>
-      <button onclick="switchTab('qbank')" id="nav-qbank" class="px-3.5 py-1.5 rounded-lg transition-all text-sky-400 hover:text-sky-300 flex items-center gap-1.5">
+      <button onclick="switchTab('qbank')" id="nav-qbank" class="hidden px-3.5 py-1.5 rounded-lg transition-all text-sky-400 hover:text-sky-300 flex items-center gap-1.5">
         <span>📖</span><span>Question Bank</span>
-        <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 px-1.5 py-0.5 rounded-full">Practice</span>
+        <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full">Draft</span>
       </button>
       <button onclick="switchTab('student')" id="nav-student" class="px-3.5 py-1.5 rounded-lg transition-all text-emerald-400 hover:text-emerald-300">
         📝 Student Portal
@@ -310,6 +310,41 @@
             </button>
             <button type="button" onclick="openCreateClassModal()" id="btn-create-new-group" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/25 flex items-center gap-1.5 transition-all">
               <span>+ Create New Class</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 📘 SAT Question Bank (Admin Preview & Staging) -->
+        <div id="card-qbank-admin-staging-groups" class="p-6 sm:p-7 rounded-3xl border border-sky-500/40 bg-gradient-to-br from-slate-900 via-sky-950/30 to-slate-900 shadow-2xl space-y-4 text-white">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+            <div class="flex items-start sm:items-center gap-3.5">
+              <div class="h-12 w-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                📘
+              </div>
+              <div>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <h2 class="text-lg sm:text-xl font-extrabold text-white tracking-tight">📘 SAT Question Bank (Admin Preview &amp; Staging)</h2>
+                  <span class="staging-status-pill text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    🟡 DRAFT (HIDDEN FROM STUDENTS)
+                  </span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+                  Total Questions Loaded: 3,770 (1,845 RW | 1,925 Math)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed max-w-3xl">
+            The official Digital SAT question bank (3,770 questions) is loaded with KaTeX math typesetting, reading passages, and student-produced responses. Solve and inspect questions in the authentic Bluebook simulator in draft mode before publishing to students.
+          </p>
+
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <button type="button" onclick="openQBankAdminSimulator()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95">
+              <span>🧪 Open Full Bluebook Simulator (Draft Mode)</span>
+            </button>
+            <button type="button" onclick="handleAdminPublishToggle()" class="btn-admin-publish-qbank px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs sm:text-sm border border-emerald-500/40 flex items-center gap-2 transition-all active:scale-95">
+              <span>🚀</span><span class="btn-admin-publish-label">Publish to Student Portal</span>
             </button>
           </div>
         </div>
@@ -452,6 +487,41 @@
         </button>
       </div>
 
+      <!-- 📘 SAT Question Bank (Admin Preview & Staging) -->
+      <div id="card-qbank-admin-staging" class="p-6 sm:p-7 rounded-3xl border border-sky-500/40 bg-gradient-to-br from-slate-900 via-sky-950/30 to-slate-900 shadow-2xl space-y-4 text-white">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+          <div class="flex items-start sm:items-center gap-3.5">
+            <div class="h-12 w-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+              📘
+            </div>
+            <div>
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h2 class="text-lg sm:text-xl font-extrabold text-white tracking-tight">📘 SAT Question Bank (Admin Preview &amp; Staging)</h2>
+                <span id="staging-status-pill" class="staging-status-pill text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  🟡 DRAFT (HIDDEN FROM STUDENTS)
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+                Total Questions Loaded: 3,770 (1,845 RW | 1,925 Math)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed max-w-3xl">
+          The official Digital SAT question bank (3,770 questions) is loaded with KaTeX math typesetting, reading passages, and student-produced responses. Solve and inspect questions in the authentic Bluebook simulator in draft mode before publishing to students.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+          <button type="button" onclick="openQBankAdminSimulator()" id="btn-admin-open-simulator" class="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95">
+            <span>🧪 Open Full Bluebook Simulator (Draft Mode)</span>
+          </button>
+          <button type="button" onclick="handleAdminPublishToggle()" id="btn-admin-publish-qbank" class="btn-admin-publish-qbank px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs sm:text-sm border border-emerald-500/40 flex items-center gap-2 transition-all active:scale-95">
+            <span>🚀</span><span id="btn-admin-publish-label" class="btn-admin-publish-label">Publish to Student Portal</span>
+          </button>
+        </div>
+      </div>
+
       <!-- 4 Top Metric Cards (Dynamic) -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-lg">
@@ -468,7 +538,7 @@
         </div>
         <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/80 shadow-lg">
           <span class="text-xs text-slate-400 font-medium">Question Bank</span>
-          <div class="text-3xl font-black text-purple-400 mt-1" id="stat-question-bank">16</div>
+          <div class="text-3xl font-black text-purple-400 mt-1" id="stat-question-bank">3,770</div>
         </div>
       </div>
 
@@ -3908,6 +3978,13 @@
           } else {
             if (navQBank) navQBank.classList.add('hidden');
             if (mobQBank) mobQBank.classList.add('hidden');
+            const setupView = document.getElementById('qb-setup-view');
+            const testContainer = document.getElementById('qb-test-container');
+            if (setupView) setupView.classList.add('hidden');
+            if (testContainer) testContainer.classList.add('hidden');
+            if (typeof currentTab !== 'undefined' && currentTab === 'qbank') {
+              switchTab('vocab');
+            }
           }
         } else {
           // Teachers / Admins have full management access
@@ -3969,7 +4046,15 @@
         });
         if (studentNavBtn) studentNavBtn.classList.add('hidden');
         if (navQBank) navQBank.classList.add('hidden');
+        const mobQBank = document.getElementById('mob-nav-qbank');
+        if (mobQBank) mobQBank.classList.add('hidden');
         if (teacherControls) teacherControls.classList.add('hidden');
+        if (!qbankPublished) {
+          const setupView = document.getElementById('qb-setup-view');
+          const testContainer = document.getElementById('qb-test-container');
+          if (setupView) setupView.classList.add('hidden');
+          if (testContainer) testContainer.classList.add('hidden');
+        }
 
         // Guests / logged-out never see Telegram card; test card is full width
         if (telegramCard) {
@@ -5588,6 +5673,9 @@
     };
 
     function getAllBankQuestions() {
+      if (window.qbEngine && window.qbEngine.questionsData && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.math) {
+        return [...window.qbEngine.questionsData.rw, ...window.qbEngine.questionsData.math];
+      }
       const rw = DEFAULT_QBANK.rw || [];
       const math = DEFAULT_QBANK.math || [];
       const customRaw = localStorage.getItem('satmaster_custom_qbank');
@@ -5603,7 +5691,10 @@
     }
 
     function getQBankTotalCount() {
-      return getAllBankQuestions().length;
+      if (window.qbEngine && window.qbEngine.questionsData && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.math) {
+        return window.qbEngine.questionsData.rw.length + window.qbEngine.questionsData.math.length;
+      }
+      return 3770;
     }
 
     // =========================================================
@@ -6664,7 +6755,8 @@
           return;
         }
         if (tabName === 'qbank' && !isQBankPublished()) {
-          showToast("🚧 Draft Under Review", "The Question Bank is currently in draft mode and undergoing review by your instructor.", "info");
+          showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+          switchTab('vocab');
           return;
         }
       }
@@ -9472,7 +9564,7 @@
     // DRAFT / PUBLISH MANAGEMENT
     function isQBankPublished() {
       const val = localStorage.getItem('satmaster_qbank_published');
-      return val === null ? true : val === 'true';
+      return val === 'true'; // Defaults strictly to false (DRAFT MODE)
     }
 
     function togglePublishQBank() {
@@ -9485,35 +9577,54 @@
       if (nowPublished) {
         showToast("🚀 Published Live!", "The Question Bank is now LIVE and fully accessible by all students!", "success");
       } else {
-        showToast("🔒 Draft Active", "Question Bank returned to Draft Mode. It is now HIDDEN from students.", "info");
+        showToast("🔒 Draft Active", "Question Bank returned to Draft Mode. It is now HIDDEN and locked from students.", "info");
       }
+    }
+
+    function handleAdminPublishToggle() {
+      const isPub = isQBankPublished();
+      if (!isPub) {
+        if (confirm("⚠️ Publish Official SAT Question Bank?\n\nThis will expose all 3,770 Digital SAT questions directly to students in their portal. Are you sure you want to publish to students now?")) {
+          togglePublishQBank();
+        }
+      } else {
+        if (confirm("🔒 Return Question Bank to Draft Mode?\n\nThis will immediately lock students out and hide the Question Bank from their portal.")) {
+          togglePublishQBank();
+        }
+      }
+    }
+
+    function openQBankAdminSimulator() {
+      switchTab('qbank');
     }
 
     function updateTeacherPublishControlsUI() {
       const isPub = isQBankPublished();
-      const pill = document.getElementById('teacher-status-pill');
-      const btn = document.getElementById('btn-toggle-publish');
-      const label = document.getElementById('btn-publish-label');
+      const pills = document.querySelectorAll('.staging-status-pill, #staging-status-pill, #teacher-status-pill');
+      const btns = document.querySelectorAll('.btn-admin-publish-qbank, #btn-admin-publish-qbank, #btn-toggle-publish');
+      const labels = document.querySelectorAll('.btn-admin-publish-label, #btn-admin-publish-label, #btn-publish-label');
 
-      if (pill) {
+      pills.forEach(pill => {
         if (isPub) {
           pill.innerText = '🟢 LIVE (VISIBLE TO STUDENTS)';
-          pill.className = 'text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/50';
+          pill.className = 'staging-status-pill text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
         } else {
           pill.innerText = '🟡 DRAFT (HIDDEN FROM STUDENTS)';
-          pill.className = 'text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50';
+          pill.className = 'staging-status-pill text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40';
         }
-      }
+      });
 
-      if (btn && label) {
+      labels.forEach(lbl => {
+        lbl.innerText = isPub ? 'Unpublish (Return to Draft)' : 'Publish to Student Portal';
+      });
+
+      btns.forEach(btn => {
         if (isPub) {
-          btn.className = 'px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold border border-amber-500/40 shadow-sm flex items-center gap-1.5 transition-all';
-          label.innerText = 'Unpublish (Return to Draft)';
+          btn.className = 'btn-admin-publish-qbank px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs sm:text-sm border border-amber-500/40 flex items-center gap-2 transition-all active:scale-95 shadow-sm';
         } else {
-          btn.className = 'px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-95';
-          label.innerText = 'Publish to Students';
+          btn.className = 'btn-admin-publish-qbank px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs sm:text-sm border border-emerald-500/40 flex items-center gap-2 transition-all active:scale-95 shadow-sm';
         }
-      }
+      });
     }
 
     // STATS & STORAGE ENGINE
@@ -9576,6 +9687,14 @@
     }
 
     function getAllQuestionsForSubject(subject) {
+      if (window.qbEngine && window.qbEngine.questionsData) {
+        if (subject === 'rw' && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.rw.length > 0) {
+          return window.qbEngine.questionsData.rw;
+        }
+        if (subject === 'math' && window.qbEngine.questionsData.math && window.qbEngine.questionsData.math.length > 0) {
+          return window.qbEngine.questionsData.math;
+        }
+      }
       const base = DEFAULT_QBANK[subject] || [];
       const customRaw = localStorage.getItem('satmaster_custom_qbank');
       if (customRaw) {
@@ -10033,6 +10152,20 @@
       isTimerHidden: false,
 
       async init() {
+        const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+        const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+        if (isStudent && !isPub) {
+          if (typeof showToast === 'function') {
+            showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+          }
+          const setupView = document.getElementById('qb-setup-view');
+          const testContainer = document.getElementById('qb-test-container');
+          if (setupView) setupView.classList.add('hidden');
+          if (testContainer) testContainer.classList.add('hidden');
+          if (typeof switchTab === 'function') switchTab('vocab');
+          return;
+        }
+
         const setupView = document.getElementById('qb-setup-view');
         const testContainer = document.getElementById('qb-test-container');
         const hubView = document.getElementById('qbank-hub-view');
@@ -10064,12 +10197,20 @@
 
         try {
           const fetchWithFallback = async (relPath) => {
-            try {
-              const res = await fetch(relPath);
-              if (res.ok) return await res.json();
-            } catch (e) {}
-            const absRes = await fetch('/' + relPath);
-            if (absRes.ok) return await absRes.json();
+            const candidates = [
+              relPath,
+              '/' + relPath,
+              './' + relPath,
+              '../' + relPath,
+              'public/' + relPath,
+              '/public/' + relPath
+            ];
+            for (const path of candidates) {
+              try {
+                const res = await fetch(path);
+                if (res.ok) return await res.json();
+              } catch (e) {}
+            }
             throw new Error(`Failed to load ${relPath}`);
           };
 
@@ -10320,6 +10461,20 @@
       },
 
       startPractice() {
+        const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+        const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+        if (isStudent && !isPub) {
+          if (typeof showToast === 'function') {
+            showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+          }
+          const setupView = document.getElementById('qb-setup-view');
+          const testContainer = document.getElementById('qb-test-container');
+          if (setupView) setupView.classList.add('hidden');
+          if (testContainer) testContainer.classList.add('hidden');
+          if (typeof switchTab === 'function') switchTab('vocab');
+          return;
+        }
+
         const filtered = this.getFilteredQuestions();
         if (!filtered || filtered.length === 0) {
           if (typeof showToast === 'function') {
@@ -11053,7 +11208,7 @@
       <span class="text-base">📚</span>
       <span>Vocab</span>
     </button>
-    <button type="button" onclick="switchTab('qbank')" id="mob-nav-qbank" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all">
+    <button type="button" onclick="switchTab('qbank')" id="mob-nav-qbank" class="hidden flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-white transition-all">
       <span class="text-base">📖</span>
       <span>Q-Bank</span>
     </button>
