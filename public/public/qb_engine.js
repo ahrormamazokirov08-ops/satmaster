@@ -488,11 +488,11 @@ window.qbEngine = {
     const isFlagged = Boolean(session.flags && session.flags[idx]);
     if (flagBtn) {
       if (isFlagged) {
-        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm";
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-amber-50 text-amber-800 border-amber-300 shadow-xs";
         if (flagIcon) flagIcon.innerText = "🚩";
         if (flagText) flagText.innerText = "Flagged for Review";
       } else {
-        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all text-slate-300 border-slate-700 bg-slate-900 hover:bg-slate-800";
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all text-slate-700 border-slate-300 bg-white hover:bg-slate-50 shadow-sm";
         if (flagIcon) flagIcon.innerText = "⚑";
         if (flagText) flagText.innerText = "Mark for Review";
       }
@@ -525,15 +525,18 @@ window.qbEngine = {
     const diffEl = document.getElementById('qb-q-difficulty');
     const qidEl = document.getElementById('qb-q-id');
     const promptEl = document.getElementById('qb-prompt-content');
+    const qnumBadge = document.getElementById('qb-q-num-badge');
+
+    if (qnumBadge) qnumBadge.innerText = (idx + 1);
 
     if (diffEl) {
       diffEl.innerText = q.difficulty || 'Medium';
       if (q.difficulty === 'Easy') {
-        diffEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
+        diffEl.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
       } else if (q.difficulty === 'Hard') {
-        diffEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30";
+        diffEl.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200";
       } else {
-        diffEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30";
+        diffEl.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200";
       }
     }
 
@@ -600,21 +603,21 @@ window.qbEngine = {
         const isCorrect = this.isSPREqual(studentAnswer, q.correct_answer);
         if (sprInput) {
           if (isCorrect) {
-            sprInput.className = "w-full sm:w-64 bg-emerald-950/40 border-2 border-emerald-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-emerald-200 outline-none shadow-inner";
+            sprInput.className = "w-full sm:w-64 bg-emerald-50 border-2 border-emerald-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-emerald-900 outline-none shadow-sm";
           } else {
-            sprInput.className = "w-full sm:w-64 bg-rose-950/40 border-2 border-rose-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-rose-200 outline-none shadow-inner";
+            sprInput.className = "w-full sm:w-64 bg-rose-50 border-2 border-rose-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-rose-900 outline-none shadow-sm";
           }
         }
         if (sprStatus) {
           if (isCorrect) {
-            sprStatus.innerHTML = `<span class="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-1 rounded-lg">✓ Correct!</span>`;
+            sprStatus.innerHTML = `<span class="text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-md">✓ Correct!</span>`;
           } else {
-            sprStatus.innerHTML = `<span class="text-xs font-bold text-rose-400 bg-rose-950/80 border border-rose-500/40 px-2.5 py-1 rounded-lg">✗ Incorrect • Key: <strong class="text-emerald-300 font-mono">${q.correct_answer}</strong></span>`;
+            sprStatus.innerHTML = `<span class="text-xs font-bold text-rose-800 bg-rose-100 border border-rose-300 px-2.5 py-1 rounded-md">✗ Incorrect • Key: <strong class="text-emerald-700 font-mono">${q.correct_answer}</strong></span>`;
           }
         }
       } else {
         if (sprInput) {
-          sprInput.className = "w-full sm:w-64 bg-slate-950 border border-slate-600 focus:border-blue-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-white outline-none placeholder:text-slate-600 shadow-inner";
+          sprInput.className = "w-full sm:w-64 bg-white border-2 border-slate-300 focus:border-blue-600 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-slate-900 outline-none placeholder:text-slate-400 shadow-sm";
         }
         if (sprStatus) sprStatus.innerText = studentAnswer ? '✓ Saved' : '';
       }
@@ -640,38 +643,38 @@ window.qbEngine = {
 
         if (isChecked) {
           if (isCorrectChoice) {
-            // Correct answer choice: vibrant emerald green highlight
-            borderBg = 'bg-emerald-950/70 border-emerald-500 ring-2 ring-emerald-500/80 text-white';
-            badgeClass = 'bg-emerald-500 text-slate-950 font-black shadow-md';
+            // Correct choice: soft green card with green badge
+            borderBg = 'bg-emerald-50/90 border-2 border-emerald-500 text-slate-900 shadow-sm';
+            badgeClass = 'bg-emerald-600 text-white font-black shadow-xs';
             statusTag = isSelected
-              ? `<span class="ml-auto text-xs font-extrabold text-emerald-300 bg-emerald-900/90 border border-emerald-400/50 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">✓ Your Choice (Correct!)</span>`
-              : `<span class="ml-auto text-xs font-extrabold text-emerald-300 bg-emerald-900/90 border border-emerald-400/50 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">✓ Correct Answer</span>`;
+              ? `<span class="ml-auto text-xs font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-md shrink-0 flex items-center gap-1">✓ Your Choice (Correct!)</span>`
+              : `<span class="ml-auto text-xs font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-md shrink-0 flex items-center gap-1">✓ Correct Answer</span>`;
           } else if (isSelected && !isCorrectChoice) {
-            // Student selected this, but it is incorrect: vibrant rose red highlight
-            borderBg = 'bg-rose-950/70 border-rose-500 ring-2 ring-rose-500/80 text-white';
-            badgeClass = 'bg-rose-500 text-white font-black shadow-md';
-            statusTag = `<span class="ml-auto text-xs font-extrabold text-rose-300 bg-rose-900/90 border border-rose-400/50 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">✗ Your Choice (Incorrect)</span>`;
+            // Student selected wrong choice: soft red card with red badge
+            borderBg = 'bg-rose-50/90 border-2 border-rose-500 text-slate-900 shadow-sm';
+            badgeClass = 'bg-rose-600 text-white font-black shadow-xs';
+            statusTag = `<span class="ml-auto text-xs font-extrabold text-rose-800 bg-rose-100 border border-rose-300 px-2.5 py-1 rounded-md shrink-0 flex items-center gap-1">✗ Your Choice (Incorrect)</span>`;
           } else {
-            // Other neutral choices
-            borderBg = 'bg-slate-900/40 border-slate-800 text-slate-500 opacity-60';
-            badgeClass = 'bg-slate-800 text-slate-500 border border-slate-700';
+            // Neutral choices
+            borderBg = 'bg-slate-50/50 border border-slate-200 text-slate-400 opacity-60';
+            badgeClass = 'bg-slate-100 text-slate-400 border border-slate-200';
           }
         } else {
-          // Normal state before checking
+          // Normal state before checking: clean white cards, royal blue when selected
           borderBg = isSelected
-            ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500 text-white'
-            : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-600 hover:bg-slate-800/40 text-slate-200';
+            ? 'bg-blue-50/80 border-2 border-blue-600 text-slate-900 ring-2 ring-blue-600/20 shadow-sm'
+            : 'bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 text-slate-800 shadow-xs';
 
           badgeClass = isSelected
-            ? 'bg-blue-600 text-white shadow-sm'
-            : 'bg-slate-800 text-slate-300 border border-slate-700';
+            ? 'bg-blue-600 text-white font-bold shadow-xs'
+            : 'bg-slate-100 border border-slate-300 text-slate-700 font-bold';
         }
 
         const strikeBtnClass = isStruck
-          ? 'bg-rose-500/15 border-rose-500/50 text-rose-300'
-          : 'bg-slate-900/80 border-slate-700/80 text-slate-500 hover:text-slate-300 hover:border-slate-600';
+          ? 'bg-rose-50 border-rose-300 text-rose-600'
+          : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100';
 
-        const textStrike = isStruck ? 'line-through opacity-40 text-slate-500' : '';
+        const textStrike = isStruck ? 'line-through opacity-40 text-slate-400' : '';
 
         html += `
           <div class="flex items-center gap-2 group" data-choice="${key}">
@@ -699,9 +702,9 @@ window.qbEngine = {
 
     if (answeredStatus) {
       if (studentAnswer) {
-        answeredStatus.innerHTML = `<span class="text-emerald-400 font-extrabold">● Answered: ${studentAnswer}</span>`;
+        answeredStatus.innerHTML = `<span class="text-emerald-700 font-extrabold">● Answered: ${studentAnswer}</span>`;
       } else {
-        answeredStatus.innerHTML = `<span class="text-slate-500 font-bold">○ Unanswered</span>`;
+        answeredStatus.innerHTML = `<span class="text-slate-400 font-bold">○ Unanswered</span>`;
       }
     }
 
@@ -718,40 +721,43 @@ window.qbEngine = {
       if (feedbackPill) {
         feedbackPill.classList.remove('hidden');
         if (isCorrect) {
-          feedbackPill.className = "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+          feedbackPill.className = "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-xs";
           feedbackPill.innerHTML = `<span>✓</span><span>Correct Answer!</span>`;
         } else {
-          feedbackPill.className = "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40";
-          feedbackPill.innerHTML = `<span>✗</span><span>Incorrect (Answer: <strong class="text-emerald-300 font-mono">${q.correct_answer}</strong>)</span>`;
+          feedbackPill.className = "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 bg-rose-50 text-rose-800 border border-rose-300 shadow-xs";
+          feedbackPill.innerHTML = `<span>✗</span><span>Incorrect (Answer: <strong class="text-emerald-700 font-mono">${q.correct_answer}</strong>)</span>`;
         }
       }
 
       if (explCard) {
         explCard.classList.remove('hidden');
         explCard.className = isCorrect
-          ? "rounded-2xl p-4 sm:p-5 border transition-all space-y-3 shadow-xl bg-slate-900/95 border-emerald-500/50 ring-1 ring-emerald-500/30"
-          : "rounded-2xl p-4 sm:p-5 border transition-all space-y-3 shadow-xl bg-slate-900/95 border-rose-500/50 ring-1 ring-rose-500/30";
+          ? "rounded-2xl p-4 sm:p-5 border transition-all space-y-3 shadow-sm bg-emerald-50/40 border-emerald-300 text-slate-800"
+          : "rounded-2xl p-4 sm:p-5 border transition-all space-y-3 shadow-sm bg-rose-50/40 border-rose-300 text-slate-800";
 
         if (explHeader) {
-          if (isCorrect) {
-            explHeader.innerHTML = `
-              <div class="flex items-center gap-2">
-                <span class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-extrabold text-sm">✓</span>
-                <span class="text-sm font-extrabold text-emerald-400">Correct! Great job!</span>
+          explHeader.innerHTML = `
+            <div class="space-y-2.5 w-full">
+              <!-- Summary Status matching user reference image -->
+              <div class="flex flex-wrap items-center gap-4 text-xs sm:text-sm font-bold border-b border-slate-200/80 pb-2">
+                <span class="${isCorrect ? 'text-emerald-800' : 'text-rose-700'}">Your Answer: <strong class="font-black text-sm">${studentAnswer || 'None'}</strong></span>
+                <span class="text-emerald-800">Correct Answer: <strong class="font-black text-sm">${q.correct_answer}</strong></span>
               </div>
-              <span class="text-xs font-mono font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-1 rounded-lg">Key: ${q.correct_answer}</span>
-            `;
-          } else {
-            explHeader.innerHTML = `
-              <div class="flex items-center gap-2">
-                <span class="w-7 h-7 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center font-extrabold text-sm">✗</span>
-                <span class="text-sm font-extrabold text-rose-400">Incorrect Choice</span>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full ${isCorrect ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-rose-100 text-rose-700 border-rose-300'} border flex items-center justify-center font-black text-xs">
+                    ${isCorrect ? '✓' : '✗'}
+                  </span>
+                  <span class="text-sm font-black ${isCorrect ? 'text-emerald-800' : 'text-rose-800'}">
+                    ${isCorrect ? 'Correct! Excellent job!' : 'Incorrect Choice'}
+                  </span>
+                </div>
+                <span class="text-xs font-mono font-bold ${isCorrect ? 'text-emerald-800 bg-emerald-100 border-emerald-300' : 'text-slate-700 bg-white border-slate-200'} border px-2.5 py-1 rounded-md">
+                  Key: ${q.correct_answer}
+                </span>
               </div>
-              <div class="text-xs font-bold text-slate-300 bg-slate-800/80 border border-slate-700 px-2.5 py-1 rounded-lg">
-                Correct Answer: <strong class="text-emerald-400 font-mono text-sm">${q.correct_answer}</strong>
-              </div>
-            `;
-          }
+            </div>
+          `;
         }
 
         if (explContent) {
@@ -759,7 +765,7 @@ window.qbEngine = {
           if (rawRationale) {
             explContent.innerHTML = this.formatQuestionText(rawRationale);
           } else {
-            explContent.innerHTML = `<p class="text-slate-300">The correct answer for this question is <strong class="text-emerald-400 font-mono">${q.correct_answer}</strong>.</p>`;
+            explContent.innerHTML = `<p class="text-slate-700">The correct answer for this question is <strong class="text-emerald-700 font-mono">${q.correct_answer}</strong>.</p>`;
           }
         }
         this.renderMath(explCard);
@@ -905,11 +911,11 @@ window.qbEngine = {
 
     if (flagBtn) {
       if (!curr) {
-        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm";
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-amber-50 text-amber-800 border-amber-300 shadow-xs";
         if (flagIcon) flagIcon.innerText = "🚩";
         if (flagText) flagText.innerText = "Flagged for Review";
       } else {
-        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all text-slate-300 border-slate-700 bg-slate-900 hover:bg-slate-800";
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all text-slate-700 border-slate-300 bg-white hover:bg-slate-50 shadow-sm";
         if (flagIcon) flagIcon.innerText = "⚑";
         if (flagText) flagText.innerText = "Mark for Review";
       }
@@ -1033,18 +1039,18 @@ window.qbEngine = {
       const isAnswered = Boolean(session.answers && session.answers[i]);
       const isFlagged = Boolean(session.flags && session.flags[i]);
 
-      let bgStyle = 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500';
+      let bgStyle = 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-400 hover:bg-slate-100';
       if (isAnswered) {
-        bgStyle = 'bg-blue-600/25 border-blue-500 text-blue-300 font-extrabold';
+        bgStyle = 'bg-blue-50 border-blue-600 text-blue-700 font-bold';
       }
       if (isCurrent) {
-        bgStyle += ' ring-2 ring-white';
+        bgStyle += ' ring-2 ring-blue-600 font-black';
       }
 
       html += `
         <button type="button" onclick="qbEngine.goToQuestion(${i})" class="relative h-11 rounded-xl border text-xs flex items-center justify-center transition-all ${bgStyle}">
           <span>${i + 1}</span>
-          ${isFlagged ? '<span class="absolute top-1 right-1 text-[10px] text-amber-400 font-bold leading-none">⚑</span>' : ''}
+          ${isFlagged ? '<span class="absolute top-1 right-1 text-[10px] text-amber-500 font-bold leading-none">⚑</span>' : ''}
         </button>
       `;
     });
@@ -1086,13 +1092,13 @@ window.qbEngine = {
         const isAns = Boolean(session.answers && session.answers[i]);
         const isFlg = Boolean(session.flags && session.flags[i]);
         const pillClass = isAns
-          ? 'bg-blue-600/20 border-blue-500/60 text-blue-300'
-          : 'bg-slate-800/80 border-slate-700 text-slate-400';
+          ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold'
+          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100';
 
         html += `
           <button type="button" onclick="qbEngine.goToQuestion(${i})" class="relative p-2 rounded-lg border text-[11px] font-bold flex items-center justify-center transition-all hover:scale-105 ${pillClass}">
             <span>Q${i + 1}</span>
-            ${isFlg ? '<span class="text-amber-400 ml-1 font-bold">⚑</span>' : ''}
+            ${isFlg ? '<span class="text-amber-500 ml-1 font-bold">⚑</span>' : ''}
           </button>
         `;
       });
@@ -1148,11 +1154,11 @@ window.qbEngine = {
     const summaryEl = document.getElementById('qb-results-summary');
     if (summaryEl) {
       summaryEl.innerHTML = `
-        <div class="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 tracking-tight">
+        <div class="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
           ${correctCount} / ${total}
         </div>
-        <div class="text-xs sm:text-sm font-bold text-slate-300">
-          Accuracy: <span class="text-emerald-400 font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-sky-300 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
+        <div class="text-xs sm:text-sm font-bold text-slate-600">
+          Accuracy: <span class="text-emerald-600 font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
         </div>
       `;
     }
@@ -1168,12 +1174,12 @@ window.qbEngine = {
           : Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
 
         const secSpent = (session.timePerQuestion && session.timePerQuestion[i]) || 0;
-        const borderClass = isCorrect ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-rose-500/40 bg-rose-950/20';
-        const badgeClass = isCorrect ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300';
+        const borderClass = isCorrect ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50';
+        const badgeClass = isCorrect ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-rose-100 text-rose-700 border border-rose-300';
 
         html += `
           <details class="p-3.5 rounded-2xl border ${borderClass} transition-all space-y-2">
-            <summary class="cursor-pointer flex items-center justify-between text-xs font-bold text-slate-200">
+            <summary class="cursor-pointer flex items-center justify-between text-xs font-bold text-slate-800">
               <div class="flex items-center gap-2">
                 <span class="w-6 h-6 rounded-full ${badgeClass} flex items-center justify-center font-extrabold text-[11px]">
                   ${isCorrect ? '✓' : '✗'}
@@ -1181,15 +1187,15 @@ window.qbEngine = {
                 <span>Question ${i + 1} (${q.domain})</span>
               </div>
               <div class="flex items-center gap-2 font-mono text-[11px]">
-                <span class="${isCorrect ? 'text-emerald-400' : 'text-rose-400'} font-bold">You: ${studentAns || 'Skipped'}</span>
-                <span class="text-slate-400">|</span>
-                <span class="text-sky-300 font-bold">Key: ${q.correct_answer || '-'}</span>
+                <span class="${isCorrect ? 'text-emerald-700' : 'text-rose-700'} font-bold">You: ${studentAns || 'Skipped'}</span>
+                <span class="text-slate-300">|</span>
+                <span class="text-blue-700 font-bold">Key: ${q.correct_answer || '-'}</span>
                 <span class="text-slate-500">(${secSpent}s)</span>
               </div>
             </summary>
-            <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-300 space-y-2 leading-relaxed">
-              <div class="text-white font-medium whitespace-pre-line">${this.formatQuestionText(q.prompt)}</div>
-              ${q.rationale ? `<div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 whitespace-pre-line"><strong class="text-sky-300 block mb-1">Explanation:</strong>${this.formatQuestionText(q.rationale)}</div>` : ''}
+            <div class="pt-2 border-t border-slate-200 text-[11px] text-slate-700 space-y-2 leading-relaxed">
+              <div class="text-slate-900 font-medium whitespace-pre-line">${this.formatQuestionText(q.prompt)}</div>
+              ${q.rationale ? `<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 whitespace-pre-line"><strong class="text-blue-700 block mb-1">Explanation:</strong>${this.formatQuestionText(q.rationale)}</div>` : ''}
             </div>
           </details>
         `;
