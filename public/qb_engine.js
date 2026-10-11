@@ -428,6 +428,7 @@ window.qbEngine = {
       timePerQuestion: {},
       flags: {},
       strikethroughs: {},
+      checked: {},
       config: {
         subject: this.activeSubject,
         domains: Array.from(this.getActiveDomains()),
@@ -570,6 +571,7 @@ window.qbEngine = {
     const q = session.questions[idx];
     if (!q) return;
 
+    const isChecked = Boolean(session.checked && session.checked[idx]);
     const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
     const mcqContainer = document.getElementById('qb-mcq-container');
     const sprContainer = document.getElementById('qb-spr-container');
@@ -577,6 +579,13 @@ window.qbEngine = {
     const answeredStatus = document.getElementById('qb-answered-status');
 
     const studentAnswer = session.answers ? session.answers[idx] : undefined;
+
+    // Check action controls & explanation elements
+    const checkBtnText = document.getElementById('qb-check-btn-text');
+    const feedbackPill = document.getElementById('qb-check-feedback-pill');
+    const explCard = document.getElementById('qb-explanation-card');
+    const explHeader = document.getElementById('qb-explanation-header');
+    const explContent = document.getElementById('qb-explanation-content');
 
     if (isSPR) {
       if (mcqContainer) mcqContainer.classList.add('hidden');
@@ -586,7 +595,29 @@ window.qbEngine = {
       const sprInput = document.getElementById('qb-spr-input');
       const sprStatus = document.getElementById('qb-spr-status');
       if (sprInput) sprInput.value = studentAnswer || '';
-      if (sprStatus) sprStatus.innerText = studentAnswer ? '✓ Saved' : '';
+
+      if (isChecked) {
+        const isCorrect = this.isSPREqual(studentAnswer, q.correct_answer);
+        if (sprInput) {
+          if (isCorrect) {
+            sprInput.className = "w-full sm:w-64 bg-emerald-950/40 border-2 border-emerald-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-emerald-200 outline-none shadow-inner";
+          } else {
+            sprInput.className = "w-full sm:w-64 bg-rose-950/40 border-2 border-rose-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-rose-200 outline-none shadow-inner";
+          }
+        }
+        if (sprStatus) {
+          if (isCorrect) {
+            sprStatus.innerHTML = `<span class="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-1 rounded-lg">✓ Correct!</span>`;
+          } else {
+            sprStatus.innerHTML = `<span class="text-xs font-bold text-rose-400 bg-rose-950/80 border border-rose-500/40 px-2.5 py-1 rounded-lg">✗ Incorrect • Key: <strong class="text-emerald-300 font-mono">${q.correct_answer}</strong></span>`;
+          }
+        }
+      } else {
+        if (sprInput) {
+          sprInput.className = "w-full sm:w-64 bg-slate-950 border border-slate-600 focus:border-blue-500 rounded-xl px-4 py-2.5 text-base font-mono font-bold text-white outline-none placeholder:text-slate-600 shadow-inner";
+        }
+        if (sprStatus) sprStatus.innerText = studentAnswer ? '✓ Saved' : '';
+      }
     } else {
       if (mcqContainer) mcqContainer.classList.remove('hidden');
       if (sprContainer) sprContainer.classList.add('hidden');
@@ -594,19 +625,47 @@ window.qbEngine = {
 
       const strikethroughs = (session.strikethroughs && session.strikethroughs[idx]) || [];
       const optionEntries = Object.entries(q.options || {});
+      const correctLetter = String(q.correct_answer || '').trim().toUpperCase();
 
       let html = '';
       optionEntries.forEach(([key, val]) => {
+        const keyUpper = String(key).trim().toUpperCase();
         const isSelected = (studentAnswer === key);
         const isStruck = strikethroughs.includes(key);
+        const isCorrectChoice = (keyUpper === correctLetter);
 
-        const borderBg = isSelected
-          ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500 text-white'
-          : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-600 hover:bg-slate-800/40 text-slate-200';
+        let borderBg = '';
+        let badgeClass = '';
+        let statusTag = '';
 
-        const badgeClass = isSelected
-          ? 'bg-blue-600 text-white shadow-sm'
-          : 'bg-slate-800 text-slate-300 border border-slate-700';
+        if (isChecked) {
+          if (isCorrectChoice) {
+            // Correct answer choice: vibrant emerald green highlight
+            borderBg = 'bg-emerald-950/70 border-emerald-500 ring-2 ring-emerald-500/80 text-white';
+            badgeClass = 'bg-emerald-500 text-slate-950 font-black shadow-md';
+            statusTag = isSelected
+              ? `<span class="ml-auto text-xs font-extrabold text-emerald-300 bg-emerald-900/90 border border-emerald-400/50 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">✓ Your Choice (Correct!)</span>`
+              : `<span class="ml-auto text-xs font-extrabold text-emerald-300 bg-emerald-900/90 border border-emerald-400/50 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">✓ Correct Answer</span>`;
+          } else if (isSelected && !isCorrectChoice) {
+            // Student selected this, but it is incorrect: vibrant rose red highlight
+            borderBg = 'bg-rose-950/70 border-rose-500 ring-2 ring-rose-500/80 text-white';
+            badgeClass = 'bg-rose-500 text-white font-black shadow-md';
+            statusTag = `<span class="ml-auto text-xs font-extrabold text-rose-300 bg-rose-900/90 border border-rose-400/50 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">✗ Your Choice (Incorrect)</span>`;
+          } else {
+            // Other neutral choices
+            borderBg = 'bg-slate-900/40 border-slate-800 text-slate-500 opacity-60';
+            badgeClass = 'bg-slate-800 text-slate-500 border border-slate-700';
+          }
+        } else {
+          // Normal state before checking
+          borderBg = isSelected
+            ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500 text-white'
+            : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-600 hover:bg-slate-800/40 text-slate-200';
+
+          badgeClass = isSelected
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'bg-slate-800 text-slate-300 border border-slate-700';
+        }
 
         const strikeBtnClass = isStruck
           ? 'bg-rose-500/15 border-rose-500/50 text-rose-300'
@@ -623,6 +682,7 @@ window.qbEngine = {
               <span class="text-xs sm:text-sm font-medium leading-relaxed pt-0.5 qb-choice-text ${textStrike}">
                 ${this.formatQuestionText(val)}
               </span>
+              ${statusTag}
             </button>
             <button type="button" onclick="qbEngine.toggleStrikethrough('${key}', event)" title="Eliminate option" class="px-2.5 py-3.5 rounded-xl border text-xs font-bold transition-all ${strikeBtnClass}">
               <span class="${isStruck ? 'line-through' : ''}">̶${key}̶</span>
@@ -644,6 +704,106 @@ window.qbEngine = {
         answeredStatus.innerHTML = `<span class="text-slate-500 font-bold">○ Unanswered</span>`;
       }
     }
+
+    // Evaluation for feedback pill and explanation card
+    let isCorrect = false;
+    if (isSPR) {
+      isCorrect = this.isSPREqual(studentAnswer, q.correct_answer);
+    } else {
+      isCorrect = Boolean(studentAnswer && String(studentAnswer).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+    }
+
+    if (isChecked) {
+      if (checkBtnText) checkBtnText.innerText = "Re-check Answer";
+      if (feedbackPill) {
+        feedbackPill.classList.remove('hidden');
+        if (isCorrect) {
+          feedbackPill.className = "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+          feedbackPill.innerHTML = `<span>✓</span><span>Correct Answer!</span>`;
+        } else {
+          feedbackPill.className = "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40";
+          feedbackPill.innerHTML = `<span>✗</span><span>Incorrect (Answer: <strong class="text-emerald-300 font-mono">${q.correct_answer}</strong>)</span>`;
+        }
+      }
+
+      if (explCard) {
+        explCard.classList.remove('hidden');
+        explCard.className = isCorrect
+          ? "rounded-2xl p-4 sm:p-5 border transition-all space-y-3 shadow-xl bg-slate-900/95 border-emerald-500/50 ring-1 ring-emerald-500/30"
+          : "rounded-2xl p-4 sm:p-5 border transition-all space-y-3 shadow-xl bg-slate-900/95 border-rose-500/50 ring-1 ring-rose-500/30";
+
+        if (explHeader) {
+          if (isCorrect) {
+            explHeader.innerHTML = `
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-extrabold text-sm">✓</span>
+                <span class="text-sm font-extrabold text-emerald-400">Correct! Great job!</span>
+              </div>
+              <span class="text-xs font-mono font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-1 rounded-lg">Key: ${q.correct_answer}</span>
+            `;
+          } else {
+            explHeader.innerHTML = `
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center font-extrabold text-sm">✗</span>
+                <span class="text-sm font-extrabold text-rose-400">Incorrect Choice</span>
+              </div>
+              <div class="text-xs font-bold text-slate-300 bg-slate-800/80 border border-slate-700 px-2.5 py-1 rounded-lg">
+                Correct Answer: <strong class="text-emerald-400 font-mono text-sm">${q.correct_answer}</strong>
+              </div>
+            `;
+          }
+        }
+
+        if (explContent) {
+          const rawRationale = q.rationale && q.rationale.trim();
+          if (rawRationale) {
+            explContent.innerHTML = this.formatQuestionText(rawRationale);
+          } else {
+            explContent.innerHTML = `<p class="text-slate-300">The correct answer for this question is <strong class="text-emerald-400 font-mono">${q.correct_answer}</strong>.</p>`;
+          }
+        }
+        this.renderMath(explCard);
+      }
+    } else {
+      if (checkBtnText) checkBtnText.innerText = "Check Answer";
+      if (feedbackPill) feedbackPill.classList.add('hidden');
+      if (explCard) explCard.classList.add('hidden');
+    }
+  },
+
+  checkCurrentAnswer() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session || !session.questions) return;
+
+    const idx = session.currentIdx || 0;
+    const q = session.questions[idx];
+    if (!q) return;
+
+    const studentAnswer = session.answers ? session.answers[idx] : undefined;
+    const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+
+    if (studentAnswer === undefined || String(studentAnswer).trim() === '') {
+      if (typeof showToast === 'function') {
+        showToast("⚠️ Answer Required", isSPR ? "Please enter your answer before checking." : "Please select an answer choice before checking.", "warning");
+      } else {
+        alert(isSPR ? "Please enter your answer before checking." : "Please select an answer choice before checking.");
+      }
+      return;
+    }
+
+    if (!session.checked) session.checked = {};
+    session.checked[idx] = true;
+    sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+
+    this.updateChoicesUI();
+
+    const explCard = document.getElementById('qb-explanation-card');
+    if (explCard) {
+      explCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   },
 
   selectOption(letter) {
@@ -655,6 +815,9 @@ window.qbEngine = {
 
     if (!session.answers) session.answers = {};
     session.answers[session.currentIdx] = letter;
+    if (session.checked && session.checked[session.currentIdx]) {
+      delete session.checked[session.currentIdx];
+    }
     sessionStorage.setItem('qb_active_session', JSON.stringify(session));
 
     this.updateChoicesUI();
@@ -698,6 +861,9 @@ window.qbEngine = {
     } else {
       delete session.answers[session.currentIdx];
     }
+    if (session.checked && session.checked[session.currentIdx]) {
+      delete session.checked[session.currentIdx];
+    }
     sessionStorage.setItem('qb_active_session', JSON.stringify(session));
 
     const sprStatus = document.getElementById('qb-spr-status');
@@ -709,6 +875,15 @@ window.qbEngine = {
       } else {
         answeredStatus.innerHTML = `<span class="text-slate-500 font-bold">○ Unanswered</span>`;
       }
+    }
+
+    if (!session.checked || !session.checked[session.currentIdx]) {
+      const explCard = document.getElementById('qb-explanation-card');
+      const feedbackPill = document.getElementById('qb-check-feedback-pill');
+      const checkBtnText = document.getElementById('qb-check-btn-text');
+      if (explCard) explCard.classList.add('hidden');
+      if (feedbackPill) feedbackPill.classList.add('hidden');
+      if (checkBtnText) checkBtnText.innerText = "Check Answer";
     }
   },
 
