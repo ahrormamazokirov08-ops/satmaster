@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <!-- Question Bank State Engine Module with Cache-Buster -->
+  <script src="public/qb_engine.js?v=2.1.0"></script>
   <style>
     html, body {
       touch-action: manipulation;
@@ -739,18 +741,34 @@
             </p>
           </div>
         </div>
-        <div class="flex items-center gap-2 self-end md:self-auto shrink-0">
+        <div class="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap">
+          <button type="button" onclick="openBluebookSimulator()" id="btn-control-panel-simulator" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold shadow-lg shadow-blue-600/30 flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-95">
+            <span>🧪</span><span>Open Full Bluebook Simulator</span>
+          </button>
           <button type="button" onclick="openAddQuestionModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all">
             <span>➕</span><span>Add Custom Question</span>
           </button>
-          <button type="button" id="btn-toggle-publish" onclick="togglePublishQBank()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-95">
-            <span>🚀</span><span id="btn-publish-label">Publish to Students</span>
+          <button type="button" id="btn-toggle-publish" onclick="handleAdminPublishToggle()" class="btn-admin-publish-qbank px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition-all active:scale-95">
+            <span>🚀</span><span id="btn-publish-label" class="btn-admin-publish-label">Publish to Students</span>
           </button>
         </div>
       </div>
 
       <!-- VIEW 0: BLUEBOOK QUESTION BANK PRACTICE SETUP -->
       <div id="qb-setup-view" class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- Top Navigation Returning to Overview -->
+        <div class="flex items-center justify-between pb-1">
+          <button type="button" onclick="returnToQBankOverview()" id="btn-qb-back-overview" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-[#334155] hover:border-slate-500 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-md group">
+            <span class="group-hover:-translate-x-0.5 transition-transform">←</span>
+            <span>Back to Overview</span>
+          </button>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Bluebook Practice Setup</span>
+          </div>
+        </div>
+
         <div class="bg-[#0f172a] border border-[#334155] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-8 text-white">
           
           <!-- Top Header / Banner -->
@@ -1248,16 +1266,16 @@
               <div>
                 <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Reading &amp; Writing</h2>
                 <div class="flex items-center justify-between text-xs font-semibold text-pink-100 mt-2">
-                  <span id="rw-stat-label">41 of 1,492 solved</span>
-                  <span id="rw-stat-pct" class="font-bold">3%</span>
+                  <span id="rw-stat-label">0 of 1,845 solved</span>
+                  <span id="rw-stat-pct" class="font-bold">0%</span>
                 </div>
                 <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
-                  <div id="rw-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 3%"></div>
+                  <div id="rw-stat-bar" class="h-full bg-white rounded-full transition-all duration-500 shadow-sm" style="width: 0%"></div>
                 </div>
               </div>
 
               <div class="pt-2">
-                <button type="button" onclick="startQBankPractice('rw')" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                <button type="button" onclick="openBluebookSimulator('rw')" id="btn-open-qbank-rw" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <span>Open</span>
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
                 </button>
@@ -1281,7 +1299,7 @@
               <div>
                 <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Math</h2>
                 <div class="flex items-center justify-between text-xs font-semibold text-sky-100 mt-2">
-                  <span id="math-stat-label">0 of 2,390 solved</span>
+                  <span id="math-stat-label">0 of 1,925 solved</span>
                   <span id="math-stat-pct" class="font-bold">0%</span>
                 </div>
                 <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
@@ -1290,7 +1308,7 @@
               </div>
 
               <div class="pt-2">
-                <button type="button" onclick="startQBankPractice('math')" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                <button type="button" onclick="openBluebookSimulator('math')" id="btn-open-qbank-math" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-slate-900 font-bold text-sm shadow-xl hover:bg-slate-100 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
                   <span>Open</span>
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
                 </button>
@@ -6838,10 +6856,9 @@
       }
 
       if (tabName === 'qbank') {
+        openBluebookSimulator();
         if (window.qbEngine) {
           window.qbEngine.init();
-        } else {
-          initQBankView();
         }
       }
     }
@@ -9594,8 +9611,71 @@
       }
     }
 
-    function openQBankAdminSimulator() {
-      switchTab('qbank');
+    function openBluebookSimulator(subject) {
+      const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+      const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+      if (isStudent && !isPub) {
+        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+        switchTab('vocab');
+        return;
+      }
+
+      const qbSection = document.getElementById('tab-qbank');
+      if (!qbSection || qbSection.classList.contains('hidden')) {
+        switchTab('qbank');
+      }
+
+      // Hide legacy overview / solver views and test container
+      const hubView = document.getElementById('qbank-hub-view');
+      const solverView = document.getElementById('qbank-solver-view');
+      const testContainer = document.getElementById('qb-test-container');
+      const setupView = document.getElementById('qb-setup-view');
+
+      if (hubView) hubView.classList.add('hidden');
+      if (solverView) solverView.classList.add('hidden');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (setupView) setupView.classList.remove('hidden');
+
+      if (window.qbEngine) {
+        if (!window.qbEngine.isInitialized) {
+          window.qbEngine.init(subject || 'rw');
+        } else {
+          if (subject && ['rw', 'math', 'combined'].includes(subject)) {
+            window.qbEngine.setSubject(subject);
+          } else {
+            window.qbEngine.updateMatchingCount();
+          }
+        }
+      }
+
+      if (setupView) {
+        setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function returnToQBankOverview() {
+      const setupView = document.getElementById('qb-setup-view');
+      const testContainer = document.getElementById('qb-test-container');
+      const solverView = document.getElementById('qbank-solver-view');
+      const hubView = document.getElementById('qbank-hub-view');
+      const teacherControls = document.getElementById('qbank-teacher-controls');
+
+      if (setupView) setupView.classList.add('hidden');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (solverView) solverView.classList.add('hidden');
+      if (hubView) hubView.classList.remove('hidden');
+      if (teacherControls && (currentUserRole === 'teacher' || currentUserRole === 'admin')) {
+        teacherControls.classList.remove('hidden');
+      }
+
+      initQBankView();
+      if (hubView) {
+        hubView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function openQBankAdminSimulator(subject) {
+      openBluebookSimulator(subject || 'rw');
     }
 
     function updateTeacherPublishControlsUI() {
@@ -9707,15 +9787,12 @@
       return base;
     }
 
-    // HUB VIEW RENDERING (MATCHING SCREENSHOT)
+    // HUB VIEW RENDERING (OVERVIEW STATS)
     function initQBankView() {
-      if (window.qbEngine) {
-        window.qbEngine.init();
-      }
       const stats = getQBankStats();
 
       // 1. Reading & Writing Card Progress
-      const rwTotal = 1492;
+      const rwTotal = 1845;
       const rwSolved = stats.rwSolved || 0;
       const rwPct = Math.round((rwSolved / rwTotal) * 100);
       const rwLabel = document.getElementById('rw-stat-label');
@@ -9723,10 +9800,10 @@
       const rwBar = document.getElementById('rw-stat-bar');
       if (rwLabel) rwLabel.innerText = `${rwSolved.toLocaleString()} of ${rwTotal.toLocaleString()} solved`;
       if (rwPctEl) rwPctEl.innerText = `${rwPct}%`;
-      if (rwBar) rwBar.style.width = `${Math.max(rwPct, 2)}%`;
+      if (rwBar) rwBar.style.width = `${Math.max(rwPct, 0)}%`;
 
       // 2. Math Card Progress
-      const mathTotal = 2390;
+      const mathTotal = 1925;
       const mathSolved = stats.mathSolved || 0;
       const mathPct = Math.round((mathSolved / mathTotal) * 100);
       const mathLabel = document.getElementById('math-stat-label');
@@ -9795,16 +9872,7 @@
 
     // SOLVER & PRACTICE INTERACTION
     function startQBankPractice(subject) {
-      activeQBankSubject = subject;
-      currentQBankQuestions = getAllQuestionsForSubject(subject);
-      currentQBankIndex = 0;
-      selectedOptionLetter = null;
-      isCurrentAnswerChecked = false;
-
-      document.getElementById('qbank-hub-view')?.classList.add('hidden');
-      document.getElementById('qbank-solver-view')?.classList.remove('hidden');
-
-      renderCurrentQBankQuestion();
+      openBluebookSimulator(subject);
     }
 
     function exitQBankSolver() {
@@ -10151,7 +10219,7 @@
       timerInterval: null,
       isTimerHidden: false,
 
-      async init() {
+      async init(defaultSubj) {
         const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
         const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
         if (isStudent && !isPub) {
@@ -10176,11 +10244,17 @@
         if (hubView) hubView.classList.add('hidden');
         if (solverView) solverView.classList.add('hidden');
 
+        if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
+          this.activeSubject = defaultSubj;
+        }
+
         if (!this.isInitialized) {
           this.isInitialized = true;
           this.syncUI();
+          if (defaultSubj) this.setSubject(defaultSubj);
           await this.loadQuestions();
         } else {
+          if (defaultSubj) this.setSubject(defaultSubj);
           this.updateMatchingCount();
         }
       },
@@ -11136,11 +11210,15 @@
 
         const testContainer = document.getElementById('qb-test-container');
         const setupView = document.getElementById('qb-setup-view');
+        const hubView = document.getElementById('qbank-hub-view');
+        const solverView = document.getElementById('qbank-solver-view');
         const navModal = document.getElementById('qb-navigator-modal');
         const revModal = document.getElementById('qb-review-submit-modal');
         const resModal = document.getElementById('qb-results-modal');
 
         if (testContainer) testContainer.classList.add('hidden');
+        if (hubView) hubView.classList.add('hidden');
+        if (solverView) solverView.classList.add('hidden');
         if (navModal) navModal.classList.add('hidden');
         if (revModal) revModal.classList.add('hidden');
         if (resModal) resModal.classList.add('hidden');

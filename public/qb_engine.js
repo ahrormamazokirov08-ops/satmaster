@@ -16,7 +16,7 @@ window.qbEngine = {
   timerInterval: null,
   isTimerHidden: false,
 
-  async init() {
+  async init(defaultSubj) {
     // Check if student lockout is active
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
@@ -43,11 +43,17 @@ window.qbEngine = {
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
 
+    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
+      this.activeSubject = defaultSubj;
+    }
+
     if (!this.isInitialized) {
       this.isInitialized = true;
       this.syncUI();
+      if (defaultSubj) this.setSubject(defaultSubj);
       await this.loadQuestions();
     } else {
+      if (defaultSubj) this.setSubject(defaultSubj);
       this.updateMatchingCount();
     }
   },
@@ -1019,11 +1025,15 @@ window.qbEngine = {
 
     const testContainer = document.getElementById('qb-test-container');
     const setupView = document.getElementById('qb-setup-view');
+    const hubView = document.getElementById('qbank-hub-view');
+    const solverView = document.getElementById('qbank-solver-view');
     const navModal = document.getElementById('qb-navigator-modal');
     const revModal = document.getElementById('qb-review-submit-modal');
     const resModal = document.getElementById('qb-results-modal');
 
     if (testContainer) testContainer.classList.add('hidden');
+    if (hubView) hubView.classList.add('hidden');
+    if (solverView) solverView.classList.add('hidden');
     if (navModal) navModal.classList.add('hidden');
     if (revModal) revModal.classList.add('hidden');
     if (resModal) resModal.classList.add('hidden');

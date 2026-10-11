@@ -135,6 +135,30 @@ class TestAdminStagingAndStudentLockout(unittest.TestCase):
         self.assertIn("434 Words", self.html, "PrepPros 434 vocabulary set must remain intact")
         print("✅ Vocabulary logic intact and isolated: PASS")
 
+    # 9. Direct Bluebook Setup View Wiring & Cache Busting
+    def test_bluebook_setup_wiring(self):
+        print("\n--- Test 9: Direct Bluebook Setup Wiring & Cache Busting ---")
+        # 1. Yellow Teacher Control Panel has Open Full Bluebook Simulator button
+        self.assertIn('id="btn-control-panel-simulator"', self.html, "Control panel must have simulator button")
+        self.assertIn("openBluebookSimulator()", self.html, "Simulator button must call openBluebookSimulator")
+        self.assertIn("Open Full Bluebook Simulator", self.html, "Simulator button label text")
+
+        # 2. Back to Overview button in #qb-setup-view
+        self.assertIn('id="btn-qb-back-overview"', self.html, "#qb-setup-view must have Back to Overview button")
+        self.assertIn("returnToQBankOverview()", self.html, "Back button must call returnToQBankOverview()")
+
+        # 3. RW and Math card Open buttons wire to openBluebookSimulator
+        self.assertIn("openBluebookSimulator('rw')", self.html, "RW Open button must call openBluebookSimulator('rw')")
+        self.assertIn("openBluebookSimulator('math')", self.html, "Math Open button must call openBluebookSimulator('math')")
+
+        # 4. switchTab('qbank') triggers openBluebookSimulator
+        self.assertIn("openBluebookSimulator();", self.html, "switchTab('qbank') must trigger openBluebookSimulator()")
+
+        # 5. Cache-busted script tag for qb_engine.js
+        self.assertIn("public/qb_engine.js?v=", self.html, "qb_engine.js must be included with cache-busting version parameter")
+        print("✅ Direct Bluebook setup wiring & cache busting verified: PASS")
+
 
 if __name__ == "__main__":
     unittest.main()
+
