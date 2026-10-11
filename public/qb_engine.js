@@ -35,6 +35,13 @@ window.qbEngine = {
       if (typeof switchTab === 'function') switchTab('qbank');
     }
 
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+
+    if (typeof startQBankPractice === 'function') {
+      startQBankPractice(targetSubj);
+      return;
+    }
+
     const hubView = document.getElementById('qbank-hub-view');
     const solverView = document.getElementById('qbank-solver-view');
     const testContainer = document.getElementById('qb-test-container');
@@ -44,8 +51,6 @@ window.qbEngine = {
     if (solverView) solverView.classList.add('hidden');
     if (testContainer) testContainer.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
-
-    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
 
     if (!this.isInitialized) {
       this.init(targetSubj);
