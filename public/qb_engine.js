@@ -13,6 +13,8 @@ window.qbEngine = {
   questionsData: { rw: null, math: null },
   isLoading: false,
   isInitialized: false,
+  timerInterval: null,
+  isTimerHidden: false,
 
   async init() {
     // Show setup view, hide test container and legacy views
@@ -338,6 +340,8 @@ window.qbEngine = {
       currentIdx: 0,
       answers: {},
       timePerQuestion: {},
+      flags: {},
+      strikethroughs: {},
       config: {
         subject: this.activeSubject,
         domains: Array.from(this.getActiveDomains()),
@@ -350,52 +354,687 @@ window.qbEngine = {
 
     sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
 
-    // Render placeholder view #qb-test-container
+    // Switch view to #qb-test-container
     const setupView = document.getElementById('qb-setup-view');
     const testContainer = document.getElementById('qb-test-container');
-    const summaryCard = document.getElementById('qb-session-summary-card');
 
     if (setupView) setupView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
-    if (summaryCard) {
-      const subjTitle = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined (RW + Math)');
-      const domainsSummary = activeSession.config.domains.join(', ');
-      const diffSummary = activeSession.config.difficulties.join(', ');
+    // Render current question
+    this.renderCurrentQuestion();
 
-      summaryCard.innerHTML = `
-        <div class="flex items-center justify-between border-b border-[#334155] pb-2">
-          <span class="font-bold text-slate-300">Session Status</span>
-          <span class="font-extrabold text-emerald-400">● ACTIVE SESSION READY</span>
+    if (typeof showToast === 'function') {
+      showToast("🚀 Session Initialized", `${selectedQuestions.length} practice questions loaded! Good luck!`, "success");
+    }
+  },
+
+  renderCurrentQuestion() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+
+    if (!session || !session.questions || session.questions.length === 0) {
+      this.returnToSetup();
+      return;
+    }
+
+    const idx = session.currentIdx || 0;
+    const q = session.questions[idx];
+    if (!q) return;
+
+    // Header updates
+    const headerSubj = document.getElementById('qb-header-subject');
+    const headerDomain = document.getElementById('qb-header-domain');
+    const headerQnum = document.getElementById('qb-header-qnum');
+    const navBadge = document.getElementById('qb-nav-current-badge');
+    const flagBtn = document.getElementById('qb-btn-flag');
+    const flagIcon = document.getElementById('qb-flag-icon');
+    const flagText = document.getElementById('qb-flag-text');
+
+    if (headerSubj) headerSubj.innerText = `Section: ${q.subject || 'SAT Practice'}`;
+    if (headerDomain) headerDomain.innerText = q.domain || '';
+    if (headerQnum) headerQnum.innerText = `Question ${idx + 1} of ${session.questions.length}`;
+    if (navBadge) navBadge.innerText = `${idx + 1} of ${session.questions.length}`;
+
+    const isFlagged = Boolean(session.flags && session.flags[idx]);
+    if (flagBtn) {
+      if (isFlagged) {
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm";
+        if (flagIcon) flagIcon.innerText = "🚩";
+        if (flagText) flagText.innerText = "Flagged for Review";
+      } else {
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all text-slate-300 border-slate-700 bg-slate-900 hover:bg-slate-800";
+        if (flagIcon) flagIcon.innerText = "⚑";
+        if (flagText) flagText.innerText = "Mark for Review";
+      }
+    }
+
+    // Passage pane handling
+    const passagePane = document.getElementById('qb-passage-pane');
+    const passageContent = document.getElementById('qb-passage-content');
+    const passageSkill = document.getElementById('qb-passage-skill');
+    const splitContainer = document.getElementById('qb-split-container');
+
+    const hasPassage = Boolean(q.passage && q.passage.trim().length > 0);
+    if (passagePane) {
+      if (hasPassage) {
+        passagePane.classList.remove('hidden');
+        if (passageSkill) passageSkill.innerText = q.skill || q.domain || 'Passage';
+        if (passageContent) passageContent.innerHTML = this.formatQuestionText(q.passage);
+        if (splitContainer) {
+          splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]";
+        }
+      } else {
+        passagePane.classList.add('hidden');
+        if (splitContainer) {
+          splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
+        }
+      }
+    }
+
+    // Right pane question prompt & metadata
+    const diffEl = document.getElementById('qb-q-difficulty');
+    const qidEl = document.getElementById('qb-q-id');
+    const promptEl = document.getElementById('qb-prompt-content');
+
+    if (diffEl) {
+      diffEl.innerText = q.difficulty || 'Medium';
+      if (q.difficulty === 'Easy') {
+        diffEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
+      } else if (q.difficulty === 'Hard') {
+        diffEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30";
+      } else {
+        diffEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30";
+      }
+    }
+
+    if (qidEl) qidEl.innerText = q.id || '';
+    if (promptEl) promptEl.innerHTML = this.formatQuestionText(q.prompt);
+
+    // Choices vs SPR
+    this.updateChoicesUI();
+
+    // Footer buttons
+    const prevBtn = document.getElementById('qb-btn-prev');
+    const nextBtn = document.getElementById('qb-btn-next');
+    const nextLabel = document.getElementById('qb-next-label');
+
+    if (prevBtn) prevBtn.disabled = (idx === 0);
+    if (nextLabel) {
+      nextLabel.innerText = (idx === session.questions.length - 1) ? "Review & Submit 🏁" : "Next";
+    }
+
+    // Math typesetting
+    this.renderMath(document.getElementById('qb-split-container'));
+
+    // Start / resume per-question stopwatch
+    this.startTimer();
+  },
+
+  updateChoicesUI() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    const idx = session.currentIdx || 0;
+    const q = session.questions[idx];
+    if (!q) return;
+
+    const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+    const mcqContainer = document.getElementById('qb-mcq-container');
+    const sprContainer = document.getElementById('qb-spr-container');
+    const elimTip = document.getElementById('qb-elim-tip');
+    const answeredStatus = document.getElementById('qb-answered-status');
+
+    const studentAnswer = session.answers ? session.answers[idx] : undefined;
+
+    if (isSPR) {
+      if (mcqContainer) mcqContainer.classList.add('hidden');
+      if (sprContainer) sprContainer.classList.remove('hidden');
+      if (elimTip) elimTip.classList.add('hidden');
+
+      const sprInput = document.getElementById('qb-spr-input');
+      const sprStatus = document.getElementById('qb-spr-status');
+      if (sprInput) sprInput.value = studentAnswer || '';
+      if (sprStatus) sprStatus.innerText = studentAnswer ? '✓ Saved' : '';
+    } else {
+      if (mcqContainer) mcqContainer.classList.remove('hidden');
+      if (sprContainer) sprContainer.classList.add('hidden');
+      if (elimTip) elimTip.classList.remove('hidden');
+
+      const strikethroughs = (session.strikethroughs && session.strikethroughs[idx]) || [];
+      const optionEntries = Object.entries(q.options || {});
+
+      let html = '';
+      optionEntries.forEach(([key, val]) => {
+        const isSelected = (studentAnswer === key);
+        const isStruck = strikethroughs.includes(key);
+
+        const borderBg = isSelected
+          ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500 text-white'
+          : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-600 hover:bg-slate-800/40 text-slate-200';
+
+        const badgeClass = isSelected
+          ? 'bg-blue-600 text-white shadow-sm'
+          : 'bg-slate-800 text-slate-300 border border-slate-700';
+
+        const strikeBtnClass = isStruck
+          ? 'bg-rose-500/15 border-rose-500/50 text-rose-300'
+          : 'bg-slate-900/80 border-slate-700/80 text-slate-500 hover:text-slate-300 hover:border-slate-600';
+
+        const textStrike = isStruck ? 'line-through opacity-40 text-slate-500' : '';
+
+        html += `
+          <div class="flex items-center gap-2 group" data-choice="${key}">
+            <button type="button" onclick="qbEngine.selectOption('${key}')" id="qb-choice-btn-${key}" class="flex-1 flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${borderBg}">
+              <span class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${badgeClass}">
+                ${key}
+              </span>
+              <span class="text-xs sm:text-sm font-medium leading-relaxed pt-0.5 qb-choice-text ${textStrike}">
+                ${this.formatQuestionText(val)}
+              </span>
+            </button>
+            <button type="button" onclick="qbEngine.toggleStrikethrough('${key}', event)" title="Eliminate option" class="px-2.5 py-3.5 rounded-xl border text-xs font-bold transition-all ${strikeBtnClass}">
+              <span class="${isStruck ? 'line-through' : ''}">̶${key}̶</span>
+            </button>
+          </div>
+        `;
+      });
+
+      if (mcqContainer) {
+        mcqContainer.innerHTML = html;
+        this.renderMath(mcqContainer);
+      }
+    }
+
+    if (answeredStatus) {
+      if (studentAnswer) {
+        answeredStatus.innerHTML = `<span class="text-emerald-400 font-extrabold">● Answered: ${studentAnswer}</span>`;
+      } else {
+        answeredStatus.innerHTML = `<span class="text-slate-500 font-bold">○ Unanswered</span>`;
+      }
+    }
+  },
+
+  selectOption(letter) {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (!session.answers) session.answers = {};
+    session.answers[session.currentIdx] = letter;
+    sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+
+    this.updateChoicesUI();
+  },
+
+  toggleStrikethrough(letter, event) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (!session.strikethroughs) session.strikethroughs = {};
+    const list = session.strikethroughs[session.currentIdx] || [];
+    if (list.includes(letter)) {
+      session.strikethroughs[session.currentIdx] = list.filter(k => k !== letter);
+    } else {
+      session.strikethroughs[session.currentIdx] = [...list, letter];
+    }
+    sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+
+    this.updateChoicesUI();
+  },
+
+  onSPRInput(val) {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (!session.answers) session.answers = {};
+    const clean = (val || '').trim();
+    if (clean) {
+      session.answers[session.currentIdx] = clean;
+    } else {
+      delete session.answers[session.currentIdx];
+    }
+    sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+
+    const sprStatus = document.getElementById('qb-spr-status');
+    const answeredStatus = document.getElementById('qb-answered-status');
+    if (sprStatus) sprStatus.innerText = clean ? '✓ Saved' : '';
+    if (answeredStatus) {
+      if (clean) {
+        answeredStatus.innerHTML = `<span class="text-emerald-400 font-extrabold">● Answered: ${clean}</span>`;
+      } else {
+        answeredStatus.innerHTML = `<span class="text-slate-500 font-bold">○ Unanswered</span>`;
+      }
+    }
+  },
+
+  toggleFlagReview() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (!session.flags) session.flags = {};
+    const curr = Boolean(session.flags[session.currentIdx]);
+    session.flags[session.currentIdx] = !curr;
+    sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+
+    const flagBtn = document.getElementById('qb-btn-flag');
+    const flagIcon = document.getElementById('qb-flag-icon');
+    const flagText = document.getElementById('qb-flag-text');
+
+    if (flagBtn) {
+      if (!curr) {
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm";
+        if (flagIcon) flagIcon.innerText = "🚩";
+        if (flagText) flagText.innerText = "Flagged for Review";
+      } else {
+        flagBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all text-slate-300 border-slate-700 bg-slate-900 hover:bg-slate-800";
+        if (flagIcon) flagIcon.innerText = "⚑";
+        if (flagText) flagText.innerText = "Mark for Review";
+      }
+    }
+  },
+
+  startTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    const idx = session.currentIdx || 0;
+    if (!session.timePerQuestion) session.timePerQuestion = {};
+    let currentSec = session.timePerQuestion[idx] || 0;
+
+    this.updateTimerDisplay(currentSec);
+
+    this.timerInterval = setInterval(() => {
+      currentSec++;
+      this.updateTimerDisplay(currentSec);
+
+      try {
+        const s = JSON.parse(sessionStorage.getItem('qb_active_session')) || session;
+        if (!s.timePerQuestion) s.timePerQuestion = {};
+        s.timePerQuestion[idx] = currentSec;
+        sessionStorage.setItem('qb_active_session', JSON.stringify(s));
+      } catch (e) {}
+    }, 1000);
+  },
+
+  updateTimerDisplay(sec) {
+    const el = document.getElementById('qb-timer-display');
+    if (!el) return;
+
+    if (this.isTimerHidden) {
+      el.innerText = "--:--";
+      return;
+    }
+
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    el.innerText = `${m}:${s}`;
+  },
+
+  toggleTimerVisibility() {
+    this.isTimerHidden = !this.isTimerHidden;
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    const sec = (session && session.timePerQuestion && session.timePerQuestion[session.currentIdx]) || 0;
+    this.updateTimerDisplay(sec);
+  },
+
+  prevQuestion() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (session.currentIdx > 0) {
+      session.currentIdx--;
+      sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+      this.renderCurrentQuestion();
+    }
+  },
+
+  nextQuestion() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (session.currentIdx < session.questions.length - 1) {
+      session.currentIdx++;
+      sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+      this.renderCurrentQuestion();
+    } else {
+      this.openReviewSubmitModal();
+    }
+  },
+
+  goToQuestion(idx) {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    if (idx >= 0 && idx < session.questions.length) {
+      session.currentIdx = idx;
+      sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+      this.closeNavigatorModal();
+      this.closeReviewSubmitModal();
+      this.renderCurrentQuestion();
+    }
+  },
+
+  openNavigatorModal() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    const grid = document.getElementById('qb-navigator-grid');
+    if (!grid) return;
+
+    let html = '';
+    session.questions.forEach((q, i) => {
+      const isCurrent = (i === session.currentIdx);
+      const isAnswered = Boolean(session.answers && session.answers[i]);
+      const isFlagged = Boolean(session.flags && session.flags[i]);
+
+      let bgStyle = 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500';
+      if (isAnswered) {
+        bgStyle = 'bg-blue-600/25 border-blue-500 text-blue-300 font-extrabold';
+      }
+      if (isCurrent) {
+        bgStyle += ' ring-2 ring-white';
+      }
+
+      html += `
+        <button type="button" onclick="qbEngine.goToQuestion(${i})" class="relative h-11 rounded-xl border text-xs flex items-center justify-center transition-all ${bgStyle}">
+          <span>${i + 1}</span>
+          ${isFlagged ? '<span class="absolute top-1 right-1 text-[10px] text-amber-400 font-bold leading-none">⚑</span>' : ''}
+        </button>
+      `;
+    });
+
+    grid.innerHTML = html;
+    const modal = document.getElementById('qb-navigator-modal');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeNavigatorModal() {
+    const modal = document.getElementById('qb-navigator-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  openReviewSubmitModal() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    const total = session.questions.length;
+    const answeredCount = Object.keys(session.answers || {}).length;
+    const unansweredCount = Math.max(0, total - answeredCount);
+    const flaggedCount = Object.values(session.flags || {}).filter(Boolean).length;
+
+    const statAns = document.getElementById('qb-stat-answered');
+    const statUnans = document.getElementById('qb-stat-unanswered');
+    const statFlag = document.getElementById('qb-stat-flagged');
+
+    if (statAns) statAns.innerText = answeredCount;
+    if (statUnans) statUnans.innerText = unansweredCount;
+    if (statFlag) statFlag.innerText = flaggedCount;
+
+    const reviewGrid = document.getElementById('qb-review-grid');
+    if (reviewGrid) {
+      let html = '';
+      session.questions.forEach((q, i) => {
+        const isAns = Boolean(session.answers && session.answers[i]);
+        const isFlg = Boolean(session.flags && session.flags[i]);
+        const pillClass = isAns
+          ? 'bg-blue-600/20 border-blue-500/60 text-blue-300'
+          : 'bg-slate-800/80 border-slate-700 text-slate-400';
+
+        html += `
+          <button type="button" onclick="qbEngine.goToQuestion(${i})" class="relative p-2 rounded-lg border text-[11px] font-bold flex items-center justify-center transition-all hover:scale-105 ${pillClass}">
+            <span>Q${i + 1}</span>
+            ${isFlg ? '<span class="text-amber-400 ml-1 font-bold">⚑</span>' : ''}
+          </button>
+        `;
+      });
+      reviewGrid.innerHTML = html;
+    }
+
+    const modal = document.getElementById('qb-review-submit-modal');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeReviewSubmitModal() {
+    const modal = document.getElementById('qb-review-submit-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  finishSession() {
+    this.closeReviewSubmitModal();
+
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session) return;
+
+    const total = session.questions.length;
+    let correctCount = 0;
+    let totalSeconds = 0;
+
+    session.questions.forEach((q, i) => {
+      const studentAns = session.answers ? session.answers[i] : undefined;
+      const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+
+      let isCorrect = false;
+      if (isSPR) {
+        isCorrect = this.isSPREqual(studentAns, q.correct_answer);
+      } else {
+        isCorrect = Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+      }
+      if (isCorrect) correctCount++;
+
+      const secSpent = (session.timePerQuestion && session.timePerQuestion[i]) || 0;
+      totalSeconds += secSpent;
+    });
+
+    const accuracyPct = Math.round((correctCount / total) * 100);
+    const avgSec = Math.round(totalSeconds / total);
+
+    const summaryEl = document.getElementById('qb-results-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 tracking-tight">
+          ${correctCount} / ${total}
         </div>
-        <div class="grid grid-cols-2 gap-2 pt-1 text-[11px]">
-          <div><span class="text-slate-400">Questions:</span> <strong class="text-white">${selectedQuestions.length} items</strong></div>
-          <div><span class="text-slate-400">Subject:</span> <strong class="text-sky-300">${subjTitle}</strong></div>
-          <div><span class="text-slate-400">Difficulties:</span> <strong class="text-amber-300">${diffSummary}</strong></div>
-          <div><span class="text-slate-400">Pool Available:</span> <strong class="text-slate-300">${filtered.length} matching</strong></div>
-        </div>
-        <div class="pt-1 text-[11px]">
-          <span class="text-slate-400 block mb-0.5">Active Domains:</span>
-          <span class="text-slate-200 font-medium">${domainsSummary}</span>
-        </div>
-        <div class="pt-2 border-t border-[#334155] text-[10px] text-slate-500 font-mono">
-          sessionStorage.qb_active_session: ${selectedQuestions.length} questions stored. Ready for Step 3 Interface.
+        <div class="text-xs sm:text-sm font-bold text-slate-300">
+          Accuracy: <span class="text-emerald-400 font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-sky-300 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
         </div>
       `;
     }
 
-    if (typeof showToast === 'function') {
-      showToast("🚀 Session Initialized", `${selectedQuestions.length} practice questions prepared and saved to sessionStorage!`, "success");
+    const listEl = document.getElementById('qb-results-list');
+    if (listEl) {
+      let html = '';
+      session.questions.forEach((q, i) => {
+        const studentAns = session.answers ? session.answers[i] : null;
+        const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+        const isCorrect = isSPR
+          ? this.isSPREqual(studentAns, q.correct_answer)
+          : Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+
+        const secSpent = (session.timePerQuestion && session.timePerQuestion[i]) || 0;
+        const borderClass = isCorrect ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-rose-500/40 bg-rose-950/20';
+        const badgeClass = isCorrect ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300';
+
+        html += `
+          <details class="p-3.5 rounded-2xl border ${borderClass} transition-all space-y-2">
+            <summary class="cursor-pointer flex items-center justify-between text-xs font-bold text-slate-200">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full ${badgeClass} flex items-center justify-center font-extrabold text-[11px]">
+                  ${isCorrect ? '✓' : '✗'}
+                </span>
+                <span>Question ${i + 1} (${q.domain})</span>
+              </div>
+              <div class="flex items-center gap-2 font-mono text-[11px]">
+                <span class="${isCorrect ? 'text-emerald-400' : 'text-rose-400'} font-bold">You: ${studentAns || 'Skipped'}</span>
+                <span class="text-slate-400">|</span>
+                <span class="text-sky-300 font-bold">Key: ${q.correct_answer || '-'}</span>
+                <span class="text-slate-500">(${secSpent}s)</span>
+              </div>
+            </summary>
+            <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-300 space-y-2 leading-relaxed">
+              <div class="text-white font-medium whitespace-pre-line">${this.formatQuestionText(q.prompt)}</div>
+              ${q.rationale ? `<div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 whitespace-pre-line"><strong class="text-sky-300 block mb-1">Explanation:</strong>${this.formatQuestionText(q.rationale)}</div>` : ''}
+            </div>
+          </details>
+        `;
+      });
+      listEl.innerHTML = html;
+      this.renderMath(listEl);
     }
+
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.remove('hidden');
+  },
+
+  isSPREqual(studentVal, correctVal) {
+    if (!studentVal || !correctVal) return false;
+    const sStr = String(studentVal).trim().toLowerCase();
+    const cStr = String(correctVal).trim().toLowerCase();
+    if (sStr === cStr) return true;
+
+    const parseVal = (v) => {
+      if (v.includes('/')) {
+        const parts = v.split('/');
+        if (parts.length === 2) {
+          const num = parseFloat(parts[0]);
+          const den = parseFloat(parts[1]);
+          if (den !== 0 && !isNaN(num) && !isNaN(den)) return num / den;
+        }
+      }
+      const fl = parseFloat(v);
+      return isNaN(fl) ? null : fl;
+    };
+
+    const sNum = parseVal(sStr);
+    const cNum = parseVal(cStr);
+    if (sNum !== null && cNum !== null) {
+      return Math.abs(sNum - cNum) < 0.001;
+    }
+    return false;
+  },
+
+  returnToSetupFromResults() {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+    this.returnToSetup();
   },
 
   returnToSetup() {
-    const setupView = document.getElementById('qb-setup-view');
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+
     const testContainer = document.getElementById('qb-test-container');
+    const setupView = document.getElementById('qb-setup-view');
+    const navModal = document.getElementById('qb-navigator-modal');
+    const revModal = document.getElementById('qb-review-submit-modal');
+    const resModal = document.getElementById('qb-results-modal');
 
     if (testContainer) testContainer.classList.add('hidden');
+    if (navModal) navModal.classList.add('hidden');
+    if (revModal) revModal.classList.add('hidden');
+    if (resModal) resModal.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
     this.updateMatchingCount();
+  },
+
+  renderMath(el) {
+    if (!el) return;
+    if (typeof window.renderMathInElement === 'function') {
+      try {
+        window.renderMathInElement(el, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true }
+          ],
+          throwOnError: false
+        });
+      } catch (err) {
+        console.warn("[qbEngine] KaTeX render error:", err);
+      }
+    } else {
+      setTimeout(() => {
+        if (typeof window.renderMathInElement === 'function') {
+          try {
+            window.renderMathInElement(el, {
+              delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false },
+                { left: '\\(', right: '\\)', display: false },
+                { left: '\\[', right: '\\]', display: true }
+              ],
+              throwOnError: false
+            });
+          } catch (e) {}
+        }
+      }, 250);
+    }
+  },
+
+  formatQuestionText(raw) {
+    if (!raw) return '';
+    // Replace markdown image ![alt](url) with responsive img
+    return raw.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
+      return `<img src="${url}" alt="${alt || 'Figure'}" class="max-w-full h-auto rounded-xl border border-slate-700 bg-white/5 my-3 shadow-md mx-auto block" loading="lazy" />`;
+    });
   }
 };
