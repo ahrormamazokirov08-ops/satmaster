@@ -7,9 +7,12 @@
 
 window.qbEngine = {
   activeSubject: 'rw', // 'rw' | 'math' | 'combined'
+  activeView: 'hub', // 'hub' | 'detail'
   activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
   activeStatusFilter: 'unsolved', // 'unsolved' | 'solved' | 'all'
   solvedQuestionIds: new Set(),
+  correctQuestionIds: new Set(),
+  selectedSkills: new Set(),
   activeCount: 20,
   isCustomCount: false,
   isAllCount: false,
@@ -18,6 +21,349 @@ window.qbEngine = {
   isInitialized: false,
   timerInterval: null,
   isTimerHidden: false,
+
+  skillHierarchy: {
+    rw: [
+      {
+        domain: "Craft and Structure",
+        skills: [
+          { name: "Words in Context", total: 261 },
+          { name: "Text Structure and Purpose", total: 149 },
+          { name: "Cross-Text Connections", total: 61 }
+        ]
+      },
+      {
+        domain: "Information and Ideas",
+        skills: [
+          { name: "Command of Evidence", total: 277 },
+          { name: "Inferences", total: 140 },
+          { name: "Central Ideas and Details", total: 138 }
+        ]
+      },
+      {
+        domain: "Standard English Conventions",
+        skills: [
+          { name: "Boundaries", total: 213 },
+          { name: "Form, Structure, and Sense", total: 208 }
+        ]
+      },
+      {
+        domain: "Expression of Ideas",
+        skills: [
+          { name: "Rhetorical Synthesis", total: 204 },
+          { name: "Transitions", total: 194 }
+        ]
+      }
+    ],
+    math: [
+      {
+        domain: "Algebra",
+        skills: [
+          { name: "Linear functions", total: 170 },
+          { name: "Linear equations in two variables", total: 130 },
+          { name: "Systems of two linear equations in two variables", total: 126 },
+          { name: "Linear equations in one variable", total: 112 },
+          { name: "Linear inequalities in one or two variables", total: 78 }
+        ]
+      },
+      {
+        domain: "Advanced Math",
+        skills: [
+          { name: "Nonlinear functions", total: 259 },
+          { name: "Nonlinear equations in one variable and systems of equations in two variables", total: 165 },
+          { name: "Equivalent expressions", total: 116 }
+        ]
+      },
+      {
+        domain: "Problem-Solving and Data Analysis",
+        skills: [
+          { name: "Ratios, rates, proportional relationships, and units", total: 93 },
+          { name: "Percentages", total: 84 },
+          { name: "One-variable data: Distributions and measures of center and spread", total: 84 },
+          { name: "Two-variable data: Models and scatterplots", total: 71 },
+          { name: "Probability and conditional probability", total: 49 },
+          { name: "Inference from sample statistics and margin of error", total: 28 },
+          { name: "Evaluating statistical claims: Observational studies and experiments", total: 12 }
+        ]
+      },
+      {
+        domain: "Geometry and Trigonometry",
+        skills: [
+          { name: "Area and volume", total: 110 },
+          { name: "Lines, angles, and triangles", total: 102 },
+          { name: "Right triangles and trigonometry", total: 69 },
+          { name: "Circles", total: 67 }
+        ]
+      }
+    ]
+  },
+
+  normalizeSkill(raw) {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    if (s.toLowerCase() === 'cross-text connections') {
+      return 'Cross-Text Connections';
+    }
+    return s;
+  },
+
+  initSelectedSkills(subject) {
+    this.selectedSkills = new Set();
+    const hierarchy = this.skillHierarchy[subject] || [];
+    hierarchy.forEach(d => {
+      d.skills.forEach(s => this.selectedSkills.add(s.name));
+    });
+  },
+
+  showHubView() {
+    this.activeView = 'hub';
+    const hub = document.getElementById('qb-hub-view');
+    const detail = document.getElementById('qb-detail-view');
+    if (hub) hub.classList.remove('hidden');
+    if (detail) detail.classList.add('hidden');
+  },
+
+  showDetailView() {
+    this.activeView = 'detail';
+    const hub = document.getElementById('qb-hub-view');
+    const detail = document.getElementById('qb-detail-view');
+    if (hub) hub.classList.add('hidden');
+    if (detail) detail.classList.remove('hidden');
+  },
+
+  selectSubjectView(subject) {
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+    this.activeSubject = targetSubj;
+    this.initSelectedSkills(targetSubj);
+    this.showDetailView();
+    this.syncSubjectDetailHeader();
+    this.renderSkillList();
+    this.updateMatchingCount();
+    const setupView = document.getElementById('qb-setup-view');
+    if (setupView) {
+      setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  backToHub() {
+    this.showHubView();
+    const setupView = document.getElementById('qb-setup-view');
+    if (setupView) {
+      setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  syncSubjectDetailHeader() {
+    const titleEl = document.getElementById('qb-detail-subject-title');
+    const badgeEl = document.getElementById('qb-detail-subject-badge');
+    const subtitleEl = document.getElementById('qb-practice-all-subtitle');
+
+    if (this.activeSubject === 'rw') {
+      if (titleEl) titleEl.innerText = "Reading & Writing";
+      if (badgeEl) badgeEl.innerText = "1,845 questions • 10 skills";
+      if (subtitleEl) subtitleEl.innerText = "Start practicing all 10 skills in Reading & Writing.";
+    } else if (this.activeSubject === 'math') {
+      if (titleEl) titleEl.innerText = "Math";
+      if (badgeEl) badgeEl.innerText = "1,925 questions • 19 skills";
+      if (subtitleEl) subtitleEl.innerText = "Start practicing all 19 skills in Math.";
+    } else {
+      if (titleEl) titleEl.innerText = "Combined / All";
+      if (badgeEl) badgeEl.innerText = "3,770 questions • 29 skills";
+      if (subtitleEl) subtitleEl.innerText = "Start practicing all 29 skills across both subjects.";
+    }
+
+    ['rw', 'math', 'combined'].forEach(s => {
+      const tab = document.getElementById(`qb-tab-${s}`);
+      if (tab) {
+        if (s === this.activeSubject) {
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-600 text-white shadow-xs";
+        } else {
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/50";
+        }
+      }
+    });
+  },
+
+  renderSkillList() {
+    const container = document.getElementById('qb-skills-list-container');
+    if (!container) return;
+
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || (subj === 'combined' ? [...this.skillHierarchy.rw, ...this.skillHierarchy.math] : this.skillHierarchy.rw);
+    if (!hierarchy) return;
+
+    const skillCounts = {};
+    const skillSolved = {};
+    const skillCorrect = {};
+
+    const allQuestions = (subj === 'rw') 
+      ? (this.questionsData.rw || [])
+      : (subj === 'math')
+        ? (this.questionsData.math || [])
+        : [...(this.questionsData.rw || []), ...(this.questionsData.math || [])];
+
+    hierarchy.forEach(dom => {
+      dom.skills.forEach(sk => {
+        skillCounts[sk.name] = (allQuestions.length === 0) ? sk.total : 0;
+        skillSolved[sk.name] = 0;
+        skillCorrect[sk.name] = 0;
+      });
+    });
+
+    if (allQuestions.length > 0) {
+      allQuestions.forEach(q => {
+        const norm = this.normalizeSkill(q.skill);
+        const matchesDiff = this.activeDifficulties.has(q.difficulty);
+        if (matchesDiff) {
+          if (typeof skillCounts[norm] === 'number') {
+            skillCounts[norm]++;
+          }
+        }
+        if (this.solvedQuestionIds.has(q.id)) {
+          if (typeof skillSolved[norm] === 'number') {
+            skillSolved[norm]++;
+          }
+          if (this.correctQuestionIds.has(q.id)) {
+            if (typeof skillCorrect[norm] === 'number') {
+              skillCorrect[norm]++;
+            }
+          }
+        }
+      });
+    }
+
+    let html = '';
+    hierarchy.forEach(domGroup => {
+      const domainName = domGroup.domain;
+      const domSkills = domGroup.skills;
+      const allDomSelected = domSkills.every(sk => this.selectedSkills.has(sk.name));
+
+      html += `
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" class="w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" 
+                ${allDomSelected ? 'checked' : ''} 
+                onchange="qbEngine.toggleDomainSkills('${domainName.replace(/'/g, "\\'")}', this.checked)">
+              <span class="text-sm font-black text-slate-900">${domainName}</span>
+            </label>
+            <span class="text-[11px] font-semibold text-slate-400">
+              ${domSkills.length} skills
+            </span>
+          </div>
+          <div class="space-y-1">
+      `;
+
+      domSkills.forEach(sk => {
+        const isChecked = this.selectedSkills.has(sk.name);
+        const total = (typeof skillCounts[sk.name] === 'number') ? skillCounts[sk.name] : sk.total;
+        const solved = skillSolved[sk.name] || 0;
+        const correct = skillCorrect[sk.name] || 0;
+        const pct = (total > 0) ? Math.min(100, Math.round((solved / total) * 100)) : 0;
+        
+        let accuracyStr = `<span class="text-xs font-semibold text-slate-400 text-right">-</span>`;
+        if (solved > 0) {
+          const accPct = Math.round((correct / solved) * 100);
+          const dotColor = (accPct >= 70) ? 'bg-emerald-500' : (accPct >= 50 ? 'bg-amber-500' : 'bg-rose-500');
+          const txtColor = (accPct >= 70) ? 'text-emerald-700' : (accPct >= 50 ? 'text-amber-700' : 'text-rose-700');
+          accuracyStr = `<span class="text-xs font-bold ${txtColor} flex items-center justify-end gap-1"><span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>${accPct}%</span>`;
+        }
+
+        html += `
+          <div class="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-slate-50 transition-colors group">
+            <label class="flex items-center gap-3 cursor-pointer select-none flex-1 min-w-0 pr-4">
+              <input type="checkbox" class="qb-skill-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" 
+                data-skill="${sk.name.replace(/"/g, '&quot;')}"
+                ${isChecked ? 'checked' : ''} 
+                onchange="qbEngine.onSkillChange('${sk.name.replace(/'/g, "\\'")}', this.checked)">
+              <span class="text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                ${sk.name}
+              </span>
+            </label>
+            <div class="flex items-center gap-6 shrink-0">
+              <div class="flex items-center gap-3 w-36 justify-end">
+                <div class="w-16 sm:w-20 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                  <div class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+                <span class="text-xs font-semibold font-mono text-slate-600 text-right w-12 shrink-0">
+                  ${solved}/${total}
+                </span>
+              </div>
+              <div class="w-14 text-right shrink-0">
+                ${accuracyStr}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  },
+
+  onSkillChange(skillName, isChecked) {
+    if (isChecked) {
+      this.selectedSkills.add(skillName);
+    } else {
+      this.selectedSkills.delete(skillName);
+    }
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  toggleDomainSkills(domainName, isChecked) {
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    const domGroup = hierarchy.find(d => d.domain === domainName);
+    if (!domGroup) return;
+
+    domGroup.skills.forEach(sk => {
+      if (isChecked) {
+        this.selectedSkills.add(sk.name);
+      } else {
+        this.selectedSkills.delete(sk.name);
+      }
+    });
+
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  toggleAllSkills() {
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    const allSkills = [];
+    hierarchy.forEach(d => d.skills.forEach(s => allSkills.push(s.name)));
+
+    const allSelected = allSkills.length > 0 && allSkills.every(s => this.selectedSkills.has(s));
+    if (allSelected) {
+      this.selectedSkills.clear();
+    } else {
+      allSkills.forEach(s => this.selectedSkills.add(s));
+    }
+
+    const btn = document.getElementById('qb-btn-toggle-domains');
+    if (btn) {
+      btn.innerText = (!allSelected) ? "Deselect All" : "Select All";
+    }
+
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  startPracticeAll() {
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    hierarchy.forEach(d => d.skills.forEach(s => this.selectedSkills.add(s)));
+    this.renderSkillList();
+    this.updateMatchingCount();
+    this.startPractice();
+  },
 
   getCurrentStudentId() {
     let uid = '';
@@ -49,6 +395,13 @@ window.qbEngine = {
           this.solvedQuestionIds = new Set(parsed);
         }
       }
+      const localCorrect = localStorage.getItem(`satmaster_correct_q_${studentId}`);
+      if (localCorrect) {
+        const parsedC = JSON.parse(localCorrect);
+        if (Array.isArray(parsedC)) {
+          this.correctQuestionIds = new Set(parsedC);
+        }
+      }
     } catch (e) {}
 
     // 2. Fetch from backend if registered / not guest
@@ -68,6 +421,7 @@ window.qbEngine = {
     }
 
     this.syncStatusUI();
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -75,10 +429,14 @@ window.qbEngine = {
     if (!questionId) return;
     const qid = String(questionId).trim();
     this.solvedQuestionIds.add(qid);
+    if (isCorrect) {
+      this.correctQuestionIds.add(qid);
+    }
 
     const studentId = this.getCurrentStudentId();
     try {
       localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+      localStorage.setItem(`satmaster_correct_q_${studentId}`, JSON.stringify(Array.from(this.correctQuestionIds)));
     } catch (e) {}
 
     // Asynchronously dispatch to backend
@@ -96,6 +454,7 @@ window.qbEngine = {
       } catch (e) {}
     }
 
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -155,13 +514,16 @@ window.qbEngine = {
     if (testContainer) testContainer.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
-    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : null;
 
     if (!this.isInitialized) {
       this.init(targetSubj);
     } else {
-      this.setSubject(targetSubj);
-      this.updateMatchingCount();
+      if (targetSubj) {
+        this.selectSubjectView(targetSubj);
+      } else {
+        this.backToHub();
+      }
     }
 
     if (setupView) {
@@ -210,14 +572,18 @@ window.qbEngine = {
 
     if (!this.isInitialized) {
       this.isInitialized = true;
+      this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
-      if (defaultSubj) this.setSubject(defaultSubj);
       await this.loadQuestions();
       await this.loadSolvedQuestions();
     } else {
-      if (defaultSubj) this.setSubject(defaultSubj);
       await this.loadSolvedQuestions();
-      this.updateMatchingCount();
+    }
+
+    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
+      this.selectSubjectView(defaultSubj);
+    } else {
+      this.backToHub();
     }
   },
 
@@ -269,6 +635,7 @@ window.qbEngine = {
       this.questionsData.math = mathQuestions || [];
       this.currentDataVersion = this.dataVersion;
       this.isLoading = false;
+      this.renderSkillList();
       this.updateMatchingCount();
     } catch (err) {
       console.error("[qbEngine] Error loading questions:", err);
@@ -282,20 +649,21 @@ window.qbEngine = {
   setSubject(subj) {
     if (!['rw', 'math', 'combined'].includes(subj)) return;
     this.activeSubject = subj;
+    this.initSelectedSkills(subj);
 
     // Update subject tab styling
     ['rw', 'math', 'combined'].forEach(s => {
       const tab = document.getElementById(`qb-tab-${s}`);
       if (tab) {
         if (s === subj) {
-          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm";
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-600 text-white shadow-xs";
         } else {
-          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50";
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/50";
         }
       }
     });
 
-    // Update Domain grids visibility
+    // Update Domain grids visibility (backward compatibility)
     const rwWrapper = document.getElementById('qb-domains-rw-wrapper');
     const mathWrapper = document.getElementById('qb-domains-math-wrapper');
 
@@ -315,6 +683,8 @@ window.qbEngine = {
       }
     }
 
+    this.syncSubjectDetailHeader();
+    this.renderSkillList();
     this.updateToggleDomainsButtonText();
     this.updateMatchingCount();
   },
@@ -353,23 +723,17 @@ window.qbEngine = {
   },
 
   toggleAllDomains() {
-    const cbs = this.getVisibleDomainCheckboxes();
-    if (!cbs || cbs.length === 0) return;
-
-    const allChecked = cbs.every(cb => cb.checked);
-    cbs.forEach(cb => {
-      cb.checked = !allChecked;
-    });
-
-    this.updateToggleDomainsButtonText();
-    this.updateMatchingCount();
+    this.toggleAllSkills();
   },
 
   updateToggleDomainsButtonText() {
     const btn = document.getElementById('qb-btn-toggle-domains');
     if (!btn) return;
-    const cbs = this.getVisibleDomainCheckboxes();
-    const allChecked = cbs.length > 0 && cbs.every(cb => cb.checked);
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    const allSkills = [];
+    hierarchy.forEach(d => d.skills.forEach(s => allSkills.push(s.name)));
+    const allChecked = allSkills.length > 0 && allSkills.every(s => this.selectedSkills.has(s));
     btn.innerHTML = allChecked ? "<span>Deselect All</span>" : "<span>Select All</span>";
   },
 
@@ -388,6 +752,7 @@ window.qbEngine = {
     }
 
     this.syncDifficultyUI();
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -415,6 +780,7 @@ window.qbEngine = {
     if (!['unsolved', 'solved', 'all'].includes(filter)) return;
     this.activeStatusFilter = filter;
     this.syncStatusUI();
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -591,6 +957,13 @@ window.qbEngine = {
       const matchesDiff = this.activeDifficulties.has(q.difficulty);
       if (!matchesDomain || !matchesDiff) return false;
 
+      // Filter by selected skills
+      if (this.selectedSkills) {
+        if (this.selectedSkills.size === 0) return false;
+        const qSkill = this.normalizeSkill(q.skill);
+        if (!this.selectedSkills.has(qSkill)) return false;
+      }
+
       // Status Filter
       if (this.activeStatusFilter === 'unsolved') {
         return !this.solvedQuestionIds.has(q.id);
@@ -628,18 +1001,18 @@ window.qbEngine = {
     if (countEl) {
       const statusLabel = this.activeStatusFilter === 'unsolved' ? 'Unsolved' : (this.activeStatusFilter === 'solved' ? 'Solved' : 'Total');
       if (totalCount > 0) {
-        countEl.innerHTML = `⚡ <span class="text-blue-600 font-black">${totalCount.toLocaleString()}</span> ${statusLabel.toLowerCase()} questions available matching your filters`;
+        countEl.innerHTML = `⚡ <span class="text-blue-600 font-black">${totalCount.toLocaleString()}</span> ${statusLabel.toLowerCase()} questions available from selected skills`;
       } else {
-        countEl.innerHTML = `<span class="text-amber-500 font-bold">⚠️ 0 questions matching these filters (${statusLabel})</span>`;
+        countEl.innerHTML = `<span class="text-amber-500 font-bold">⚠️ 0 questions matching these skills and filters (${statusLabel})</span>`;
       }
     }
 
     if (poolDetailEl) {
       const subjName = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined');
       const diffList = Array.from(this.activeDifficulties).join(', ');
-      const domainCount = this.getActiveDomains().size;
+      const skillCount = this.selectedSkills ? this.selectedSkills.size : 0;
       const statusText = this.activeStatusFilter === 'unsolved' ? 'Fresh/Unsolved' : (this.activeStatusFilter === 'solved' ? 'Solved Review' : 'All Bank');
-      poolDetailEl.innerText = `${subjName} • ${domainCount} active domain(s) • [${diffList}] • Mode: ${statusText}`;
+      poolDetailEl.innerText = `${subjName} • ${skillCount} active skill(s) • [${diffList}] • Mode: ${statusText}`;
     }
 
     if (startBtn) {
@@ -1582,6 +1955,13 @@ window.qbEngine = {
     if (resModal) resModal.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
+    if (this.activeView === 'detail') {
+      this.showDetailView();
+    } else {
+      this.showHubView();
+    }
+
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 

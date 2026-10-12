@@ -823,298 +823,341 @@
       <!-- VIEW 0: BLUEBOOK QUESTION BANK PRACTICE SETUP -->
       <div id="qb-setup-view" class="max-w-4xl mx-auto space-y-6">
         
-        <!-- Top Navigation Returning to Overview -->
-        <div class="flex items-center justify-between pb-1">
-          <button type="button" onclick="returnToQBankOverview()" id="btn-qb-back-overview" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-all shadow-xs group">
-            <span class="group-hover:-translate-x-0.5 transition-transform">←</span>
-            <span>Back to Overview</span>
-          </button>
-          <div class="flex items-center gap-2 text-xs text-slate-500">
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Bluebook Practice Setup</span>
+        <!-- STAGE 1: QUESTION BANK SUBJECT SELECTION HUB -->
+        <div id="qb-hub-view" class="space-y-6">
+          <!-- Top Navigation Returning to Overview -->
+          <div class="flex items-center justify-between pb-1">
+            <button type="button" onclick="returnToQBankOverview()" id="btn-qb-back-overview" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-all shadow-xs group">
+              <span class="group-hover:-translate-x-0.5 transition-transform">←</span>
+              <span>Back to Overview</span>
+            </button>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Bluebook Practice Hub</span>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-sm space-y-8 text-slate-800" data-theme-tokens="#0f172a #334155">
+            <!-- Hub Header Banner -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+              <div class="flex items-center gap-3.5">
+                <div class="h-12 w-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-2xl text-white shadow-md shadow-blue-500/20 font-black">
+                  📖
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Question Bank Practice</h1>
+                    <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Official Bluebook</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">Choose a subject below to explore authentic College Board skills, question types, and progress.</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-2 self-end sm:self-auto">
+                <span class="text-xs font-semibold text-slate-500">Total Bank Questions:</span>
+                <span class="text-xs font-bold font-mono text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">3,770</span>
+              </div>
+            </div>
+
+            <!-- Subject Selection Cards Grid (No domains/skills appear on initial view) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <!-- Reading & Writing Subject Card -->
+              <div onclick="qbEngine.selectSubjectView('rw')" class="group relative p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-white to-blue-50/40 border-2 border-slate-200 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-5">
+                <div class="space-y-3.5">
+                  <div class="flex items-center justify-between">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-100/80 border border-blue-200 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+                      📚
+                    </div>
+                    <span class="text-xs font-bold font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80">
+                      1,845 Questions
+                    </span>
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">Reading &amp; Writing</h2>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Master official passages, vocabulary in context, grammar boundaries, and rhetorical synthesis.
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5 pt-1">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Craft &amp; Structure (471)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Info &amp; Ideas (555)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Conventions (421)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Expression (398)</span>
+                  </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:text-blue-700">
+                  <span>Explore 10 Skills &amp; Topics</span>
+                  <span class="group-hover:translate-x-1 transition-transform">→</span>
+                </div>
+              </div>
+
+              <!-- Math Subject Card -->
+              <div onclick="qbEngine.selectSubjectView('math')" class="group relative p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-white to-indigo-50/40 border-2 border-slate-200 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-5">
+                <div class="space-y-3.5">
+                  <div class="flex items-center justify-between">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-100/80 border border-indigo-200 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+                      📐
+                    </div>
+                    <span class="text-xs font-bold font-mono text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200/80">
+                      1,925 Questions
+                    </span>
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors">Math</h2>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Target algebra, nonlinear functions, statistics, coordinate geometry, trigonometry, and SPR grid-ins.
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5 pt-1">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Algebra (616)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Advanced Math (540)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Problem-Solving (421)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Geometry (348)</span>
+                  </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600 group-hover:text-indigo-700">
+                  <span>Explore 19 Skills &amp; Topics</span>
+                  <span class="group-hover:translate-x-1 transition-transform">→</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-sm space-y-8 text-slate-800" data-theme-tokens="#0f172a #334155">
+        <!-- STAGE 2: SUBJECT-SPECIFIC SKILLS & TOPICS EXPLORER (ONEPREP LAYOUT) -->
+        <div id="qb-detail-view" class="hidden space-y-6">
           
-          <!-- Top Header / Banner -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
-            <div class="flex items-center gap-3.5">
-              <div class="h-12 w-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-2xl text-white shadow-md shadow-blue-500/20 font-black">
-                📖
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Question Bank Practice</h1>
-                  <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Official Bluebook</span>
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">Configure your custom practice session with real College Board Digital SAT questions.</p>
-              </div>
-            </div>
-            
-            <div class="flex items-center gap-2 self-end sm:self-auto">
-              <span class="text-xs font-semibold text-slate-500">Total Bank Questions:</span>
-              <span class="text-xs font-bold font-mono text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">3,770</span>
-            </div>
-          </div>
-
-          <!-- Section 1: Subject Tabs -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-700">
-                1. Select Subject
-              </label>
-              <span class="text-[11px] text-slate-500" id="qb-subject-hint">Choose Reading &amp; Writing, Math, or Both</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100 border border-slate-200" id="qb-subject-tabs">
-              <button type="button" onclick="qbEngine.setSubject('rw')" id="qb-tab-rw" class="qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm">
-                <span>📚</span><span>Reading &amp; Writing</span>
-              </button>
-              <button type="button" onclick="qbEngine.setSubject('math')" id="qb-tab-math" class="qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
-                <span>📐</span><span>Math</span>
-              </button>
-              <button type="button" onclick="qbEngine.setSubject('combined')" id="qb-tab-combined" class="qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
-                <span>⚡</span><span>Combined / All</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Section 2: Domain Checkbox Grid -->
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-700">
-                2. Select Domains &amp; Topics
-              </label>
-              <button type="button" onclick="qbEngine.toggleAllDomains()" id="qb-btn-toggle-domains" class="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors flex items-center gap-1">
-                <span>Deselect All</span>
-              </button>
-            </div>
-
-            <!-- English Domains Container -->
-            <div id="qb-domains-rw-wrapper" class="space-y-2">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-pink-600 block">Reading &amp; Writing Domains</span>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="qb-domains-rw-grid">
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Information and Ideas" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Information and Ideas</span>
-                    <span class="text-[10px] text-slate-500">Central Ideas, Inferences, Command of Evidence</span>
-                  </div>
-                </label>
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Craft and Structure" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Craft and Structure</span>
-                    <span class="text-[10px] text-slate-500">Words in Context, Text Structure, Cross-Text Connections</span>
-                  </div>
-                </label>
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Standard English Conventions" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Standard English Conventions</span>
-                    <span class="text-[10px] text-slate-500">Boundaries, Form, Structure, Sense</span>
-                  </div>
-                </label>
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Expression of Ideas" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Expression of Ideas</span>
-                    <span class="text-[10px] text-slate-500">Rhetorical Synthesis, Transitions</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Math Domains Container -->
-            <div id="qb-domains-math-wrapper" class="hidden space-y-2">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-sky-600 block">Math Domains</span>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="qb-domains-math-grid">
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Algebra" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Algebra</span>
-                    <span class="text-[10px] text-slate-500">Linear equations, Linear functions, Systems of equations</span>
-                  </div>
-                </label>
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Advanced Math" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Advanced Math</span>
-                    <span class="text-[10px] text-slate-500">Nonlinear equations, Quadratic functions, Polynomials</span>
-                  </div>
-                </label>
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Problem-Solving and Data Analysis" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Problem-Solving &amp; Data Analysis</span>
-                    <span class="text-[10px] text-slate-500">Ratios, Rates, Proportions, Probability, Statistics</span>
-                  </div>
-                </label>
-                <label class="qb-domain-card flex items-center gap-3 p-3.5 rounded-xl bg-white border-2 border-slate-200 cursor-pointer hover:border-slate-300 hover:bg-slate-50/80 transition-all select-none shadow-xs">
-                  <input type="checkbox" value="Geometry and Trigonometry" checked class="qb-domain-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" onchange="qbEngine.onDomainChange()">
-                  <div class="flex-1">
-                    <span class="text-xs font-bold text-slate-900 block">Geometry and Trigonometry</span>
-                    <span class="text-[10px] text-slate-500">Lines, Angles, Triangles, Circles, Trigonometric ratios</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section 3: Difficulty Filter -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-700">
-                3. Difficulty Filter
-              </label>
-              <span class="text-[11px] text-slate-500">Select one or more difficulties</span>
-            </div>
-            <div class="flex flex-wrap items-center gap-3" id="qb-difficulty-pills">
-              <!-- Easy Pill -->
-              <button type="button" onclick="qbEngine.toggleDifficulty('Easy')" id="qb-diff-Easy" class="qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-emerald-50 border-emerald-400 text-emerald-800 shadow-xs" data-diff="Easy">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span>Easy</span>
-              </button>
-              <!-- Medium Pill -->
-              <button type="button" onclick="qbEngine.toggleDifficulty('Medium')" id="qb-diff-Medium" class="qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-amber-50 border-amber-400 text-amber-800 shadow-xs" data-diff="Medium">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                <span>Medium</span>
-              </button>
-              <!-- Hard Pill -->
-              <button type="button" onclick="qbEngine.toggleDifficulty('Hard')" id="qb-diff-Hard" class="qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-rose-50 border-rose-400 text-rose-800 shadow-xs" data-diff="Hard">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                <span>Hard</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Section 4: Question Status Filter (Solved / Unsolved) -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-700">
-                4. Question Status Filter
-              </label>
-              <span class="text-[11px] text-slate-500">Practice fresh or review solved questions</span>
-            </div>
-            <div class="flex flex-wrap items-center gap-3" id="qb-status-pills">
-              <!-- Unsolved Pill (Default) -->
-              <button type="button" onclick="qbEngine.setStatusFilter('unsolved')" id="qb-status-unsolved" class="qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-blue-600 border-blue-500 text-white shadow-sm" data-status="unsolved" title="Only practice questions you have not solved yet">
-                <span>🆕</span>
-                <span>Unsolved Questions</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 text-white font-extrabold uppercase">New</span>
-              </button>
-              <!-- Solved Pill -->
-              <button type="button" onclick="qbEngine.setStatusFilter('solved')" id="qb-status-solved" class="qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-status="solved" title="Review questions you have previously solved">
-                <span>✅</span>
-                <span>Solved Questions</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-extrabold uppercase">Review</span>
-              </button>
-              <!-- All Questions Pill -->
-              <button type="button" onclick="qbEngine.setStatusFilter('all')" id="qb-status-all" class="qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-status="all" title="Include all questions in the bank">
-                <span>⚡</span>
-                <span>All Questions</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Section 5: Question Count Selector -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-700">
-                5. Number of Questions
-              </label>
-              <span class="text-[11px] text-slate-500">Session length</span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2" id="qb-count-selector">
-              <button type="button" onclick="qbEngine.setCount(20)" id="qb-count-20" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm" data-count="20">20</button>
-              <button type="button" onclick="qbEngine.setCount(30)" id="qb-count-30" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="30">30</button>
-              <button type="button" onclick="qbEngine.setCount(40)" id="qb-count-40" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="40">40</button>
-              <button type="button" onclick="qbEngine.setCount(50)" id="qb-count-50" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="50">50</button>
-              <button type="button" onclick="qbEngine.setCount('all')" id="qb-count-all" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="all">All</button>
-              <button type="button" onclick="qbEngine.setCount('custom')" id="qb-count-custom" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs flex items-center gap-1.5" data-count="custom">
-                <span>Custom</span>
-                <svg id="qb-custom-chevron" class="w-3.5 h-3.5 transition-transform text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-            </div>
-
-            <!-- Downward Custom Question Count Panel -->
-            <div id="qb-custom-count-wrapper" class="hidden p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 transition-all">
-              <!-- Stepper and Target Question Count Display -->
-              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">Target Count:</span>
-                  <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-blue-200 rounded-xl shadow-xs">
-                    <span id="qb-custom-count-display" class="text-base font-black font-mono text-blue-600">25</span>
-                    <span class="text-xs font-semibold text-slate-500">questions</span>
-                  </div>
-                  <!-- Hidden input to maintain DOM & programmatic compatibility -->
-                  <input type="hidden" id="qb-custom-count-input" value="25">
-                </div>
-
-                <!-- Increment / Decrement Stepper Buttons -->
-                <div class="flex items-center gap-1.5 self-stretch sm:self-auto justify-end">
-                  <button type="button" onclick="qbEngine.adjustCustomCount(-10)" title="Subtract 10 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-10</button>
-                  <button type="button" onclick="qbEngine.adjustCustomCount(-5)" title="Subtract 5 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-5</button>
-                  <button type="button" onclick="qbEngine.adjustCustomCount(-1)" title="Subtract 1 question" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-1</button>
-                  <button type="button" onclick="qbEngine.adjustCustomCount(1)" title="Add 1 question" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+1</button>
-                  <button type="button" onclick="qbEngine.adjustCustomCount(5)" title="Add 5 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+5</button>
-                  <button type="button" onclick="qbEngine.adjustCustomCount(10)" title="Add 10 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+10</button>
-                </div>
-              </div>
-
-              <!-- Quick Selection Buttons -->
-              <div class="space-y-1.5">
-                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Quick Select</span>
-                <div class="flex flex-wrap items-center gap-1.5" id="qb-custom-quick-pills">
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(5)" id="qb-count-5" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="5">5</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(10)" id="qb-count-10" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="10">10</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(15)" id="qb-count-15" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="15">15</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(25)" id="qb-count-25" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs" data-quick="25">25</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(35)" id="qb-count-35" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="35">35</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(45)" id="qb-count-45" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="45">45</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(60)" id="qb-count-60" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="60">60</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(75)" id="qb-count-75" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="75">75</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect(100)" id="qb-count-100" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="100">100</button>
-                  <button type="button" onclick="qbEngine.setCustomCountDirect('max')" id="qb-count-max" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="max">Max</button>
-                </div>
-              </div>
-
-              <!-- Section Availability Remark Callout -->
-              <div class="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 shadow-xs">
-                <span class="text-sm shrink-0 leading-none mt-0.5">📌</span>
-                <div class="text-xs leading-relaxed flex-1">
-                  <div class="font-bold flex items-center justify-between">
-                    <span>Section Availability Remark</span>
-                    <span id="qb-custom-max-badge" class="font-mono font-extrabold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md text-[11px]">Max: Calculating...</span>
-                  </div>
-                  <p id="qb-custom-max-remark" class="text-[11px] text-blue-700/90 mt-0.5">
-                    Maximum number of questions in this section is based on your active subject, domains, and difficulty filters.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section 5: Live Matching Counter & Start Button Footer -->
-          <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="h-10 w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-bold text-lg shrink-0">
-                ⚡
-              </div>
-              <div>
-                <span id="qb-matching-count" class="text-sm sm:text-base font-extrabold text-slate-900 block">
-                  Calculating available questions...
-                </span>
-                <span class="text-[11px] text-slate-500 block" id="qb-pool-detail">
-                  Based on your active subject, domains, and difficulty filters
-                </span>
-              </div>
-            </div>
-
-            <button type="button" id="qb-btn-start" onclick="qbEngine.startPractice()" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
-              <span>Start Practice</span>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+          <!-- Top Navigation Returning to Hub -->
+          <div class="flex items-center justify-between pb-1">
+            <button type="button" onclick="qbEngine.backToHub()" id="btn-qb-back-hub" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-all shadow-xs group">
+              <span class="group-hover:-translate-x-0.5 transition-transform text-slate-500 font-bold">‹</span>
+              <span>Back to Question Bank</span>
             </button>
+            <div class="flex items-center gap-2">
+              <!-- Subject toggle tabs for switching or combined practice -->
+              <div class="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200" id="qb-subject-tabs">
+                <button type="button" onclick="qbEngine.setSubject('rw')" id="qb-tab-rw" class="qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-600 text-white shadow-xs">
+                  <span>📚 RW</span>
+                </button>
+                <button type="button" onclick="qbEngine.setSubject('math')" id="qb-tab-math" class="qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900">
+                  <span>📐 Math</span>
+                </button>
+                <button type="button" onclick="qbEngine.setSubject('combined')" id="qb-tab-combined" class="qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900">
+                  <span>⚡ Both</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 text-slate-800" data-theme-tokens="#0f172a #334155">
+            
+            <!-- Subject Detail Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-200">
+              <div>
+                <h1 id="qb-detail-subject-title" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Reading &amp; Writing</h1>
+                <p class="text-xs text-slate-500 mt-0.5" id="qb-detail-subject-desc">Select specific question types to practice, or tackle all topics together.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="qb-detail-subject-badge" class="text-xs font-bold font-mono text-sky-700 bg-sky-50 px-3 py-1 rounded-lg border border-sky-200">
+                  1,845 questions • 10 skills
+                </span>
+              </div>
+            </div>
+
+            <!-- Top Filter Bar (Difficulty, Status, Question Count) -->
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                
+                <!-- Difficulty Filter -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Difficulty:</span>
+                  <div class="flex items-center gap-2" id="qb-difficulty-pills">
+                    <button type="button" onclick="qbEngine.toggleDifficulty('Easy')" id="qb-diff-Easy" class="qb-diff-pill px-3.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-50 border-emerald-400 text-emerald-800 shadow-xs" data-diff="Easy">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>Easy</span>
+                    </button>
+                    <button type="button" onclick="qbEngine.toggleDifficulty('Medium')" id="qb-diff-Medium" class="qb-diff-pill px-3.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all bg-amber-50 border-amber-400 text-amber-800 shadow-xs" data-diff="Medium">
+                      <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span>Medium</span>
+                    </button>
+                    <button type="button" onclick="qbEngine.toggleDifficulty('Hard')" id="qb-diff-Hard" class="qb-diff-pill px-3.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all bg-rose-50 border-rose-400 text-rose-800 shadow-xs" data-diff="Hard">
+                      <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                      <span>Hard</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Status:</span>
+                  <div class="flex items-center gap-1.5" id="qb-status-pills">
+                    <button type="button" onclick="qbEngine.setStatusFilter('unsolved')" id="qb-status-unsolved" class="qb-status-pill px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs" data-status="unsolved">
+                      <span>Unsolved</span>
+                    </button>
+                    <button type="button" onclick="qbEngine.setStatusFilter('solved')" id="qb-status-solved" class="qb-status-pill px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-status="solved">
+                      <span>Solved</span>
+                    </button>
+                    <button type="button" onclick="qbEngine.setStatusFilter('all')" id="qb-status-all" class="qb-status-pill px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-status="all">
+                      <span>All</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Question Count Selector -->
+              <div class="pt-3 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Questions:</span>
+                  <div class="flex flex-wrap items-center gap-1.5" id="qb-count-selector">
+                    <button type="button" onclick="qbEngine.setCount(20)" id="qb-count-20" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs" data-count="20">20</button>
+                    <button type="button" onclick="qbEngine.setCount(30)" id="qb-count-30" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="30">30</button>
+                    <button type="button" onclick="qbEngine.setCount(40)" id="qb-count-40" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="40">40</button>
+                    <button type="button" onclick="qbEngine.setCount(50)" id="qb-count-50" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="50">50</button>
+                    <button type="button" onclick="qbEngine.setCount('all')" id="qb-count-all" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="all">All</button>
+                    <button type="button" onclick="qbEngine.setCount('custom')" id="qb-count-custom" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs flex items-center gap-1" data-count="custom">
+                      <span>Custom</span>
+                      <svg id="qb-custom-chevron" class="w-3 h-3 transition-transform text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="text-[11px] font-semibold text-slate-500">
+                  Target session length
+                </div>
+              </div>
+
+              <!-- Downward Custom Question Count Panel -->
+              <div id="qb-custom-count-wrapper" class="hidden pt-3 border-t border-slate-200/70 space-y-3 transition-all">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">Target Count:</span>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-blue-200 rounded-xl shadow-xs">
+                      <span id="qb-custom-count-display" class="text-base font-black font-mono text-blue-600">25</span>
+                      <span class="text-xs font-semibold text-slate-500">questions</span>
+                    </div>
+                    <input type="hidden" id="qb-custom-count-input" value="25">
+                  </div>
+
+                  <div class="flex items-center gap-1.5 self-stretch sm:self-auto justify-end">
+                    <button type="button" onclick="qbEngine.adjustCustomCount(-10)" title="Subtract 10 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-10</button>
+                    <button type="button" onclick="qbEngine.adjustCustomCount(-5)" title="Subtract 5 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-5</button>
+                    <button type="button" onclick="qbEngine.adjustCustomCount(-1)" title="Subtract 1 question" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-1</button>
+                    <button type="button" onclick="qbEngine.adjustCustomCount(1)" title="Add 1 question" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+1</button>
+                    <button type="button" onclick="qbEngine.adjustCustomCount(5)" title="Add 5 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+5</button>
+                    <button type="button" onclick="qbEngine.adjustCustomCount(10)" title="Add 10 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+10</button>
+                  </div>
+                </div>
+
+                <!-- Quick Selection Buttons -->
+                <div class="space-y-1.5">
+                  <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Quick Select</span>
+                  <div class="flex flex-wrap items-center gap-1.5" id="qb-custom-quick-pills">
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(5)" id="qb-count-5" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="5">5</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(10)" id="qb-count-10" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="10">10</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(15)" id="qb-count-15" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="15">15</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(25)" id="qb-count-25" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs" data-quick="25">25</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(35)" id="qb-count-35" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="35">35</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(45)" id="qb-count-45" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="45">45</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(60)" id="qb-count-60" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="60">60</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(75)" id="qb-count-75" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="75">75</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect(100)" id="qb-count-100" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="100">100</button>
+                    <button type="button" onclick="qbEngine.setCustomCountDirect('max')" id="qb-count-max" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="max">Max</button>
+                  </div>
+                </div>
+
+                <!-- Section Availability Remark Callout -->
+                <div class="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 shadow-xs">
+                  <span class="text-sm shrink-0 leading-none mt-0.5">📌</span>
+                  <div class="text-xs leading-relaxed flex-1">
+                    <div class="font-bold flex items-center justify-between">
+                      <span>Section Availability Remark</span>
+                      <span id="qb-custom-max-badge" class="font-mono font-extrabold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md text-[11px]">Max: Calculating...</span>
+                    </div>
+                    <p id="qb-custom-max-remark" class="text-[11px] text-blue-700/90 mt-0.5">
+                      Maximum number of questions in this section is based on your active subject, domains, and difficulty filters.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Practice All Topics Hero Card (OnePrep Style) -->
+            <div class="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 class="text-sm sm:text-base font-bold text-slate-900">Practice all topics</h3>
+                <p class="text-xs text-slate-500 mt-0.5" id="qb-practice-all-subtitle">
+                  Start practicing all 10 skills in Reading &amp; Writing.
+                </p>
+              </div>
+              <button type="button" onclick="qbEngine.startPracticeAll()" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs self-start sm:self-auto transition-all active:scale-95">
+                Start practice
+              </button>
+            </div>
+
+            <!-- Hidden Domain Grid Wrappers for Full Backward Compatibility with Tests -->
+            <div class="hidden" id="qb-hidden-domain-container">
+              <div id="qb-domains-rw-wrapper">
+                <div id="qb-domains-rw-grid">
+                  <input type="checkbox" value="Information and Ideas" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                  <input type="checkbox" value="Craft and Structure" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                  <input type="checkbox" value="Standard English Conventions" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                  <input type="checkbox" value="Expression of Ideas" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                </div>
+              </div>
+              <div id="qb-domains-math-wrapper">
+                <div id="qb-domains-math-grid">
+                  <input type="checkbox" value="Algebra" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                  <input type="checkbox" value="Advanced Math" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                  <input type="checkbox" value="Problem-Solving and Data Analysis" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                  <input type="checkbox" value="Geometry and Trigonometry" checked class="qb-domain-cb" onchange="qbEngine.onDomainChange()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Skills Breakdown Table (OnePrep Style) -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between pb-2 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <div class="flex items-center gap-2">
+                  <span>Topic</span>
+                  <button type="button" onclick="qbEngine.toggleAllSkills()" id="qb-btn-toggle-domains" class="text-xs font-bold text-sky-600 hover:text-sky-700 capitalize">
+                    Deselect All
+                  </button>
+                </div>
+                <div class="flex items-center gap-6">
+                  <span class="w-36 text-center">Progress</span>
+                  <span class="w-14 text-right">Accuracy</span>
+                </div>
+              </div>
+
+              <!-- Container where domains and skill rows are rendered dynamically -->
+              <div id="qb-skills-list-container" class="space-y-6">
+                <!-- Dynamically populated by qbEngine.renderSkillList() -->
+              </div>
+            </div>
+
+            <!-- Live Matching Question Counter & Start Button Footer -->
+            <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-bold text-lg shrink-0">
+                  ⚡
+                </div>
+                <div>
+                  <span id="qb-matching-count" class="text-sm sm:text-base font-extrabold text-slate-900 block">
+                    Calculating available questions...
+                  </span>
+                  <span class="text-[11px] text-slate-500 block" id="qb-pool-detail">
+                    Based on your active subject, selected skills, and difficulty filters
+                  </span>
+                </div>
+              </div>
+
+              <button type="button" id="qb-btn-start" onclick="qbEngine.startPractice()" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
+                <span>Start Practice</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
@@ -9734,12 +9777,12 @@
 
       if (window.qbEngine) {
         if (!window.qbEngine.isInitialized) {
-          window.qbEngine.init(subject || 'rw');
+          window.qbEngine.init(subject);
         } else {
           if (subject && ['rw', 'math', 'combined'].includes(subject)) {
-            window.qbEngine.setSubject(subject);
+            window.qbEngine.selectSubjectView(subject);
           } else {
-            window.qbEngine.updateMatchingCount();
+            window.qbEngine.backToHub();
           }
         }
       }
@@ -10119,9 +10162,12 @@
     // =========================================================
     window.qbEngine = {
   activeSubject: 'rw', // 'rw' | 'math' | 'combined'
+  activeView: 'hub', // 'hub' | 'detail'
   activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
   activeStatusFilter: 'unsolved', // 'unsolved' | 'solved' | 'all'
   solvedQuestionIds: new Set(),
+  correctQuestionIds: new Set(),
+  selectedSkills: new Set(),
   activeCount: 20,
   isCustomCount: false,
   isAllCount: false,
@@ -10130,6 +10176,349 @@
   isInitialized: false,
   timerInterval: null,
   isTimerHidden: false,
+
+  skillHierarchy: {
+    rw: [
+      {
+        domain: "Craft and Structure",
+        skills: [
+          { name: "Words in Context", total: 261 },
+          { name: "Text Structure and Purpose", total: 149 },
+          { name: "Cross-Text Connections", total: 61 }
+        ]
+      },
+      {
+        domain: "Information and Ideas",
+        skills: [
+          { name: "Command of Evidence", total: 277 },
+          { name: "Inferences", total: 140 },
+          { name: "Central Ideas and Details", total: 138 }
+        ]
+      },
+      {
+        domain: "Standard English Conventions",
+        skills: [
+          { name: "Boundaries", total: 213 },
+          { name: "Form, Structure, and Sense", total: 208 }
+        ]
+      },
+      {
+        domain: "Expression of Ideas",
+        skills: [
+          { name: "Rhetorical Synthesis", total: 204 },
+          { name: "Transitions", total: 194 }
+        ]
+      }
+    ],
+    math: [
+      {
+        domain: "Algebra",
+        skills: [
+          { name: "Linear functions", total: 170 },
+          { name: "Linear equations in two variables", total: 130 },
+          { name: "Systems of two linear equations in two variables", total: 126 },
+          { name: "Linear equations in one variable", total: 112 },
+          { name: "Linear inequalities in one or two variables", total: 78 }
+        ]
+      },
+      {
+        domain: "Advanced Math",
+        skills: [
+          { name: "Nonlinear functions", total: 259 },
+          { name: "Nonlinear equations in one variable and systems of equations in two variables", total: 165 },
+          { name: "Equivalent expressions", total: 116 }
+        ]
+      },
+      {
+        domain: "Problem-Solving and Data Analysis",
+        skills: [
+          { name: "Ratios, rates, proportional relationships, and units", total: 93 },
+          { name: "Percentages", total: 84 },
+          { name: "One-variable data: Distributions and measures of center and spread", total: 84 },
+          { name: "Two-variable data: Models and scatterplots", total: 71 },
+          { name: "Probability and conditional probability", total: 49 },
+          { name: "Inference from sample statistics and margin of error", total: 28 },
+          { name: "Evaluating statistical claims: Observational studies and experiments", total: 12 }
+        ]
+      },
+      {
+        domain: "Geometry and Trigonometry",
+        skills: [
+          { name: "Area and volume", total: 110 },
+          { name: "Lines, angles, and triangles", total: 102 },
+          { name: "Right triangles and trigonometry", total: 69 },
+          { name: "Circles", total: 67 }
+        ]
+      }
+    ]
+  },
+
+  normalizeSkill(raw) {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    if (s.toLowerCase() === 'cross-text connections') {
+      return 'Cross-Text Connections';
+    }
+    return s;
+  },
+
+  initSelectedSkills(subject) {
+    this.selectedSkills = new Set();
+    const hierarchy = this.skillHierarchy[subject] || [];
+    hierarchy.forEach(d => {
+      d.skills.forEach(s => this.selectedSkills.add(s.name));
+    });
+  },
+
+  showHubView() {
+    this.activeView = 'hub';
+    const hub = document.getElementById('qb-hub-view');
+    const detail = document.getElementById('qb-detail-view');
+    if (hub) hub.classList.remove('hidden');
+    if (detail) detail.classList.add('hidden');
+  },
+
+  showDetailView() {
+    this.activeView = 'detail';
+    const hub = document.getElementById('qb-hub-view');
+    const detail = document.getElementById('qb-detail-view');
+    if (hub) hub.classList.add('hidden');
+    if (detail) detail.classList.remove('hidden');
+  },
+
+  selectSubjectView(subject) {
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+    this.activeSubject = targetSubj;
+    this.initSelectedSkills(targetSubj);
+    this.showDetailView();
+    this.syncSubjectDetailHeader();
+    this.renderSkillList();
+    this.updateMatchingCount();
+    const setupView = document.getElementById('qb-setup-view');
+    if (setupView) {
+      setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  backToHub() {
+    this.showHubView();
+    const setupView = document.getElementById('qb-setup-view');
+    if (setupView) {
+      setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  syncSubjectDetailHeader() {
+    const titleEl = document.getElementById('qb-detail-subject-title');
+    const badgeEl = document.getElementById('qb-detail-subject-badge');
+    const subtitleEl = document.getElementById('qb-practice-all-subtitle');
+
+    if (this.activeSubject === 'rw') {
+      if (titleEl) titleEl.innerText = "Reading & Writing";
+      if (badgeEl) badgeEl.innerText = "1,845 questions • 10 skills";
+      if (subtitleEl) subtitleEl.innerText = "Start practicing all 10 skills in Reading & Writing.";
+    } else if (this.activeSubject === 'math') {
+      if (titleEl) titleEl.innerText = "Math";
+      if (badgeEl) badgeEl.innerText = "1,925 questions • 19 skills";
+      if (subtitleEl) subtitleEl.innerText = "Start practicing all 19 skills in Math.";
+    } else {
+      if (titleEl) titleEl.innerText = "Combined / All";
+      if (badgeEl) badgeEl.innerText = "3,770 questions • 29 skills";
+      if (subtitleEl) subtitleEl.innerText = "Start practicing all 29 skills across both subjects.";
+    }
+
+    ['rw', 'math', 'combined'].forEach(s => {
+      const tab = document.getElementById(`qb-tab-${s}`);
+      if (tab) {
+        if (s === this.activeSubject) {
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-600 text-white shadow-xs";
+        } else {
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/50";
+        }
+      }
+    });
+  },
+
+  renderSkillList() {
+    const container = document.getElementById('qb-skills-list-container');
+    if (!container) return;
+
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || (subj === 'combined' ? [...this.skillHierarchy.rw, ...this.skillHierarchy.math] : this.skillHierarchy.rw);
+    if (!hierarchy) return;
+
+    const skillCounts = {};
+    const skillSolved = {};
+    const skillCorrect = {};
+
+    const allQuestions = (subj === 'rw') 
+      ? (this.questionsData.rw || [])
+      : (subj === 'math')
+        ? (this.questionsData.math || [])
+        : [...(this.questionsData.rw || []), ...(this.questionsData.math || [])];
+
+    hierarchy.forEach(dom => {
+      dom.skills.forEach(sk => {
+        skillCounts[sk.name] = (allQuestions.length === 0) ? sk.total : 0;
+        skillSolved[sk.name] = 0;
+        skillCorrect[sk.name] = 0;
+      });
+    });
+
+    if (allQuestions.length > 0) {
+      allQuestions.forEach(q => {
+        const norm = this.normalizeSkill(q.skill);
+        const matchesDiff = this.activeDifficulties.has(q.difficulty);
+        if (matchesDiff) {
+          if (typeof skillCounts[norm] === 'number') {
+            skillCounts[norm]++;
+          }
+        }
+        if (this.solvedQuestionIds.has(q.id)) {
+          if (typeof skillSolved[norm] === 'number') {
+            skillSolved[norm]++;
+          }
+          if (this.correctQuestionIds.has(q.id)) {
+            if (typeof skillCorrect[norm] === 'number') {
+              skillCorrect[norm]++;
+            }
+          }
+        }
+      });
+    }
+
+    let html = '';
+    hierarchy.forEach(domGroup => {
+      const domainName = domGroup.domain;
+      const domSkills = domGroup.skills;
+      const allDomSelected = domSkills.every(sk => this.selectedSkills.has(sk.name));
+
+      html += `
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" class="w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" 
+                ${allDomSelected ? 'checked' : ''} 
+                onchange="qbEngine.toggleDomainSkills('${domainName.replace(/'/g, "\\'")}', this.checked)">
+              <span class="text-sm font-black text-slate-900">${domainName}</span>
+            </label>
+            <span class="text-[11px] font-semibold text-slate-400">
+              ${domSkills.length} skills
+            </span>
+          </div>
+          <div class="space-y-1">
+      `;
+
+      domSkills.forEach(sk => {
+        const isChecked = this.selectedSkills.has(sk.name);
+        const total = (typeof skillCounts[sk.name] === 'number') ? skillCounts[sk.name] : sk.total;
+        const solved = skillSolved[sk.name] || 0;
+        const correct = skillCorrect[sk.name] || 0;
+        const pct = (total > 0) ? Math.min(100, Math.round((solved / total) * 100)) : 0;
+        
+        let accuracyStr = `<span class="text-xs font-semibold text-slate-400 text-right">-</span>`;
+        if (solved > 0) {
+          const accPct = Math.round((correct / solved) * 100);
+          const dotColor = (accPct >= 70) ? 'bg-emerald-500' : (accPct >= 50 ? 'bg-amber-500' : 'bg-rose-500');
+          const txtColor = (accPct >= 70) ? 'text-emerald-700' : (accPct >= 50 ? 'text-amber-700' : 'text-rose-700');
+          accuracyStr = `<span class="text-xs font-bold ${txtColor} flex items-center justify-end gap-1"><span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>${accPct}%</span>`;
+        }
+
+        html += `
+          <div class="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-slate-50 transition-colors group">
+            <label class="flex items-center gap-3 cursor-pointer select-none flex-1 min-w-0 pr-4">
+              <input type="checkbox" class="qb-skill-cb w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer" 
+                data-skill="${sk.name.replace(/"/g, '&quot;')}"
+                ${isChecked ? 'checked' : ''} 
+                onchange="qbEngine.onSkillChange('${sk.name.replace(/'/g, "\\'")}', this.checked)">
+              <span class="text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                ${sk.name}
+              </span>
+            </label>
+            <div class="flex items-center gap-6 shrink-0">
+              <div class="flex items-center gap-3 w-36 justify-end">
+                <div class="w-16 sm:w-20 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                  <div class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+                <span class="text-xs font-semibold font-mono text-slate-600 text-right w-12 shrink-0">
+                  ${solved}/${total}
+                </span>
+              </div>
+              <div class="w-14 text-right shrink-0">
+                ${accuracyStr}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  },
+
+  onSkillChange(skillName, isChecked) {
+    if (isChecked) {
+      this.selectedSkills.add(skillName);
+    } else {
+      this.selectedSkills.delete(skillName);
+    }
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  toggleDomainSkills(domainName, isChecked) {
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    const domGroup = hierarchy.find(d => d.domain === domainName);
+    if (!domGroup) return;
+
+    domGroup.skills.forEach(sk => {
+      if (isChecked) {
+        this.selectedSkills.add(sk.name);
+      } else {
+        this.selectedSkills.delete(sk.name);
+      }
+    });
+
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  toggleAllSkills() {
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    const allSkills = [];
+    hierarchy.forEach(d => d.skills.forEach(s => allSkills.push(s.name)));
+
+    const allSelected = allSkills.length > 0 && allSkills.every(s => this.selectedSkills.has(s));
+    if (allSelected) {
+      this.selectedSkills.clear();
+    } else {
+      allSkills.forEach(s => this.selectedSkills.add(s));
+    }
+
+    const btn = document.getElementById('qb-btn-toggle-domains');
+    if (btn) {
+      btn.innerText = (!allSelected) ? "Deselect All" : "Select All";
+    }
+
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  startPracticeAll() {
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    hierarchy.forEach(d => d.skills.forEach(s => this.selectedSkills.add(s)));
+    this.renderSkillList();
+    this.updateMatchingCount();
+    this.startPractice();
+  },
 
   getCurrentStudentId() {
     let uid = '';
@@ -10161,6 +10550,13 @@
           this.solvedQuestionIds = new Set(parsed);
         }
       }
+      const localCorrect = localStorage.getItem(`satmaster_correct_q_${studentId}`);
+      if (localCorrect) {
+        const parsedC = JSON.parse(localCorrect);
+        if (Array.isArray(parsedC)) {
+          this.correctQuestionIds = new Set(parsedC);
+        }
+      }
     } catch (e) {}
 
     // 2. Fetch from backend if registered / not guest
@@ -10180,6 +10576,7 @@
     }
 
     this.syncStatusUI();
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -10187,10 +10584,14 @@
     if (!questionId) return;
     const qid = String(questionId).trim();
     this.solvedQuestionIds.add(qid);
+    if (isCorrect) {
+      this.correctQuestionIds.add(qid);
+    }
 
     const studentId = this.getCurrentStudentId();
     try {
       localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+      localStorage.setItem(`satmaster_correct_q_${studentId}`, JSON.stringify(Array.from(this.correctQuestionIds)));
     } catch (e) {}
 
     // Asynchronously dispatch to backend
@@ -10208,6 +10609,7 @@
       } catch (e) {}
     }
 
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -10267,13 +10669,16 @@
     if (testContainer) testContainer.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
-    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : 'rw';
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : null;
 
     if (!this.isInitialized) {
       this.init(targetSubj);
     } else {
-      this.setSubject(targetSubj);
-      this.updateMatchingCount();
+      if (targetSubj) {
+        this.selectSubjectView(targetSubj);
+      } else {
+        this.backToHub();
+      }
     }
 
     if (setupView) {
@@ -10322,14 +10727,18 @@
 
     if (!this.isInitialized) {
       this.isInitialized = true;
+      this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
-      if (defaultSubj) this.setSubject(defaultSubj);
       await this.loadQuestions();
       await this.loadSolvedQuestions();
     } else {
-      if (defaultSubj) this.setSubject(defaultSubj);
       await this.loadSolvedQuestions();
-      this.updateMatchingCount();
+    }
+
+    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
+      this.selectSubjectView(defaultSubj);
+    } else {
+      this.backToHub();
     }
   },
 
@@ -10381,6 +10790,7 @@
       this.questionsData.math = mathQuestions || [];
       this.currentDataVersion = this.dataVersion;
       this.isLoading = false;
+      this.renderSkillList();
       this.updateMatchingCount();
     } catch (err) {
       console.error("[qbEngine] Error loading questions:", err);
@@ -10394,20 +10804,21 @@
   setSubject(subj) {
     if (!['rw', 'math', 'combined'].includes(subj)) return;
     this.activeSubject = subj;
+    this.initSelectedSkills(subj);
 
     // Update subject tab styling
     ['rw', 'math', 'combined'].forEach(s => {
       const tab = document.getElementById(`qb-tab-${s}`);
       if (tab) {
         if (s === subj) {
-          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 bg-blue-600 text-white shadow-sm";
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-blue-600 text-white shadow-xs";
         } else {
-          tab.className = "qb-subject-tab py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all text-center flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900";
+          tab.className = "qb-subject-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/50";
         }
       }
     });
 
-    // Update Domain grids visibility
+    // Update Domain grids visibility (backward compatibility)
     const rwWrapper = document.getElementById('qb-domains-rw-wrapper');
     const mathWrapper = document.getElementById('qb-domains-math-wrapper');
 
@@ -10427,6 +10838,8 @@
       }
     }
 
+    this.syncSubjectDetailHeader();
+    this.renderSkillList();
     this.updateToggleDomainsButtonText();
     this.updateMatchingCount();
   },
@@ -10465,23 +10878,17 @@
   },
 
   toggleAllDomains() {
-    const cbs = this.getVisibleDomainCheckboxes();
-    if (!cbs || cbs.length === 0) return;
-
-    const allChecked = cbs.every(cb => cb.checked);
-    cbs.forEach(cb => {
-      cb.checked = !allChecked;
-    });
-
-    this.updateToggleDomainsButtonText();
-    this.updateMatchingCount();
+    this.toggleAllSkills();
   },
 
   updateToggleDomainsButtonText() {
     const btn = document.getElementById('qb-btn-toggle-domains');
     if (!btn) return;
-    const cbs = this.getVisibleDomainCheckboxes();
-    const allChecked = cbs.length > 0 && cbs.every(cb => cb.checked);
+    const subj = this.activeSubject;
+    const hierarchy = this.skillHierarchy[subj] || [];
+    const allSkills = [];
+    hierarchy.forEach(d => d.skills.forEach(s => allSkills.push(s.name)));
+    const allChecked = allSkills.length > 0 && allSkills.every(s => this.selectedSkills.has(s));
     btn.innerHTML = allChecked ? "<span>Deselect All</span>" : "<span>Select All</span>";
   },
 
@@ -10500,6 +10907,7 @@
     }
 
     this.syncDifficultyUI();
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -10519,6 +10927,28 @@
         btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${conf.active} shadow-sm`;
       } else {
         btn.className = `qb-diff-pill px-5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-xs`;
+      }
+    });
+  },
+
+  setStatusFilter(filter) {
+    if (!['unsolved', 'solved', 'all'].includes(filter)) return;
+    this.activeStatusFilter = filter;
+    this.syncStatusUI();
+    this.renderSkillList();
+    this.updateMatchingCount();
+  },
+
+  syncStatusUI() {
+    const statuses = ['unsolved', 'solved', 'all'];
+    statuses.forEach(st => {
+      const btn = document.getElementById(`qb-status-${st}`);
+      if (!btn) return;
+      const isAct = (this.activeStatusFilter === st);
+      if (isAct) {
+        btn.className = "qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-blue-600 border-blue-500 text-white shadow-sm";
+      } else {
+        btn.className = "qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs";
       }
     });
   },
@@ -10653,6 +11083,7 @@
 
   syncUI() {
     this.syncDifficultyUI();
+    this.syncStatusUI();
     this.syncCountUI();
     this.syncCustomUI();
     this.updateToggleDomainsButtonText();
@@ -10679,7 +11110,22 @@
       const qDomNorm = domainNorm(q.domain);
       const matchesDomain = activeDomainNorms.has(qDomNorm);
       const matchesDiff = this.activeDifficulties.has(q.difficulty);
-      return matchesDomain && matchesDiff;
+      if (!matchesDomain || !matchesDiff) return false;
+
+      // Filter by selected skills
+      if (this.selectedSkills) {
+        if (this.selectedSkills.size === 0) return false;
+        const qSkill = this.normalizeSkill(q.skill);
+        if (!this.selectedSkills.has(qSkill)) return false;
+      }
+
+      // Status Filter
+      if (this.activeStatusFilter === 'unsolved') {
+        return !this.solvedQuestionIds.has(q.id);
+      } else if (this.activeStatusFilter === 'solved') {
+        return this.solvedQuestionIds.has(q.id);
+      }
+      return true; // 'all'
     });
   },
 
@@ -10687,6 +11133,7 @@
     const countEl = document.getElementById('qb-matching-count');
     const poolDetailEl = document.getElementById('qb-pool-detail');
     const startBtn = document.getElementById('qb-btn-start');
+    const allBtn = document.getElementById('qb-count-all');
 
     if (this.isLoading) return;
 
@@ -10702,19 +11149,25 @@
       this.syncCustomUI();
     }
 
+    if (allBtn) {
+      allBtn.innerHTML = `<span>All</span> <span class="text-[10px] opacity-80">(${totalCount.toLocaleString()})</span>`;
+    }
+
     if (countEl) {
+      const statusLabel = this.activeStatusFilter === 'unsolved' ? 'Unsolved' : (this.activeStatusFilter === 'solved' ? 'Solved' : 'Total');
       if (totalCount > 0) {
-        countEl.innerHTML = `⚡ <span class="text-sky-300 font-black">${totalCount.toLocaleString()}</span> questions available matching your filters`;
+        countEl.innerHTML = `⚡ <span class="text-blue-600 font-black">${totalCount.toLocaleString()}</span> ${statusLabel.toLowerCase()} questions available from selected skills`;
       } else {
-        countEl.innerHTML = `<span class="text-amber-400 font-bold">⚠️ 0 questions matching these filters</span>`;
+        countEl.innerHTML = `<span class="text-amber-500 font-bold">⚠️ 0 questions matching these skills and filters (${statusLabel})</span>`;
       }
     }
 
     if (poolDetailEl) {
       const subjName = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined');
       const diffList = Array.from(this.activeDifficulties).join(', ');
-      const domainCount = this.getActiveDomains().size;
-      poolDetailEl.innerText = `${subjName} • ${domainCount} active domain(s) • [${diffList}]`;
+      const skillCount = this.selectedSkills ? this.selectedSkills.size : 0;
+      const statusText = this.activeStatusFilter === 'unsolved' ? 'Fresh/Unsolved' : (this.activeStatusFilter === 'solved' ? 'Solved Review' : 'All Bank');
+      poolDetailEl.innerText = `${subjName} • ${skillCount} active skill(s) • [${diffList}] • Mode: ${statusText}`;
     }
 
     if (startBtn) {
@@ -11170,6 +11623,12 @@
     session.checked[idx] = true;
     sessionStorage.setItem('qb_active_session', JSON.stringify(session));
 
+    // Record question as solved immediately for this student
+    const isCorrect = isSPR
+      ? this.isSPREqual(studentAnswer, q.correct_answer)
+      : Boolean(String(studentAnswer).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+    this.recordQuestionSolved(q.id, isCorrect, studentAnswer);
+
     this.updateChoicesUI();
 
     const explCard = document.getElementById('qb-explanation-card');
@@ -11570,6 +12029,28 @@
       this.renderMath(listEl);
     }
 
+    // Batch record all answered questions from this session as solved
+    try {
+      const batchAnswers = [];
+      session.questions.forEach((q, i) => {
+        const studentAns = session.answers ? session.answers[i] : null;
+        if (studentAns !== undefined && studentAns !== null && String(studentAns).trim() !== '') {
+          const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+          const isCorr = isSPR
+            ? this.isSPREqual(studentAns, q.correct_answer)
+            : Boolean(String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+          batchAnswers.push({
+            question_id: q.id,
+            is_correct: isCorr,
+            selected_answer: studentAns
+          });
+        }
+      });
+      if (batchAnswers.length > 0) {
+        this.recordSolvedBatch(batchAnswers);
+      }
+    } catch (e) {}
+
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
   },
@@ -11629,6 +12110,13 @@
     if (resModal) resModal.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
+    if (this.activeView === 'detail') {
+      this.showDetailView();
+    } else {
+      this.showHubView();
+    }
+
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -11762,7 +12250,6 @@
     return formatted;
   }
 };
-
   </script>
 
   <!-- Mobile Bottom Navigation Bar (Visible on mobile/tablet screens < 768px) -->

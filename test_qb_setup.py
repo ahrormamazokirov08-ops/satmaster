@@ -175,6 +175,130 @@ class TestQBSetupScreen(unittest.TestCase):
         self.assertEqual(len(combined_hard), 610 + 610)
         print(f"✅ Filter simulation passed: RW={len(self.rw_questions)}, Math={len(self.math_questions)}, Combined={len(combined)}")
 
+    # 10. Two-Stage Navigation DOM Structure (Hub vs Detail Views)
+    def test_two_stage_navigation_elements(self):
+        print("\n--- Test 10: Two-Stage Navigation DOM Elements (Hub vs Detail Views) ---")
+        public_html_path = os.path.join(ROOT_DIR, "public", "index.html")
+        with open(public_html_path, "r", encoding="utf-8") as f:
+            pub_html = f.read()
+
+        for name, markup in [("index.html", self.html), ("public/index.html", pub_html)]:
+            self.assertIn('id="qb-hub-view"', markup, f"#qb-hub-view must exist in {name}")
+            self.assertIn('id="qb-detail-view"', markup, f"#qb-detail-view must exist in {name}")
+            self.assertIn('id="btn-qb-back-hub"', markup, f"#btn-qb-back-hub must exist in {name}")
+            self.assertIn('id="qb-skills-list-container"', markup, f"#qb-skills-list-container must exist in {name}")
+            self.assertIn('id="qb-practice-all-subtitle"', markup, f"#qb-practice-all-subtitle must exist in {name}")
+            self.assertIn("qbEngine.selectSubjectView('rw')", markup, f"RW card must call selectSubjectView('rw') in {name}")
+            self.assertIn("qbEngine.selectSubjectView('math')", markup, f"Math card must call selectSubjectView('math') in {name}")
+            self.assertIn("qbEngine.backToHub()", markup, f"Back button must call backToHub() in {name}")
+            self.assertIn("qbEngine.startPracticeAll()", markup, f"Hero card must call startPracticeAll() in {name}")
+        print("✅ Two-stage navigation DOM elements verified across root and public index.html: PASS")
+
+    # 11. OnePrep Hierarchical Engine Methods
+    def test_oneprep_engine_methods(self):
+        print("\n--- Test 11: OnePrep Hierarchical State Engine Methods ---")
+        mirror_path = os.path.join(ROOT_DIR, "public", "public", "qb_engine.js")
+        with open(mirror_path, "r", encoding="utf-8") as f:
+            mirror_js = f.read()
+
+        new_methods = [
+            "selectSubjectView", "backToHub", "normalizeSkill",
+            "renderSkillList", "onSkillChange", "toggleDomainSkills",
+            "toggleAllSkills", "startPracticeAll", "syncSubjectDetailHeader"
+        ]
+        for name, js_code in [("public/qb_engine.js", self.engine_js), ("public/public/qb_engine.js", mirror_js)]:
+            for m in new_methods:
+                self.assertIn(m, js_code, f"{name} must implement {m}()")
+            self.assertIn("skillHierarchy", js_code, f"{name} must define skillHierarchy")
+            self.assertIn("activeView: 'hub'", js_code, f"{name} must default activeView to 'hub'")
+            self.assertIn("selectedSkills: new Set()", js_code, f"{name} must define selectedSkills Set")
+        print("✅ OnePrep engine methods verified across bundles: PASS")
+
+    # 12. Authentic College Board Skill Hierarchy Counts
+    def test_authentic_skill_hierarchy_counts(self):
+        print("\n--- Test 12: Authentic Skill Hierarchy Counts (10 RW + 19 Math) ---")
+        from collections import Counter
+
+        def norm_s(s):
+            if not s: return ""
+            s = s.strip()
+            if s.lower() == "cross-text connections":
+                return "Cross-Text Connections"
+            return s
+
+        rw_skills = Counter(norm_s(q.get("skill")) for q in self.rw_questions)
+        self.assertEqual(len(rw_skills), 10, "RW dataset must contain exactly 10 skills")
+        expected_rw = {
+            "Words in Context": 261,
+            "Text Structure and Purpose": 149,
+            "Cross-Text Connections": 61,
+            "Command of Evidence": 277,
+            "Inferences": 140,
+            "Central Ideas and Details": 138,
+            "Boundaries": 213,
+            "Form, Structure, and Sense": 208,
+            "Rhetorical Synthesis": 204,
+            "Transitions": 194
+        }
+        for sk, count in expected_rw.items():
+            self.assertEqual(rw_skills[sk], count, f"RW Skill '{sk}' must have exactly {count} questions")
+        self.assertEqual(sum(rw_skills.values()), 1845, "RW skills must sum to 1,845 questions")
+
+        math_skills = Counter(norm_s(q.get("skill")) for q in self.math_questions)
+        self.assertEqual(len(math_skills), 19, "Math dataset must contain exactly 19 skills")
+        expected_math = {
+            "Linear functions": 170,
+            "Linear equations in two variables": 130,
+            "Systems of two linear equations in two variables": 126,
+            "Linear equations in one variable": 112,
+            "Linear inequalities in one or two variables": 78,
+            "Nonlinear functions": 259,
+            "Nonlinear equations in one variable and systems of equations in two variables": 165,
+            "Equivalent expressions": 116,
+            "Ratios, rates, proportional relationships, and units": 93,
+            "Percentages": 84,
+            "One-variable data: Distributions and measures of center and spread": 84,
+            "Two-variable data: Models and scatterplots": 71,
+            "Probability and conditional probability": 49,
+            "Inference from sample statistics and margin of error": 28,
+            "Evaluating statistical claims: Observational studies and experiments": 12,
+            "Area and volume": 110,
+            "Lines, angles, and triangles": 102,
+            "Right triangles and trigonometry": 69,
+            "Circles": 67
+        }
+        for sk, count in expected_math.items():
+            self.assertEqual(math_skills[sk], count, f"Math Skill '{sk}' must have exactly {count} questions")
+        self.assertEqual(sum(math_skills.values()), 1925, "Math skills must sum to 1,925 questions")
+        print("✅ Official 10 RW + 19 Math skills exactly match ingested datasets (3,770 total): PASS")
+
+    # 13. Skill-Level Filtering Simulation
+    def test_skill_level_filtering_simulation(self):
+        print("\n--- Test 13: Skill-Level Practice Filtering Simulation ---")
+        def norm_s(s):
+            if not s: return ""
+            s = s.strip()
+            if s.lower() == "cross-text connections":
+                return "Cross-Text Connections"
+            return s
+
+        # 1. Practice ONLY Transitions
+        transitions_only = [q for q in self.rw_questions if norm_s(q.get("skill")) == "Transitions"]
+        self.assertEqual(len(transitions_only), 194)
+
+        # 2. Practice Transitions + Words in Context
+        combo = [q for q in self.rw_questions if norm_s(q.get("skill")) in {"Transitions", "Words in Context"}]
+        self.assertEqual(len(combo), 194 + 261)
+
+        # 3. Practice Nonlinear functions only in Math
+        nonlinear = [q for q in self.math_questions if norm_s(q.get("skill")) == "Nonlinear functions"]
+        self.assertEqual(len(nonlinear), 259)
+
+        # 4. Empty skill selection produces 0 questions
+        empty_sel = [q for q in self.rw_questions if norm_s(q.get("skill")) in set()]
+        self.assertEqual(len(empty_sel), 0)
+        print("✅ Skill-level practice filtering simulation passed: PASS")
+
 
 def main():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestQBSetupScreen)
