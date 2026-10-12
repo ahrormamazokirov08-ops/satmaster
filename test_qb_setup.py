@@ -102,10 +102,21 @@ class TestQBSetupScreen(unittest.TestCase):
     # 6. Question Count Selector
     def test_question_count_selector(self):
         print("\n--- Test 6: Question Count Selector ---")
-        for count in [5, 10, 15, 20, 30, "custom"]:
+        # Starting presets
+        for count in [20, 30, 40, 50, "custom"]:
             self.assertIn(f'id="qb-count-{count}"', self.html, f"Count pill for {count} must exist")
-        self.assertIn('id="qb-custom-count-input"', self.html, "Custom count number input must exist")
-        print("✅ Question count selector (5, 10, 15, 20, 30, custom) verified: PASS")
+        # Quick selection buttons in custom panel
+        for quick in [5, 10, 15, 25, "max"]:
+            self.assertIn(f'id="qb-count-{quick}"', self.html, f"Quick button for {quick} must exist")
+        self.assertIn('id="qb-custom-count-input"', self.html, "Custom count input must exist")
+        self.assertIn('id="qb-custom-count-wrapper"', self.html, "Downward custom wrapper must exist")
+        self.assertIn('id="qb-custom-count-display"', self.html, "Custom count display must exist")
+        self.assertIn('id="qb-custom-max-badge"', self.html, "Section availability remark badge must exist")
+        self.assertIn('id="qb-custom-max-remark"', self.html, "Section availability remark text must exist")
+        self.assertIn('adjustCustomCount', self.engine_js, "Engine must implement adjustCustomCount")
+        self.assertIn('setCustomCountDirect', self.engine_js, "Engine must implement setCustomCountDirect")
+        self.assertIn('updateCustomRemark', self.engine_js, "Engine must implement updateCustomRemark")
+        print("✅ Question count selector (presets 20, 30, 40, 50, downward custom button selector, & remark) verified: PASS")
 
     # 7. Live Matching Question Counter & Start Button
     def test_matching_counter_and_start_button(self):

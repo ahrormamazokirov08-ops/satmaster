@@ -1026,18 +1026,71 @@
               <span class="text-[11px] text-slate-500">Session length</span>
             </div>
             <div class="flex flex-wrap items-center gap-2" id="qb-count-selector">
-              <button type="button" onclick="qbEngine.setCount(5)" id="qb-count-5" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="5">5</button>
-              <button type="button" onclick="qbEngine.setCount(10)" id="qb-count-10" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="10">10</button>
-              <button type="button" onclick="qbEngine.setCount(15)" id="qb-count-15" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm" data-count="15">15</button>
-              <button type="button" onclick="qbEngine.setCount(20)" id="qb-count-20" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="20">20</button>
+              <button type="button" onclick="qbEngine.setCount(20)" id="qb-count-20" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm" data-count="20">20</button>
               <button type="button" onclick="qbEngine.setCount(30)" id="qb-count-30" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="30">30</button>
+              <button type="button" onclick="qbEngine.setCount(40)" id="qb-count-40" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="40">40</button>
+              <button type="button" onclick="qbEngine.setCount(50)" id="qb-count-50" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="50">50</button>
               <button type="button" onclick="qbEngine.setCount('all')" id="qb-count-all" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="all">All</button>
-              <button type="button" onclick="qbEngine.setCount('custom')" id="qb-count-custom" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" data-count="custom">Custom</button>
-              
-              <!-- Custom Input Wrapper -->
-              <div id="qb-custom-count-wrapper" class="hidden items-center gap-2 ml-2">
-                <input type="number" id="qb-custom-count-input" min="1" max="100" value="25" oninput="qbEngine.onCustomCountInput(this.value)" class="w-20 bg-white border border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-900 outline-none">
-                <span class="text-xs text-slate-500">questions</span>
+              <button type="button" onclick="qbEngine.setCount('custom')" id="qb-count-custom" class="qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs flex items-center gap-1.5" data-count="custom">
+                <span>Custom</span>
+                <svg id="qb-custom-chevron" class="w-3.5 h-3.5 transition-transform text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+            </div>
+
+            <!-- Downward Custom Question Count Panel -->
+            <div id="qb-custom-count-wrapper" class="hidden p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 transition-all">
+              <!-- Stepper and Target Question Count Display -->
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">Target Count:</span>
+                  <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-blue-200 rounded-xl shadow-xs">
+                    <span id="qb-custom-count-display" class="text-base font-black font-mono text-blue-600">25</span>
+                    <span class="text-xs font-semibold text-slate-500">questions</span>
+                  </div>
+                  <!-- Hidden input to maintain DOM & programmatic compatibility -->
+                  <input type="hidden" id="qb-custom-count-input" value="25">
+                </div>
+
+                <!-- Increment / Decrement Stepper Buttons -->
+                <div class="flex items-center gap-1.5 self-stretch sm:self-auto justify-end">
+                  <button type="button" onclick="qbEngine.adjustCustomCount(-10)" title="Subtract 10 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-10</button>
+                  <button type="button" onclick="qbEngine.adjustCustomCount(-5)" title="Subtract 5 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-5</button>
+                  <button type="button" onclick="qbEngine.adjustCustomCount(-1)" title="Subtract 1 question" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">-1</button>
+                  <button type="button" onclick="qbEngine.adjustCustomCount(1)" title="Add 1 question" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+1</button>
+                  <button type="button" onclick="qbEngine.adjustCustomCount(5)" title="Add 5 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+5</button>
+                  <button type="button" onclick="qbEngine.adjustCustomCount(10)" title="Add 10 questions" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold shadow-xs active:scale-95 transition-all">+10</button>
+                </div>
+              </div>
+
+              <!-- Quick Selection Buttons -->
+              <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Quick Select</span>
+                <div class="flex flex-wrap items-center gap-1.5" id="qb-custom-quick-pills">
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(5)" id="qb-count-5" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="5">5</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(10)" id="qb-count-10" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="10">10</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(15)" id="qb-count-15" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="15">15</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(25)" id="qb-count-25" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs" data-quick="25">25</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(35)" id="qb-count-35" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="35">35</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(45)" id="qb-count-45" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="45">45</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(60)" id="qb-count-60" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="60">60</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(75)" id="qb-count-75" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="75">75</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect(100)" id="qb-count-100" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="100">100</button>
+                  <button type="button" onclick="qbEngine.setCustomCountDirect('max')" id="qb-count-max" class="qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-quick="max">Max</button>
+                </div>
+              </div>
+
+              <!-- Section Availability Remark Callout -->
+              <div class="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 shadow-xs">
+                <span class="text-sm shrink-0 leading-none mt-0.5">📌</span>
+                <div class="text-xs leading-relaxed flex-1">
+                  <div class="font-bold flex items-center justify-between">
+                    <span>Section Availability Remark</span>
+                    <span id="qb-custom-max-badge" class="font-mono font-extrabold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md text-[11px]">Max: Calculating...</span>
+                  </div>
+                  <p id="qb-custom-max-remark" class="text-[11px] text-blue-700/90 mt-0.5">
+                    Maximum number of questions in this section is based on your active subject, domains, and difficulty filters.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -10069,7 +10122,7 @@
   activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
   activeStatusFilter: 'unsolved', // 'unsolved' | 'solved' | 'all'
   solvedQuestionIds: new Set(),
-  activeCount: 15,
+  activeCount: 20,
   isCustomCount: false,
   isAllCount: false,
   questionsData: { rw: null, math: null },
@@ -10473,37 +10526,127 @@
   setCount(cnt) {
     if (cnt === 'custom') {
       this.isCustomCount = true;
+      this.isAllCount = false;
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.remove('hidden');
+      const chevron = document.getElementById('qb-custom-chevron');
+      if (chevron) chevron.classList.add('rotate-180');
+      
       const input = document.getElementById('qb-custom-count-input');
-      if (input) this.activeCount = parseInt(input.value) || 25;
-    } else {
+      const curVal = input ? (parseInt(input.value) || 25) : 25;
+      const filtered = this.getFilteredQuestions();
+      const maxAvailable = Math.max(1, filtered.length || 1);
+      this.activeCount = Math.min(curVal, maxAvailable);
+      this.syncCustomUI();
+    } else if (cnt === 'all') {
       this.isCustomCount = false;
-      this.activeCount = parseInt(cnt) || 15;
+      this.isAllCount = true;
+      this.activeCount = 'all';
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.add('hidden');
+      const chevron = document.getElementById('qb-custom-chevron');
+      if (chevron) chevron.classList.remove('rotate-180');
+    } else {
+      this.isCustomCount = false;
+      this.isAllCount = false;
+      this.activeCount = parseInt(cnt) || 20;
+      const wrapper = document.getElementById('qb-custom-count-wrapper');
+      if (wrapper) wrapper.classList.add('hidden');
+      const chevron = document.getElementById('qb-custom-chevron');
+      if (chevron) chevron.classList.remove('rotate-180');
     }
 
     this.syncCountUI();
   },
 
+  adjustCustomCount(delta) {
+    this.isCustomCount = true;
+    this.isAllCount = false;
+    const current = (typeof this.activeCount === 'number') ? this.activeCount : (parseInt(document.getElementById('qb-custom-count-input')?.value) || 25);
+    const filtered = this.getFilteredQuestions();
+    const maxAvailable = Math.max(1, filtered.length || 1);
+    
+    let nextCount = current + delta;
+    nextCount = Math.max(1, Math.min(nextCount, maxAvailable));
+    this.activeCount = nextCount;
+    this.syncCustomUI();
+    this.syncCountUI();
+  },
+
+  setCustomCountDirect(num) {
+    this.isCustomCount = true;
+    this.isAllCount = false;
+    const filtered = this.getFilteredQuestions();
+    const maxAvailable = Math.max(1, filtered.length || 1);
+    
+    if (num === 'max') {
+      this.activeCount = maxAvailable;
+    } else {
+      const val = parseInt(num) || 25;
+      this.activeCount = Math.max(1, Math.min(val, maxAvailable));
+    }
+    this.syncCustomUI();
+    this.syncCountUI();
+  },
+
   onCustomCountInput(val) {
     const num = parseInt(val);
+    const filtered = this.getFilteredQuestions();
+    const maxAvailable = Math.max(1, filtered.length || 1);
     if (!isNaN(num) && num > 0) {
-      this.activeCount = Math.min(100, Math.max(1, num));
+      this.activeCount = Math.max(1, Math.min(num, maxAvailable));
+      this.syncCustomUI();
+    }
+  },
+
+  syncCustomUI() {
+    const val = (typeof this.activeCount === 'number') ? this.activeCount : 25;
+    const disp = document.getElementById('qb-custom-count-display');
+    if (disp) disp.innerText = val.toString();
+    const input = document.getElementById('qb-custom-count-input');
+    if (input) input.value = val;
+
+    // Highlight active quick pill if matching
+    const quickPills = document.querySelectorAll('.qb-custom-quick-btn');
+    quickPills.forEach(btn => {
+      const qVal = btn.getAttribute('data-quick');
+      const isAct = (qVal === 'max' && val === this.getFilteredQuestions().length) || (parseInt(qVal) === val);
+      if (isAct) {
+        btn.className = "qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs";
+      } else {
+        btn.className = "qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs";
+      }
+    });
+
+    this.updateCustomRemark();
+  },
+
+  updateCustomRemark() {
+    const filtered = this.getFilteredQuestions();
+    const totalCount = filtered.length;
+    const badge = document.getElementById('qb-custom-max-badge');
+    const remark = document.getElementById('qb-custom-max-remark');
+    if (badge) {
+      badge.innerText = `Max: ${totalCount.toLocaleString()} available`;
+    }
+    if (remark) {
+      const subjName = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined');
+      remark.innerHTML = `This section currently has a maximum of <strong class="text-blue-800">${totalCount.toLocaleString()}</strong> questions available based on your selected <strong>${subjName}</strong> filters.`;
     }
   },
 
   syncCountUI() {
-    const counts = [5, 10, 15, 20, 30, 'custom'];
-    counts.forEach(c => {
+    const presetCounts = [20, 30, 40, 50, 'all', 'custom'];
+    presetCounts.forEach(c => {
       const btn = document.getElementById(`qb-count-${c}`);
       if (!btn) return;
-      const isAct = (c === 'custom' && this.isCustomCount) || (!this.isCustomCount && this.activeCount === c);
+      const isAct = (c === 'custom' && this.isCustomCount) || 
+                    (c === 'all' && this.isAllCount) || 
+                    (!this.isCustomCount && !this.isAllCount && this.activeCount === c);
       if (isAct) {
-        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm";
+        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm" + (c === 'custom' ? " flex items-center gap-1.5" : "");
       } else {
-        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs";
+        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" + (c === 'custom' ? " flex items-center gap-1.5" : "");
       }
     });
   },
@@ -10511,6 +10654,7 @@
   syncUI() {
     this.syncDifficultyUI();
     this.syncCountUI();
+    this.syncCustomUI();
     this.updateToggleDomainsButtonText();
   },
 
@@ -10548,6 +10692,15 @@
 
     const filtered = this.getFilteredQuestions();
     const totalCount = filtered.length;
+
+    // Update Section Availability Remark
+    this.updateCustomRemark();
+
+    // If custom count is active and exceeds available questions, clamp it
+    if (this.isCustomCount && typeof this.activeCount === 'number' && this.activeCount > totalCount && totalCount > 0) {
+      this.activeCount = totalCount;
+      this.syncCustomUI();
+    }
 
     if (countEl) {
       if (totalCount > 0) {
@@ -10595,9 +10748,14 @@
     }
 
     // Determine target question count
-    let targetCount = this.isCustomCount
-      ? (parseInt(document.getElementById('qb-custom-count-input')?.value) || 25)
-      : this.activeCount;
+    let targetCount = filtered.length;
+    if (this.isAllCount) {
+      targetCount = filtered.length;
+    } else if (this.isCustomCount) {
+      targetCount = parseInt(document.getElementById('qb-custom-count-input')?.value) || (typeof this.activeCount === 'number' ? this.activeCount : 25);
+    } else {
+      targetCount = this.activeCount;
+    }
 
     targetCount = Math.max(1, Math.min(targetCount, filtered.length));
 

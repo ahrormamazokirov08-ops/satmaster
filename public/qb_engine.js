@@ -10,7 +10,7 @@ window.qbEngine = {
   activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
   activeStatusFilter: 'unsolved', // 'unsolved' | 'solved' | 'all'
   solvedQuestionIds: new Set(),
-  activeCount: 15,
+  activeCount: 20,
   isCustomCount: false,
   isAllCount: false,
   questionsData: { rw: null, math: null },
@@ -438,44 +438,124 @@ window.qbEngine = {
       this.isAllCount = false;
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.remove('hidden');
+      const chevron = document.getElementById('qb-custom-chevron');
+      if (chevron) chevron.classList.add('rotate-180');
+      
       const input = document.getElementById('qb-custom-count-input');
-      if (input) this.activeCount = parseInt(input.value) || 25;
+      const curVal = input ? (parseInt(input.value) || 25) : 25;
+      const filtered = this.getFilteredQuestions();
+      const maxAvailable = Math.max(1, filtered.length || 1);
+      this.activeCount = Math.min(curVal, maxAvailable);
+      this.syncCustomUI();
     } else if (cnt === 'all') {
       this.isCustomCount = false;
       this.isAllCount = true;
       this.activeCount = 'all';
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.add('hidden');
+      const chevron = document.getElementById('qb-custom-chevron');
+      if (chevron) chevron.classList.remove('rotate-180');
     } else {
       this.isCustomCount = false;
       this.isAllCount = false;
-      this.activeCount = parseInt(cnt) || 15;
+      this.activeCount = parseInt(cnt) || 20;
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.add('hidden');
+      const chevron = document.getElementById('qb-custom-chevron');
+      if (chevron) chevron.classList.remove('rotate-180');
     }
 
     this.syncCountUI();
   },
 
+  adjustCustomCount(delta) {
+    this.isCustomCount = true;
+    this.isAllCount = false;
+    const current = (typeof this.activeCount === 'number') ? this.activeCount : (parseInt(document.getElementById('qb-custom-count-input')?.value) || 25);
+    const filtered = this.getFilteredQuestions();
+    const maxAvailable = Math.max(1, filtered.length || 1);
+    
+    let nextCount = current + delta;
+    nextCount = Math.max(1, Math.min(nextCount, maxAvailable));
+    this.activeCount = nextCount;
+    this.syncCustomUI();
+    this.syncCountUI();
+  },
+
+  setCustomCountDirect(num) {
+    this.isCustomCount = true;
+    this.isAllCount = false;
+    const filtered = this.getFilteredQuestions();
+    const maxAvailable = Math.max(1, filtered.length || 1);
+    
+    if (num === 'max') {
+      this.activeCount = maxAvailable;
+    } else {
+      const val = parseInt(num) || 25;
+      this.activeCount = Math.max(1, Math.min(val, maxAvailable));
+    }
+    this.syncCustomUI();
+    this.syncCountUI();
+  },
+
   onCustomCountInput(val) {
     const num = parseInt(val);
+    const filtered = this.getFilteredQuestions();
+    const maxAvailable = Math.max(1, filtered.length || 1);
     if (!isNaN(num) && num > 0) {
-      this.activeCount = Math.min(100, Math.max(1, num));
+      this.activeCount = Math.max(1, Math.min(num, maxAvailable));
+      this.syncCustomUI();
+    }
+  },
+
+  syncCustomUI() {
+    const val = (typeof this.activeCount === 'number') ? this.activeCount : 25;
+    const disp = document.getElementById('qb-custom-count-display');
+    if (disp) disp.innerText = val.toString();
+    const input = document.getElementById('qb-custom-count-input');
+    if (input) input.value = val;
+
+    // Highlight active quick pill if matching
+    const quickPills = document.querySelectorAll('.qb-custom-quick-btn');
+    quickPills.forEach(btn => {
+      const qVal = btn.getAttribute('data-quick');
+      const isAct = (qVal === 'max' && val === this.getFilteredQuestions().length) || (parseInt(qVal) === val);
+      if (isAct) {
+        btn.className = "qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs";
+      } else {
+        btn.className = "qb-custom-quick-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs";
+      }
+    });
+
+    this.updateCustomRemark();
+  },
+
+  updateCustomRemark() {
+    const filtered = this.getFilteredQuestions();
+    const totalCount = filtered.length;
+    const badge = document.getElementById('qb-custom-max-badge');
+    const remark = document.getElementById('qb-custom-max-remark');
+    if (badge) {
+      badge.innerText = `Max: ${totalCount.toLocaleString()} available`;
+    }
+    if (remark) {
+      const subjName = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined');
+      remark.innerHTML = `This section currently has a maximum of <strong class="text-blue-800">${totalCount.toLocaleString()}</strong> questions available based on your selected <strong>${subjName}</strong> filters.`;
     }
   },
 
   syncCountUI() {
-    const counts = [5, 10, 15, 20, 30, 'all', 'custom'];
-    counts.forEach(c => {
+    const presetCounts = [20, 30, 40, 50, 'all', 'custom'];
+    presetCounts.forEach(c => {
       const btn = document.getElementById(`qb-count-${c}`);
       if (!btn) return;
       const isAct = (c === 'custom' && this.isCustomCount) || 
                     (c === 'all' && this.isAllCount) || 
                     (!this.isCustomCount && !this.isAllCount && this.activeCount === c);
       if (isAct) {
-        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm";
+        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm" + (c === 'custom' ? " flex items-center gap-1.5" : "");
       } else {
-        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs";
+        btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs" + (c === 'custom' ? " flex items-center gap-1.5" : "");
       }
     });
   },
@@ -484,6 +564,7 @@ window.qbEngine = {
     this.syncDifficultyUI();
     this.syncStatusUI();
     this.syncCountUI();
+    this.syncCustomUI();
     this.updateToggleDomainsButtonText();
   },
 
@@ -530,6 +611,15 @@ window.qbEngine = {
 
     const filtered = this.getFilteredQuestions();
     const totalCount = filtered.length;
+
+    // Update Section Availability Remark
+    this.updateCustomRemark();
+
+    // If custom count is active and exceeds available questions, clamp it
+    if (this.isCustomCount && typeof this.activeCount === 'number' && this.activeCount > totalCount && totalCount > 0) {
+      this.activeCount = totalCount;
+      this.syncCustomUI();
+    }
 
     if (allBtn) {
       allBtn.innerHTML = `<span>All</span> <span class="text-[10px] opacity-80">(${totalCount.toLocaleString()})</span>`;
@@ -587,7 +677,7 @@ window.qbEngine = {
     if (this.isAllCount) {
       targetCount = filtered.length;
     } else if (this.isCustomCount) {
-      targetCount = parseInt(document.getElementById('qb-custom-count-input')?.value) || 25;
+      targetCount = parseInt(document.getElementById('qb-custom-count-input')?.value) || (typeof this.activeCount === 'number' ? this.activeCount : 25);
     } else {
       targetCount = this.activeCount;
     }
