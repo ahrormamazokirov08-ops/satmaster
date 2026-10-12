@@ -200,6 +200,14 @@ window.qbEngine = {
       this.activeSubject = defaultSubj;
     }
 
+    // Invalidate stale active session from older versions
+    try {
+      const activeSess = JSON.parse(sessionStorage.getItem('qb_active_session'));
+      if (activeSess && activeSess.version !== this.dataVersion) {
+        sessionStorage.removeItem('qb_active_session');
+      }
+    } catch (e) {}
+
     if (!this.isInitialized) {
       this.isInitialized = true;
       this.syncUI();
@@ -213,8 +221,11 @@ window.qbEngine = {
     }
   },
 
-  async loadQuestions() {
-    if (this.questionsData.rw && this.questionsData.math) {
+  dataVersion: '2.5.0',
+  currentDataVersion: null,
+
+  async loadQuestions(force = false) {
+    if (!force && this.questionsData.rw && this.questionsData.math && this.currentDataVersion === this.dataVersion) {
       this.updateMatchingCount();
       return;
     }
@@ -225,7 +236,7 @@ window.qbEngine = {
 
     try {
       const fetchWithFallback = async (relPath) => {
-        const v = 'v=2.4.0';
+        const v = `v=${this.dataVersion}_${Date.now()}`;
         const qp = relPath.includes('?') ? '&' : '?';
         const candidates = [
           relPath + qp + v,
@@ -242,7 +253,7 @@ window.qbEngine = {
         ];
         for (const path of candidates) {
           try {
-            const res = await fetch(path);
+            const res = await fetch(path, { cache: 'no-store' });
             if (res.ok) return await res.json();
           } catch (e) {}
         }
@@ -256,6 +267,7 @@ window.qbEngine = {
 
       this.questionsData.rw = rwQuestions || [];
       this.questionsData.math = mathQuestions || [];
+      this.currentDataVersion = this.dataVersion;
       this.isLoading = false;
       this.updateMatchingCount();
     } catch (err) {
@@ -607,6 +619,7 @@ window.qbEngine = {
         requestedCount: targetCount,
         totalAvailable: filtered.length
       },
+      version: this.dataVersion,
       startedAt: Date.now()
     };
 
@@ -639,8 +652,25 @@ window.qbEngine = {
     }
 
     const idx = session.currentIdx || 0;
-    const q = session.questions[idx];
+    let q = session.questions[idx];
     if (!q) return;
+
+    // Self-healing synchronization with fresh questionsData (syncs tables and graphs if session was cached)
+    if (q && q.id && this.questionsData) {
+      const isMath = (q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
+      const pool = isMath ? this.questionsData.math : this.questionsData.rw;
+      if (pool && Array.isArray(pool)) {
+        const freshQ = pool.find(item => item.id === q.id);
+        if (freshQ && freshQ.passage && freshQ.passage !== q.passage) {
+          q.passage = freshQ.passage;
+          q.prompt = freshQ.prompt;
+          session.questions[idx] = q;
+          try {
+            sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+          } catch (e) {}
+        }
+      }
+    }
 
     // Header updates
     const headerSubj = document.getElementById('qb-header-subject');

@@ -3,8 +3,8 @@
   "cleanUrls": true,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "src": "/data/(.*)", "dest": "/data/$1" },
-    { "src": "/public/(.*)", "dest": "/public/$1" },
+    { "src": "/data/(.*)", "dest": "/data/$1", "headers": { "Cache-Control": "no-cache, no-store, must-revalidate" } },
+    { "src": "/public/(.*)", "dest": "/public/$1", "headers": { "Cache-Control": "no-cache, no-store, must-revalidate" } },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

@@ -71,6 +71,27 @@ class TestTablesAndGraphs(unittest.TestCase):
         self.assertNotIn("sr-only", passage, "No sr-only elements in passage")
         print("✅ cb_rw_102 table and passage verified: PASS")
 
+    # 1b. cb_rw_065 (User Image 3 Table) Verification
+    def test_cb_rw_065_table_rendering(self):
+        print("\n--- Test 1b: cb_rw_065 (User Image 3 Neanderthal Clamshell Table) Verification ---")
+        q = next((item for item in self.rw_questions if item["id"] == "cb_rw_065"), None)
+        self.assertIsNotNone(q, "cb_rw_065 must exist in Reading & Writing dataset")
+
+        passage = q.get("passage", "")
+        self.assertIn('<div class="qb-table-wrapper', passage, "Table wrapper container must exist")
+        self.assertIn('<table class="qb-data-table', passage, "qb-data-table element must exist")
+        self.assertIn("Number and Origin of Clamshell Tools Found at Different Levels Below the Surface in Neanderthal Cave", passage)
+        self.assertIn("Depth of tools found below surface in cave (meters)", passage)
+        self.assertIn("Clamshells that Neanderthals collected from the beach", passage)
+        self.assertIn("Clamshells that Neanderthals harvested from the seafloor", passage)
+        self.assertIn("99", passage)
+        self.assertIn("33", passage)
+        self.assertNotIn("3–49933", passage, "Table cells must NOT be smashed together")
+        self.assertNotIn("3-49933", passage, "Table cells must NOT be smashed together")
+        self.assertNotIn("6–710", passage, "Table cells must NOT be smashed together")
+        self.assertNotIn("sr-only", passage, "No sr-only elements in passage")
+        print("✅ cb_rw_065 Neanderthal Clamshell table verified: PASS")
+
     # 2. cb_rw_229 (User Image 2) SVG Graph Verification
     def test_cb_rw_229_svg_graph_rendering(self):
         print("\n--- Test 2: cb_rw_229 (User Image 2 SVG Graph) Verification ---")
