@@ -10167,6 +10167,7 @@
   activeStatusFilter: 'unsolved', // 'unsolved' | 'solved' | 'all'
   solvedQuestionIds: new Set(),
   correctQuestionIds: new Set(),
+  statsPerSkill: {},
   selectedSkills: new Set(),
   activeCount: 20,
   isCustomCount: false,
@@ -10387,6 +10388,18 @@
       });
     }
 
+    if (this.statsPerSkill && typeof this.statsPerSkill === 'object') {
+      hierarchy.forEach(dom => {
+        dom.skills.forEach(sk => {
+          const s = this.statsPerSkill[sk.name];
+          if (s) {
+            skillSolved[sk.name] = Math.max(skillSolved[sk.name] || 0, Number(s.solved) || 0);
+            skillCorrect[sk.name] = Math.max(skillCorrect[sk.name] || 0, Number(s.correct) || 0);
+          }
+        });
+      });
+    }
+
     let html = '';
     hierarchy.forEach(domGroup => {
       const domainName = domGroup.domain;
@@ -10539,11 +10552,47 @@
     return String(uid || 'guest').trim();
   },
 
+  async syncPendingAttempts(studentId) {
+    if (!studentId || studentId === 'guest') return;
+    try {
+      const pendingKey = `qb_pending_attempts_${studentId}`;
+      const pendingRaw = localStorage.getItem(pendingKey);
+      if (!pendingRaw) return;
+      const pending = JSON.parse(pendingRaw);
+      if (!Array.isArray(pending) || pending.length === 0) return;
+
+      const res = await fetch('/api/qbank/record-attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: studentId,
+          attempts: pending
+        })
+      });
+      if (res.ok) {
+        localStorage.removeItem(pendingKey);
+      }
+    } catch (e) {
+      // Still offline, will retry on next sync
+    }
+  },
+
+  queuePendingAttempt(studentId, attemptObj) {
+    if (!studentId || studentId === 'guest' || !attemptObj) return;
+    try {
+      const pendingKey = `qb_pending_attempts_${studentId}`;
+      const raw = localStorage.getItem(pendingKey);
+      const list = raw ? JSON.parse(raw) : [];
+      list.push(attemptObj);
+      localStorage.setItem(pendingKey, JSON.stringify(list));
+    } catch (e) {}
+  },
+
   async loadSolvedQuestions() {
     const studentId = this.getCurrentStudentId();
     // 1. Load locally cached solved IDs first
     try {
-      const localCached = localStorage.getItem(`satmaster_solved_q_${studentId}`);
+      const localCached = localStorage.getItem(`qb_solved_${studentId}`) || localStorage.getItem(`satmaster_solved_q_${studentId}`);
       if (localCached) {
         const parsed = JSON.parse(localCached);
         if (Array.isArray(parsed)) {
@@ -10557,17 +10606,28 @@
           this.correctQuestionIds = new Set(parsedC);
         }
       }
+      const localStats = localStorage.getItem(`qb_stats_${studentId}`);
+      if (localStats) {
+        this.statsPerSkill = JSON.parse(localStats) || {};
+      }
     } catch (e) {}
 
     // 2. Fetch from backend if registered / not guest
     if (studentId && studentId !== 'guest') {
       try {
-        const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/solved-questions`);
+        await this.syncPendingAttempts(studentId);
+
+        const res = await fetch(`/api/qbank/user-history?uid=${encodeURIComponent(studentId)}`);
         if (res.ok) {
           const data = await res.json();
-          if (data && Array.isArray(data.solved_question_ids)) {
-            data.solved_question_ids.forEach(qid => this.solvedQuestionIds.add(qid));
+          if (data && Array.isArray(data.solved_ids)) {
+            data.solved_ids.forEach(qid => this.solvedQuestionIds.add(qid));
+            localStorage.setItem(`qb_solved_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
             localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+          }
+          if (data && data.stats) {
+            this.statsPerSkill = data.stats;
+            localStorage.setItem(`qb_stats_${studentId}`, JSON.stringify(data.stats));
           }
         }
       } catch (err) {
@@ -10580,7 +10640,7 @@
     this.updateMatchingCount();
   },
 
-  async recordQuestionSolved(questionId, isCorrect = false, selectedAnswer = null) {
+  async recordQuestionSolved(questionId, isCorrect = false, selectedAnswer = null, metadata = {}) {
     if (!questionId) return;
     const qid = String(questionId).trim();
     this.solvedQuestionIds.add(qid);
@@ -10590,23 +10650,48 @@
 
     const studentId = this.getCurrentStudentId();
     try {
+      localStorage.setItem(`qb_solved_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
       localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
       localStorage.setItem(`satmaster_correct_q_${studentId}`, JSON.stringify(Array.from(this.correctQuestionIds)));
     } catch (e) {}
 
-    // Asynchronously dispatch to backend
+    const payload = {
+      uid: studentId,
+      question_id: qid,
+      subject: metadata.subject || null,
+      domain: metadata.domain || null,
+      skill: metadata.skill || null,
+      is_correct: Boolean(isCorrect),
+      selected_answer: selectedAnswer,
+      time_spent_seconds: metadata.time_spent_seconds || 0
+    };
+
+    if (metadata.skill) {
+      const sk = metadata.skill;
+      if (!this.statsPerSkill) this.statsPerSkill = {};
+      if (!this.statsPerSkill[sk]) this.statsPerSkill[sk] = { solved: 0, correct: 0 };
+      this.statsPerSkill[sk].solved += 1;
+      if (isCorrect) this.statsPerSkill[sk].correct += 1;
+      try {
+        localStorage.setItem(`qb_stats_${studentId}`, JSON.stringify(this.statsPerSkill));
+      } catch (e) {}
+    }
+
+    // Asynchronously dispatch to backend with offline queue fallback
     if (studentId && studentId !== 'guest') {
       try {
-        fetch(`/api/students/${encodeURIComponent(studentId)}/solved-questions`, {
+        fetch('/api/qbank/record-attempt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question_id: qid,
-            is_correct: Boolean(isCorrect),
-            selected_answer: selectedAnswer
-          })
-        }).catch(() => {});
-      } catch (e) {}
+          body: JSON.stringify(payload)
+        }).then(res => {
+          if (!res.ok) this.queuePendingAttempt(studentId, payload);
+        }).catch(() => {
+          this.queuePendingAttempt(studentId, payload);
+        });
+      } catch (e) {
+        this.queuePendingAttempt(studentId, payload);
+      }
     }
 
     this.renderSkillList();
@@ -10620,22 +10705,45 @@
     batchItems.forEach(it => {
       const qid = it.question_id || it.id;
       if (qid) this.solvedQuestionIds.add(String(qid).trim());
+      if (it.is_correct && qid) this.correctQuestionIds.add(String(qid).trim());
+
+      if (it.skill) {
+        const sk = it.skill;
+        if (!this.statsPerSkill) this.statsPerSkill = {};
+        if (!this.statsPerSkill[sk]) this.statsPerSkill[sk] = { solved: 0, correct: 0 };
+        this.statsPerSkill[sk].solved += 1;
+        if (it.is_correct) this.statsPerSkill[sk].correct += 1;
+      }
     });
 
     try {
+      localStorage.setItem(`qb_solved_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
       localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+      localStorage.setItem(`satmaster_correct_q_${studentId}`, JSON.stringify(Array.from(this.correctQuestionIds)));
+      if (this.statsPerSkill) {
+        localStorage.setItem(`qb_stats_${studentId}`, JSON.stringify(this.statsPerSkill));
+      }
     } catch (e) {}
 
     if (studentId && studentId !== 'guest') {
       try {
-        fetch(`/api/students/${encodeURIComponent(studentId)}/solved-questions`, {
+        fetch('/api/qbank/record-attempt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questions: batchItems })
-        }).catch(() => {});
-      } catch (e) {}
+          body: JSON.stringify({ uid: studentId, attempts: batchItems })
+        }).then(res => {
+          if (!res.ok) {
+            batchItems.forEach(it => this.queuePendingAttempt(studentId, it));
+          }
+        }).catch(() => {
+          batchItems.forEach(it => this.queuePendingAttempt(studentId, it));
+        });
+      } catch (e) {
+        batchItems.forEach(it => this.queuePendingAttempt(studentId, it));
+      }
     }
 
+    this.renderSkillList();
     this.updateMatchingCount();
   },
 
@@ -10674,6 +10782,7 @@
     if (!this.isInitialized) {
       this.init(targetSubj);
     } else {
+      this.loadSolvedQuestions();
       if (targetSubj) {
         this.selectSubjectView(targetSubj);
       } else {
@@ -11627,7 +11736,13 @@
     const isCorrect = isSPR
       ? this.isSPREqual(studentAnswer, q.correct_answer)
       : Boolean(String(studentAnswer).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
-    this.recordQuestionSolved(q.id, isCorrect, studentAnswer);
+    const timeSpent = (session.timeSpent && session.timeSpent[idx]) ? session.timeSpent[idx] : 0;
+    this.recordQuestionSolved(q.id, isCorrect, studentAnswer, {
+      subject: q.subject || session.subject,
+      domain: q.domain,
+      skill: this.normalizeSkill(q.skill),
+      time_spent_seconds: timeSpent
+    });
 
     this.updateChoicesUI();
 
@@ -12039,10 +12154,15 @@
           const isCorr = isSPR
             ? this.isSPREqual(studentAns, q.correct_answer)
             : Boolean(String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+          const timeSpent = (session.timeSpent && session.timeSpent[i]) ? session.timeSpent[i] : 0;
           batchAnswers.push({
             question_id: q.id,
+            subject: q.subject || session.subject,
+            domain: q.domain,
+            skill: this.normalizeSkill(q.skill),
             is_correct: isCorr,
-            selected_answer: studentAns
+            selected_answer: studentAns,
+            time_spent_seconds: timeSpent
           });
         }
       });

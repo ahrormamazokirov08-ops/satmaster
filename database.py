@@ -286,16 +286,37 @@ class RelationalDB:
                             gen_random_uuid(),
                             uuid_generate_v4()
                         ),
-                        student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                        uid TEXT NOT NULL,
+                        student_id UUID NULL REFERENCES students(id) ON DELETE CASCADE,
                         question_id VARCHAR(100) NOT NULL,
+                        subject TEXT NULL,
+                        domain TEXT NULL,
+                        skill TEXT NULL,
                         is_correct BOOLEAN NOT NULL DEFAULT FALSE,
                         selected_answer TEXT NULL,
+                        time_spent_seconds INTEGER NOT NULL DEFAULT 0,
                         solved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        CONSTRAINT uq_student_question UNIQUE(student_id, question_id)
+                        CONSTRAINT uq_student_solved_uid_qid UNIQUE(uid, question_id)
                     );
-                    CREATE INDEX IF NOT EXISTS idx_solved_questions_student ON student_solved_questions(student_id);
-                    CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);
                     """)
+                    pg_migrations = [
+                        "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS uid TEXT;",
+                        "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS subject TEXT;",
+                        "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS domain TEXT;",
+                        "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS skill TEXT;",
+                        "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS time_spent_seconds INTEGER NOT NULL DEFAULT 0;",
+                        "ALTER TABLE student_solved_questions ALTER COLUMN student_id DROP NOT NULL;",
+                        "UPDATE student_solved_questions SET uid = CAST(student_id AS TEXT) WHERE uid IS NULL AND student_id IS NOT NULL;",
+                        "CREATE UNIQUE INDEX IF NOT EXISTS idx_solved_questions_uid_qid ON student_solved_questions(uid, question_id);",
+                        "CREATE INDEX IF NOT EXISTS idx_solved_questions_uid ON student_solved_questions(uid);",
+                        "CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);",
+                        "CREATE INDEX IF NOT EXISTS idx_solved_questions_skill ON student_solved_questions(skill);"
+                    ]
+                    for m in pg_migrations:
+                        try:
+                            cur.execute(m)
+                        except Exception:
+                            pass
             except Exception:
                 pass
             return
@@ -332,21 +353,68 @@ class RelationalDB:
                 cur.execute("""
                 CREATE TABLE IF NOT EXISTS student_solved_questions (
                     id TEXT PRIMARY KEY,
-                    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    uid TEXT NOT NULL,
+                    student_id TEXT,
                     question_id TEXT NOT NULL,
+                    subject TEXT,
+                    domain TEXT,
+                    skill TEXT,
                     is_correct INTEGER NOT NULL DEFAULT 0,
                     selected_answer TEXT,
+                    time_spent_seconds INTEGER NOT NULL DEFAULT 0,
                     solved_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    UNIQUE (student_id, question_id)
+                    UNIQUE (uid, question_id)
                 );
                 """)
+                # Handle SQLite table migration if pre-existing schema lacked `uid`
+                try:
+                    cur.execute("PRAGMA table_info(student_solved_questions)")
+                    cols = [c[1] for c in cur.fetchall()]
+                    if "uid" not in cols:
+                        cur.execute("""
+                        CREATE TABLE IF NOT EXISTS student_solved_questions_mig (
+                            id TEXT PRIMARY KEY,
+                            uid TEXT NOT NULL,
+                            student_id TEXT,
+                            question_id TEXT NOT NULL,
+                            subject TEXT,
+                            domain TEXT,
+                            skill TEXT,
+                            is_correct INTEGER NOT NULL DEFAULT 0,
+                            selected_answer TEXT,
+                            time_spent_seconds INTEGER NOT NULL DEFAULT 0,
+                            solved_at TEXT NOT NULL DEFAULT (datetime('now')),
+                            UNIQUE (uid, question_id)
+                        );
+                        """)
+                        if "student_id" in cols:
+                            cur.execute("""
+                            INSERT OR IGNORE INTO student_solved_questions_mig (id, uid, student_id, question_id, is_correct, selected_answer, solved_at)
+                            SELECT id, student_id, student_id, question_id, is_correct, selected_answer, solved_at
+                            FROM student_solved_questions;
+                            """)
+                        cur.execute("DROP TABLE student_solved_questions;")
+                        cur.execute("ALTER TABLE student_solved_questions_mig RENAME TO student_solved_questions;")
+                    else:
+                        if "subject" not in cols:
+                            cur.execute("ALTER TABLE student_solved_questions ADD COLUMN subject TEXT;")
+                        if "domain" not in cols:
+                            cur.execute("ALTER TABLE student_solved_questions ADD COLUMN domain TEXT;")
+                        if "skill" not in cols:
+                            cur.execute("ALTER TABLE student_solved_questions ADD COLUMN skill TEXT;")
+                        if "time_spent_seconds" not in cols:
+                            cur.execute("ALTER TABLE student_solved_questions ADD COLUMN time_spent_seconds INTEGER NOT NULL DEFAULT 0;")
+                except Exception:
+                    pass
+
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_students_group_id ON students(group_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_students_telegram_id ON students(telegram_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_student_id ON test_results(student_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_group_id ON test_results(group_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_completed_at ON test_results(completed_at DESC);")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_student ON student_solved_questions(student_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_uid ON student_solved_questions(uid);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_skill ON student_solved_questions(skill);")
 
     # --------------------------------------------------------------------------
     # GROUPS API METHODS
@@ -646,112 +714,192 @@ class RelationalDB:
             return _format_rows(rows)
 
     # --------------------------------------------------------------------------
-    # SOLVED QUESTIONS API METHODS
+    # SOLVED QUESTIONS & QBANK PRACTICE HISTORY METHODS
     # --------------------------------------------------------------------------
 
-    def record_solved_question(self, student_id, question_id, is_correct=False, selected_answer=None):
-        """Record or update that a student has solved a question."""
-        if not student_id or not question_id:
+    def record_qbank_attempt(self, uid, question_id, subject=None, domain=None, skill=None, is_correct=False, selected_answer=None, time_spent_seconds=0):
+        """
+        Record or update a student's practice attempt for a question (idempotent upsert on uid, question_id).
+        Supports both PostgreSQL and SQLite.
+        """
+        if not uid or not question_id:
             return None
 
-        student = self.get_student(student_id)
-        if not student:
-            return None
-        actual_student_id = str(student["id"])
+        uid_str = str(uid).strip()
         qid = str(question_id).strip()
+        if not uid_str or not qid:
+            return None
 
         solved_id = str(uuid.uuid4())
         solved_at = datetime.utcnow().isoformat()
+        time_spent = int(time_spent_seconds or 0)
+        is_corr_val = bool(is_correct)
+        subj = str(subject).strip() if subject else None
+        dom = str(domain).strip() if domain else None
+        sk = str(skill).strip() if skill else None
+        ans = str(selected_answer) if selected_answer is not None else None
 
         if self.is_postgres:
             sql = """
-                INSERT INTO student_solved_questions (id, student_id, question_id, is_correct, selected_answer, solved_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (student_id, question_id) 
+                INSERT INTO student_solved_questions (id, uid, question_id, subject, domain, skill, is_correct, selected_answer, time_spent_seconds, solved_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (uid, question_id) 
                 DO UPDATE SET 
+                    subject = COALESCE(EXCLUDED.subject, student_solved_questions.subject),
+                    domain = COALESCE(EXCLUDED.domain, student_solved_questions.domain),
+                    skill = COALESCE(EXCLUDED.skill, student_solved_questions.skill),
                     is_correct = EXCLUDED.is_correct,
                     selected_answer = EXCLUDED.selected_answer,
+                    time_spent_seconds = EXCLUDED.time_spent_seconds,
                     solved_at = EXCLUDED.solved_at
-                RETURNING id, student_id, question_id, is_correct, selected_answer, solved_at;
+                RETURNING id, uid, question_id, subject, domain, skill, is_correct, selected_answer, time_spent_seconds, solved_at;
             """
             with self.cursor() as cur:
-                cur.execute(sql, (solved_id, actual_student_id, qid, bool(is_correct), selected_answer, solved_at))
+                cur.execute(sql, (solved_id, uid_str, qid, subj, dom, sk, is_corr_val, ans, time_spent, solved_at))
                 row = cur.fetchone()
                 return _format_row(row)
         else:
             sql = """
-                INSERT INTO student_solved_questions (id, student_id, question_id, is_correct, selected_answer, solved_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(student_id, question_id) 
+                INSERT INTO student_solved_questions (id, uid, question_id, subject, domain, skill, is_correct, selected_answer, time_spent_seconds, solved_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (uid, question_id) 
                 DO UPDATE SET 
+                    subject = COALESCE(excluded.subject, student_solved_questions.subject),
+                    domain = COALESCE(excluded.domain, student_solved_questions.domain),
+                    skill = COALESCE(excluded.skill, student_solved_questions.skill),
                     is_correct = excluded.is_correct,
                     selected_answer = excluded.selected_answer,
+                    time_spent_seconds = excluded.time_spent_seconds,
                     solved_at = excluded.solved_at;
             """
             with self.cursor() as cur:
-                cur.execute(sql, (solved_id, actual_student_id, qid, 1 if is_correct else 0, selected_answer, solved_at))
+                cur.execute(sql, (solved_id, uid_str, qid, subj, dom, sk, 1 if is_corr_val else 0, ans, time_spent, solved_at))
                 return {
                     "id": solved_id,
-                    "student_id": actual_student_id,
+                    "uid": uid_str,
                     "question_id": qid,
-                    "is_correct": bool(is_correct),
-                    "selected_answer": selected_answer,
+                    "subject": subj,
+                    "domain": dom,
+                    "skill": sk,
+                    "is_correct": is_corr_val,
+                    "selected_answer": ans,
+                    "time_spent_seconds": time_spent,
                     "solved_at": solved_at
                 }
 
-    def record_solved_questions_batch(self, student_id, items):
-        """Batch record multiple solved questions for a student."""
-        if not student_id or not items:
+    def record_qbank_attempts_batch(self, uid, items):
+        """Batch record multiple question attempts for a student."""
+        if not uid or not items:
             return 0
-        student = self.get_student(student_id)
-        if not student:
-            return 0
-        actual_student_id = str(student["id"])
-
+        uid_str = str(uid).strip()
         count = 0
         for it in items:
             if isinstance(it, str):
                 qid = it.strip()
-                is_corr = False
-                ans = None
+                if qid:
+                    self.record_qbank_attempt(uid=uid_str, question_id=qid)
+                    count += 1
             elif isinstance(it, dict):
                 qid = (it.get("question_id") or it.get("id") or "").strip()
-                is_corr = bool(it.get("is_correct", False))
-                ans = it.get("selected_answer")
-            else:
-                continue
-
-            if qid:
-                self.record_solved_question(actual_student_id, qid, is_corr, ans)
-                count += 1
+                if qid:
+                    self.record_qbank_attempt(
+                        uid=uid_str,
+                        question_id=qid,
+                        subject=it.get("subject"),
+                        domain=it.get("domain"),
+                        skill=it.get("skill"),
+                        is_correct=bool(it.get("is_correct", False)),
+                        selected_answer=it.get("selected_answer"),
+                        time_spent_seconds=int(it.get("time_spent_seconds", 0) or 0)
+                    )
+                    count += 1
         return count
+
+    def get_qbank_user_history(self, uid):
+        """
+        Return student's full practice history and aggregated skill stats.
+        Returns:
+            {
+                "solved_ids": ["cb_rw_001", ...],
+                "stats": {
+                    "Words in Context": {"solved": 10, "correct": 8},
+                    ...
+                }
+            }
+        """
+        if not uid:
+            return {"solved_ids": [], "stats": {}}
+        uid_str = str(uid).strip()
+
+        sql = self._query("""
+            SELECT question_id, subject, domain, skill, is_correct, selected_answer, time_spent_seconds, solved_at
+            FROM student_solved_questions
+            WHERE CAST(uid AS TEXT) = %s
+            ORDER BY solved_at DESC
+        """)
+        with self.cursor() as cur:
+            cur.execute(sql, (uid_str,))
+            rows = cur.fetchall()
+
+        records = _format_rows(rows) if rows else []
+        solved_ids = []
+        seen_qids = set()
+        stats = {}
+
+        for r in records:
+            qid = str(r.get("question_id") or "").strip()
+            if qid and qid not in seen_qids:
+                seen_qids.add(qid)
+                solved_ids.append(qid)
+
+            sk = r.get("skill")
+            if sk:
+                sk = str(sk).strip()
+                if sk not in stats:
+                    stats[sk] = {"solved": 0, "correct": 0}
+                stats[sk]["solved"] += 1
+                if bool(r.get("is_correct")):
+                    stats[sk]["correct"] += 1
+
+        return {
+            "solved_ids": solved_ids,
+            "stats": stats
+        }
+
+    def record_solved_question(self, student_id, question_id, is_correct=False, selected_answer=None):
+        """Backward-compatible helper that records attempt by student_id or uid."""
+        return self.record_qbank_attempt(
+            uid=student_id,
+            question_id=question_id,
+            is_correct=is_correct,
+            selected_answer=selected_answer
+        )
+
+    def record_solved_questions_batch(self, student_id, items):
+        """Backward-compatible batch helper."""
+        return self.record_qbank_attempts_batch(student_id, items)
 
     def get_solved_questions(self, student_id):
         """Return all solved questions records for a student."""
         if not student_id:
             return []
-        student = self.get_student(student_id)
-        if not student:
-            return []
-        actual_student_id = str(student["id"])
+        uid_str = str(student_id).strip()
 
         sql = self._query("""
-            SELECT id, student_id, question_id, is_correct, selected_answer, solved_at
+            SELECT id, uid, student_id, question_id, subject, domain, skill, is_correct, selected_answer, time_spent_seconds, solved_at
             FROM student_solved_questions
-            WHERE CAST(student_id AS TEXT) = %s
+            WHERE CAST(uid AS TEXT) = %s OR CAST(student_id AS TEXT) = %s
             ORDER BY solved_at DESC
         """)
         with self.cursor() as cur:
-            cur.execute(sql, (actual_student_id,))
+            cur.execute(sql, (uid_str, uid_str))
             rows = cur.fetchall()
             return _format_rows(rows)
 
     def get_solved_question_ids(self, student_id):
         """Return list of question_id strings that the student has solved."""
-        records = self.get_solved_questions(student_id)
-        if not records:
-            return []
-        return [str(r["question_id"]) for r in records]
+        history = self.get_qbank_user_history(student_id)
+        return history.get("solved_ids", [])
 
     def sync_from_json_db(self, students_db_data):
         """Seed/sync groups from legacy JSON into relational structure."""

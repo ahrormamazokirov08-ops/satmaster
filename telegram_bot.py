@@ -1673,6 +1673,24 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
 
+        # 5c. GET /api/qbank/user-history - Return student's practice history and skill stats
+        if clean_path == "/api/qbank/user-history":
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            uid = qs.get("uid", [None])[0] or qs.get("student_id", [None])[0] or qs.get("id", [None])[0]
+            if not uid:
+                return self.send_json(400, {"ok": False, "error": "uid parameter is required", "solved_ids": [], "stats": {}})
+            try:
+                res = rdb.get_qbank_user_history(uid)
+                return self.send_json(200, {
+                    "ok": True,
+                    "uid": uid,
+                    "solved_ids": res.get("solved_ids", []),
+                    "stats": res.get("stats", {}),
+                    "count": len(res.get("solved_ids", []))
+                })
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
         # Legacy support: GET /api/students?group=...
         if clean_path == "/api/students":
             qs = urllib.parse.parse_qs(parsed_path.query)
@@ -1824,6 +1842,43 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                     ans = body.get("selected_answer")
                     rec = rdb.record_solved_question(student_id, qid, is_corr, ans)
                     return self.send_json(200, {"ok": True, "recorded": rec})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # POST /api/qbank/record-attempt - Record practice attempt
+        if clean_path == "/api/qbank/record-attempt":
+            try:
+                uid = body.get("uid") or body.get("student_id") or body.get("id")
+                if not uid:
+                    return self.send_json(400, {"ok": False, "error": "uid is required"})
+
+                if "attempts" in body and isinstance(body["attempts"], list):
+                    count = rdb.record_qbank_attempts_batch(uid, body["attempts"])
+                    return self.send_json(200, {"ok": True, "status": "success", "recorded_count": count})
+                elif "questions" in body and isinstance(body["questions"], list):
+                    count = rdb.record_qbank_attempts_batch(uid, body["questions"])
+                    return self.send_json(200, {"ok": True, "status": "success", "recorded_count": count})
+                else:
+                    qid = body.get("question_id")
+                    if not qid:
+                        return self.send_json(400, {"ok": False, "error": "question_id is required"})
+                    subject = body.get("subject")
+                    domain = body.get("domain")
+                    skill = body.get("skill")
+                    is_corr = bool(body.get("is_correct", False))
+                    ans = body.get("selected_answer")
+                    spent = int(body.get("time_spent_seconds", 0) or 0)
+                    rec = rdb.record_qbank_attempt(
+                        uid=uid,
+                        question_id=qid,
+                        subject=subject,
+                        domain=domain,
+                        skill=skill,
+                        is_correct=is_corr,
+                        selected_answer=ans,
+                        time_spent_seconds=spent
+                    )
+                    return self.send_json(200, {"ok": True, "status": "success", "record": rec})
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
 
