@@ -592,6 +592,69 @@ window.qbEngine = {
     this.updateMatchingCount();
   },
 
+  saveActiveQuestionIfAnswered(questionIdx = null) {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session || !session.questions) return;
+
+    const idx = (questionIdx !== null) ? questionIdx : (session.currentIdx || 0);
+    const q = session.questions[idx];
+    if (!q) return;
+
+    const studentAnswer = session.answers ? session.answers[idx] : undefined;
+    if (studentAnswer === undefined || studentAnswer === null || String(studentAnswer).trim() === '') {
+      return;
+    }
+
+    const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+    const isCorrect = isSPR
+      ? this.isSPREqual(studentAnswer, q.correct_answer)
+      : Boolean(String(studentAnswer).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+    const secSpent = (session.timePerQuestion && session.timePerQuestion[idx]) || (session.timeSpent && session.timeSpent[idx]) || 0;
+
+    this.recordQuestionSolved(q.id, isCorrect, studentAnswer, {
+      subject: q.subject || session.subject,
+      domain: q.domain,
+      skill: this.normalizeSkill(q.skill),
+      time_spent_seconds: secSpent
+    });
+  },
+
+  saveAllAnsweredQuestionsFromSession() {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!session || !session.questions) return;
+
+    const batch = [];
+    session.questions.forEach((q, i) => {
+      const studentAns = session.answers ? session.answers[i] : null;
+      if (studentAns !== undefined && studentAns !== null && String(studentAns).trim() !== '') {
+        const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+        const isCorr = isSPR
+          ? this.isSPREqual(studentAns, q.correct_answer)
+          : Boolean(String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+        const secSpent = (session.timePerQuestion && session.timePerQuestion[i]) || (session.timeSpent && session.timeSpent[i]) || 0;
+        batch.push({
+          question_id: q.id,
+          subject: q.subject || session.subject,
+          domain: q.domain,
+          skill: this.normalizeSkill(q.skill),
+          is_correct: isCorr,
+          selected_answer: studentAns,
+          time_spent_seconds: secSpent
+        });
+      }
+    });
+
+    if (batch.length > 0) {
+      this.recordSolvedBatch(batch);
+    }
+  },
+
   openSetup(subject) {
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
@@ -1612,6 +1675,9 @@ window.qbEngine = {
     sessionStorage.setItem('qb_active_session', JSON.stringify(session));
 
     this.updateChoicesUI();
+
+    // Immediately record question as solved
+    this.saveActiveQuestionIfAnswered();
   },
 
   toggleStrikethrough(letter, event) {
@@ -1666,6 +1732,10 @@ window.qbEngine = {
       } else {
         answeredStatus.innerHTML = `<span class="text-slate-500 font-bold">○ Unanswered</span>`;
       }
+    }
+
+    if (clean) {
+      this.saveActiveQuestionIfAnswered();
     }
 
     if (!session.checked || !session.checked[session.currentIdx]) {
@@ -1769,6 +1839,9 @@ window.qbEngine = {
     } catch (e) {}
     if (!session) return;
 
+    // Immediately record active question as solved if answered
+    this.saveActiveQuestionIfAnswered();
+
     if (session.currentIdx > 0) {
       session.currentIdx--;
       sessionStorage.setItem('qb_active_session', JSON.stringify(session));
@@ -1782,6 +1855,9 @@ window.qbEngine = {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
     if (!session) return;
+
+    // Immediately record active question as solved if answered
+    this.saveActiveQuestionIfAnswered();
 
     if (session.currentIdx < session.questions.length - 1) {
       session.currentIdx++;
@@ -1798,6 +1874,9 @@ window.qbEngine = {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
     if (!session) return;
+
+    // Immediately record active question as solved if answered
+    this.saveActiveQuestionIfAnswered();
 
     if (idx >= 0 && idx < session.questions.length) {
       session.currentIdx = idx;
@@ -2050,6 +2129,7 @@ window.qbEngine = {
   returnToSetupFromResults() {
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.add('hidden');
+    this.saveAllAnsweredQuestionsFromSession();
     this.returnToSetup();
   },
 
@@ -2058,6 +2138,9 @@ window.qbEngine = {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+
+    // Persist all answered questions from the session immediately
+    this.saveAllAnsweredQuestionsFromSession();
 
     const testContainer = document.getElementById('qb-test-container');
     const setupView = document.getElementById('qb-setup-view');
@@ -2215,3 +2298,13 @@ window.qbEngine = {
     return formatted;
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    try {
+      if (typeof qbEngine !== 'undefined' && qbEngine.saveAllAnsweredQuestionsFromSession) {
+        qbEngine.saveAllAnsweredQuestionsFromSession();
+      }
+    } catch (e) {}
+  });
+}

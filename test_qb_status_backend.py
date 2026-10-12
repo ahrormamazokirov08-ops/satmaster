@@ -330,6 +330,86 @@ class TestQBStatusBackend(unittest.TestCase):
         self.assertIn("const satWords =", html, "SAT Vocabulary array must be intact!")
         self.assertIn("434 Words", html, "PrepPros 434 vocabulary set must remain intact!")
 
+    def test_11_immediate_per_question_solve_persistence(self):
+        """Verify frontend scripts wire immediate persistence on answer selection and navigation."""
+        bundles = [
+            os.path.join(os.path.dirname(__file__), "public", "qb_engine.js"),
+            os.path.join(os.path.dirname(__file__), "public", "public", "qb_engine.js"),
+            os.path.join(os.path.dirname(__file__), "index.html"),
+            os.path.join(os.path.dirname(__file__), "public", "index.html")
+        ]
+
+        immediate_tokens = [
+            "saveActiveQuestionIfAnswered",
+            "saveAllAnsweredQuestionsFromSession"
+        ]
+
+        for path in bundles:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            for tok in immediate_tokens:
+                self.assertIn(tok, content, f"Immediate save token '{tok}' missing from {os.path.basename(path)}")
+
+    def test_12_midway_session_exit_persistence(self):
+        """Simulate student starting 20 questions, answering 5 midway, and exiting.
+        Assert that those 5 questions are recorded as solved and immediately excluded from unsolved pool.
+        """
+        student_midway = "student_midway_exit_user"
+        all_pool = [
+            {"id": f"q_session_{i}", "subject": "Math", "domain": "Algebra", "skill": "Linear equations"}
+            for i in range(1, 21)
+        ]
+
+        # Student answers the first 5 questions during the session
+        answered_items = [
+            {
+                "question_id": f"q_session_{i}",
+                "subject": "Math",
+                "domain": "Algebra",
+                "skill": "Linear equations",
+                "is_correct": (i % 2 == 1),
+                "selected_answer": "B" if (i % 2 == 1) else "A",
+                "time_spent_seconds": 25 + i
+            }
+            for i in range(1, 6)
+        ]
+
+        # Immediate recording happens per question as student clicks next or exits
+        for item in answered_items:
+            self.db.record_qbank_attempt(
+                uid=student_midway,
+                question_id=item["question_id"],
+                subject=item["subject"],
+                domain=item["domain"],
+                skill=item["skill"],
+                is_correct=item["is_correct"],
+                selected_answer=item["selected_answer"],
+                time_spent_seconds=item["time_spent_seconds"]
+            )
+
+        # Retrieve user history
+        hist = self.db.get_qbank_user_history(student_midway)
+        solved_set = set(hist["solved_ids"])
+
+        # Check solved set contains all 5 answered questions and none of the remaining 15
+        self.assertEqual(len(solved_set), 5)
+        for i in range(1, 6):
+            self.assertIn(f"q_session_{i}", solved_set)
+        for i in range(6, 21):
+            self.assertNotIn(f"q_session_{i}", solved_set)
+
+        # Filter by 'unsolved': must have exactly 15 questions remaining, none of the 5 answered
+        unsolved_pool = [q for q in all_pool if q["id"] not in solved_set]
+        self.assertEqual(len(unsolved_pool), 15)
+        for q in unsolved_pool:
+            self.assertNotIn(q["id"], solved_set)
+
+        # Filter by 'solved': must have exactly the 5 answered questions
+        solved_pool = [q for q in all_pool if q["id"] in solved_set]
+        self.assertEqual(len(solved_pool), 5)
+        self.assertEqual({q["id"] for q in solved_pool}, {f"q_session_{i}" for i in range(1, 6)})
+
 
 if __name__ == "__main__":
     unittest.main()
+
