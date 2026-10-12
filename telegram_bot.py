@@ -1658,6 +1658,21 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
 
+        # 5b. GET /api/students/:id/solved-questions - Return student's solved question IDs
+        m_stu_solved = re.match(r"^/api/students/([^/]+)/solved-questions$", clean_path)
+        if m_stu_solved:
+            student_id = m_stu_solved.group(1)
+            try:
+                solved_ids = rdb.get_solved_question_ids(student_id)
+                return self.send_json(200, {
+                    "ok": True,
+                    "student_id": student_id,
+                    "solved_question_ids": solved_ids,
+                    "count": len(solved_ids)
+                })
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
         # Legacy support: GET /api/students?group=...
         if clean_path == "/api/students":
             qs = urllib.parse.parse_qs(parsed_path.query)
@@ -1790,6 +1805,25 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                     math_score=int(math_score)
                 )
                 return self.send_json(201, {"ok": True, "test_result": res})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # POST /api/students/:id/solved-questions - Record solved questions
+        m_post_solved = re.match(r"^/api/students/([^/]+)/solved-questions$", clean_path)
+        if m_post_solved:
+            student_id = m_post_solved.group(1)
+            try:
+                if "questions" in body and isinstance(body["questions"], list):
+                    count = rdb.record_solved_questions_batch(student_id, body["questions"])
+                    return self.send_json(200, {"ok": True, "recorded_count": count})
+                else:
+                    qid = body.get("question_id")
+                    if not qid:
+                        return self.send_json(400, {"ok": False, "error": "question_id is required"})
+                    is_corr = bool(body.get("is_correct", False))
+                    ans = body.get("selected_answer")
+                    rec = rdb.record_solved_question(student_id, qid, is_corr, ans)
+                    return self.send_json(200, {"ok": True, "recorded": rec})
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
 

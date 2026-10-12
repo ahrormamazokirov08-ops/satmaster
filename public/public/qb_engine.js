@@ -8,13 +8,123 @@
 window.qbEngine = {
   activeSubject: 'rw', // 'rw' | 'math' | 'combined'
   activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
+  activeStatusFilter: 'unsolved', // 'unsolved' | 'solved' | 'all'
+  solvedQuestionIds: new Set(),
   activeCount: 15,
   isCustomCount: false,
+  isAllCount: false,
   questionsData: { rw: null, math: null },
   isLoading: false,
   isInitialized: false,
   timerInterval: null,
   isTimerHidden: false,
+
+  getCurrentStudentId() {
+    let uid = '';
+    try {
+      if (typeof currentSession !== 'undefined' && currentSession?.uid) {
+        uid = currentSession.uid;
+      } else if (typeof currentSession !== 'undefined' && currentSession?.telegram_id) {
+        uid = currentSession.telegram_id;
+      }
+      if (!uid) {
+        const stored = localStorage.getItem('satmaster_user_session') || localStorage.getItem('satmaster_session');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          uid = parsed.uid || parsed.telegram_id || parsed.id || '';
+        }
+      }
+    } catch (e) {}
+    return String(uid || 'guest').trim();
+  },
+
+  async loadSolvedQuestions() {
+    const studentId = this.getCurrentStudentId();
+    // 1. Load locally cached solved IDs first
+    try {
+      const localCached = localStorage.getItem(`satmaster_solved_q_${studentId}`);
+      if (localCached) {
+        const parsed = JSON.parse(localCached);
+        if (Array.isArray(parsed)) {
+          this.solvedQuestionIds = new Set(parsed);
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fetch from backend if registered / not guest
+    if (studentId && studentId !== 'guest') {
+      try {
+        const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/solved-questions`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.solved_question_ids)) {
+            data.solved_question_ids.forEach(qid => this.solvedQuestionIds.add(qid));
+            localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+          }
+        }
+      } catch (err) {
+        console.warn("[qbEngine] Offline or error fetching solved questions:", err);
+      }
+    }
+
+    this.syncStatusUI();
+    this.updateMatchingCount();
+  },
+
+  async recordQuestionSolved(questionId, isCorrect = false, selectedAnswer = null) {
+    if (!questionId) return;
+    const qid = String(questionId).trim();
+    this.solvedQuestionIds.add(qid);
+
+    const studentId = this.getCurrentStudentId();
+    try {
+      localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+    } catch (e) {}
+
+    // Asynchronously dispatch to backend
+    if (studentId && studentId !== 'guest') {
+      try {
+        fetch(`/api/students/${encodeURIComponent(studentId)}/solved-questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question_id: qid,
+            is_correct: Boolean(isCorrect),
+            selected_answer: selectedAnswer
+          })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
+    this.updateMatchingCount();
+  },
+
+  async recordSolvedBatch(batchItems) {
+    if (!batchItems || batchItems.length === 0) return;
+    const studentId = this.getCurrentStudentId();
+
+    batchItems.forEach(it => {
+      const qid = it.question_id || it.id;
+      if (qid) this.solvedQuestionIds.add(String(qid).trim());
+    });
+
+    try {
+      localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+    } catch (e) {}
+
+    if (studentId && studentId !== 'guest') {
+      try {
+        fetch(`/api/students/${encodeURIComponent(studentId)}/solved-questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questions: batchItems })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
+    this.updateMatchingCount();
+  },
+
   openSetup(subject) {
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
@@ -95,8 +205,10 @@ window.qbEngine = {
       this.syncUI();
       if (defaultSubj) this.setSubject(defaultSubj);
       await this.loadQuestions();
+      await this.loadSolvedQuestions();
     } else {
       if (defaultSubj) this.setSubject(defaultSubj);
+      await this.loadSolvedQuestions();
       this.updateMatchingCount();
     }
   },
@@ -113,7 +225,14 @@ window.qbEngine = {
 
     try {
       const fetchWithFallback = async (relPath) => {
+        const v = 'v=2.4.0';
+        const qp = relPath.includes('?') ? '&' : '?';
         const candidates = [
+          relPath + qp + v,
+          '/' + relPath + qp + v,
+          './' + relPath + qp + v,
+          'public/' + relPath + qp + v,
+          '/public/' + relPath + qp + v,
           relPath,
           '/' + relPath,
           './' + relPath,
@@ -280,15 +399,44 @@ window.qbEngine = {
     });
   },
 
+  setStatusFilter(filter) {
+    if (!['unsolved', 'solved', 'all'].includes(filter)) return;
+    this.activeStatusFilter = filter;
+    this.syncStatusUI();
+    this.updateMatchingCount();
+  },
+
+  syncStatusUI() {
+    const statuses = ['unsolved', 'solved', 'all'];
+    statuses.forEach(st => {
+      const btn = document.getElementById(`qb-status-${st}`);
+      if (!btn) return;
+      const isAct = (this.activeStatusFilter === st);
+      if (isAct) {
+        btn.className = "qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-blue-600 border-blue-500 text-white shadow-sm";
+      } else {
+        btn.className = "qb-status-pill px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs";
+      }
+    });
+  },
+
   setCount(cnt) {
     if (cnt === 'custom') {
       this.isCustomCount = true;
+      this.isAllCount = false;
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.remove('hidden');
       const input = document.getElementById('qb-custom-count-input');
       if (input) this.activeCount = parseInt(input.value) || 25;
+    } else if (cnt === 'all') {
+      this.isCustomCount = false;
+      this.isAllCount = true;
+      this.activeCount = 'all';
+      const wrapper = document.getElementById('qb-custom-count-wrapper');
+      if (wrapper) wrapper.classList.add('hidden');
     } else {
       this.isCustomCount = false;
+      this.isAllCount = false;
       this.activeCount = parseInt(cnt) || 15;
       const wrapper = document.getElementById('qb-custom-count-wrapper');
       if (wrapper) wrapper.classList.add('hidden');
@@ -305,11 +453,13 @@ window.qbEngine = {
   },
 
   syncCountUI() {
-    const counts = [5, 10, 15, 20, 30, 'custom'];
+    const counts = [5, 10, 15, 20, 30, 'all', 'custom'];
     counts.forEach(c => {
       const btn = document.getElementById(`qb-count-${c}`);
       if (!btn) return;
-      const isAct = (c === 'custom' && this.isCustomCount) || (!this.isCustomCount && this.activeCount === c);
+      const isAct = (c === 'custom' && this.isCustomCount) || 
+                    (c === 'all' && this.isAllCount) || 
+                    (!this.isCustomCount && !this.isAllCount && this.activeCount === c);
       if (isAct) {
         btn.className = "qb-count-btn px-4 py-2 rounded-xl border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-sm";
       } else {
@@ -320,6 +470,7 @@ window.qbEngine = {
 
   syncUI() {
     this.syncDifficultyUI();
+    this.syncStatusUI();
     this.syncCountUI();
     this.updateToggleDomainsButtonText();
   },
@@ -345,7 +496,15 @@ window.qbEngine = {
       const qDomNorm = domainNorm(q.domain);
       const matchesDomain = activeDomainNorms.has(qDomNorm);
       const matchesDiff = this.activeDifficulties.has(q.difficulty);
-      return matchesDomain && matchesDiff;
+      if (!matchesDomain || !matchesDiff) return false;
+
+      // Status Filter
+      if (this.activeStatusFilter === 'unsolved') {
+        return !this.solvedQuestionIds.has(q.id);
+      } else if (this.activeStatusFilter === 'solved') {
+        return this.solvedQuestionIds.has(q.id);
+      }
+      return true; // 'all'
     });
   },
 
@@ -353,17 +512,23 @@ window.qbEngine = {
     const countEl = document.getElementById('qb-matching-count');
     const poolDetailEl = document.getElementById('qb-pool-detail');
     const startBtn = document.getElementById('qb-btn-start');
+    const allBtn = document.getElementById('qb-count-all');
 
     if (this.isLoading) return;
 
     const filtered = this.getFilteredQuestions();
     const totalCount = filtered.length;
 
+    if (allBtn) {
+      allBtn.innerHTML = `<span>All</span> <span class="text-[10px] opacity-80">(${totalCount.toLocaleString()})</span>`;
+    }
+
     if (countEl) {
+      const statusLabel = this.activeStatusFilter === 'unsolved' ? 'Unsolved' : (this.activeStatusFilter === 'solved' ? 'Solved' : 'Total');
       if (totalCount > 0) {
-        countEl.innerHTML = `⚡ <span class="text-sky-300 font-black">${totalCount.toLocaleString()}</span> questions available matching your filters`;
+        countEl.innerHTML = `⚡ <span class="text-blue-600 font-black">${totalCount.toLocaleString()}</span> ${statusLabel.toLowerCase()} questions available matching your filters`;
       } else {
-        countEl.innerHTML = `<span class="text-amber-400 font-bold">⚠️ 0 questions matching these filters</span>`;
+        countEl.innerHTML = `<span class="text-amber-500 font-bold">⚠️ 0 questions matching these filters (${statusLabel})</span>`;
       }
     }
 
@@ -371,7 +536,8 @@ window.qbEngine = {
       const subjName = this.activeSubject === 'rw' ? 'Reading & Writing' : (this.activeSubject === 'math' ? 'Math' : 'Combined');
       const diffList = Array.from(this.activeDifficulties).join(', ');
       const domainCount = this.getActiveDomains().size;
-      poolDetailEl.innerText = `${subjName} • ${domainCount} active domain(s) • [${diffList}]`;
+      const statusText = this.activeStatusFilter === 'unsolved' ? 'Fresh/Unsolved' : (this.activeStatusFilter === 'solved' ? 'Solved Review' : 'All Bank');
+      poolDetailEl.innerText = `${subjName} • ${domainCount} active domain(s) • [${diffList}] • Mode: ${statusText}`;
     }
 
     if (startBtn) {
@@ -405,9 +571,14 @@ window.qbEngine = {
     }
 
     // Determine target question count
-    let targetCount = this.isCustomCount
-      ? (parseInt(document.getElementById('qb-custom-count-input')?.value) || 25)
-      : this.activeCount;
+    let targetCount = filtered.length;
+    if (this.isAllCount) {
+      targetCount = filtered.length;
+    } else if (this.isCustomCount) {
+      targetCount = parseInt(document.getElementById('qb-custom-count-input')?.value) || 25;
+    } else {
+      targetCount = this.activeCount;
+    }
 
     targetCount = Math.max(1, Math.min(targetCount, filtered.length));
 
@@ -803,6 +974,12 @@ window.qbEngine = {
     if (!session.checked) session.checked = {};
     session.checked[idx] = true;
     sessionStorage.setItem('qb_active_session', JSON.stringify(session));
+
+    // Record question as solved immediately for this student
+    const isCorrect = isSPR
+      ? this.isSPREqual(studentAnswer, q.correct_answer)
+      : Boolean(String(studentAnswer).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+    this.recordQuestionSolved(q.id, isCorrect, studentAnswer);
 
     this.updateChoicesUI();
 
@@ -1204,6 +1381,28 @@ window.qbEngine = {
       this.renderMath(listEl);
     }
 
+    // Batch record all answered questions from this session as solved
+    try {
+      const batchAnswers = [];
+      session.questions.forEach((q, i) => {
+        const studentAns = session.answers ? session.answers[i] : null;
+        if (studentAns !== undefined && studentAns !== null && String(studentAns).trim() !== '') {
+          const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+          const isCorr = isSPR
+            ? this.isSPREqual(studentAns, q.correct_answer)
+            : Boolean(String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+          batchAnswers.push({
+            question_id: q.id,
+            is_correct: isCorr,
+            selected_answer: studentAns
+          });
+        }
+      });
+      if (batchAnswers.length > 0) {
+        this.recordSolvedBatch(batchAnswers);
+      }
+    } catch (e) {}
+
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
   },
@@ -1301,11 +1500,102 @@ window.qbEngine = {
     }
   },
 
+  formatNotesContent(raw) {
+    if (!raw || typeof raw !== 'string') return null;
+
+    // 1. Check for notes introductory phrase (e.g. 'While researching a topic, a student has taken the following notes:')
+    const notesRegex = /^(.*?(?:taken\s+the\s+following\s+notes|following\s+notes)\s*:?\s*)([\s\S]+)$/i;
+    const match = raw.match(notesRegex);
+    if (match) {
+      let intro = match[1].trim();
+      if (!intro.endsWith(':')) {
+        intro = intro.replace(/\s*:?$/, ':');
+      }
+      const body = match[2].trim();
+      const rawLines = body.split(/\n+/).map(l => l.trim()).filter(Boolean);
+      if (rawLines.length > 0) {
+        const items = rawLines.map(line => {
+          return line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\u2219]\s*/, '').trim();
+        }).filter(Boolean);
+
+        if (items.length > 0) {
+          const listItemsHtml = items.map(item => `
+            <li class="flex items-start gap-2.5 sm:gap-3 text-slate-800 leading-relaxed text-sm sm:text-base">
+              <span class="text-slate-900 text-base leading-snug flex-shrink-0 select-none font-bold" aria-hidden="true">•</span>
+              <span class="flex-1">${item}</span>
+            </li>
+          `.trim()).join('');
+
+          return `
+            <div class="qb-notes-wrapper whitespace-normal space-y-3.5 my-1">
+              <p class="text-slate-900 leading-relaxed font-normal">${intro}</p>
+              <ul class="qb-notes-list space-y-3 pl-3 sm:pl-4 list-none m-0 p-0">
+                ${listItemsHtml}
+              </ul>
+            </div>
+          `.trim();
+        }
+      }
+    }
+
+    // 2. Check for explicit bullet lines (lines starting with • or bullet characters)
+    if (raw.includes('•') || raw.includes('\u2022')) {
+      const lines = raw.split(/\n+/).map(l => l.trim()).filter(Boolean);
+      const bulletLines = lines.filter(l => /^[•\u2022]/.test(l));
+      if (bulletLines.length >= 2) {
+        const introLines = [];
+        const items = [];
+        let inBullets = false;
+        lines.forEach(l => {
+          if (/^[•\u2022]/.test(l)) {
+            inBullets = true;
+            items.push(l.replace(/^[•\u2022]\s*/, '').trim());
+          } else if (!inBullets) {
+            introLines.push(l);
+          } else {
+            items.push(l);
+          }
+        });
+
+        const listItemsHtml = items.map(item => `
+          <li class="flex items-start gap-2.5 sm:gap-3 text-slate-800 leading-relaxed text-sm sm:text-base">
+            <span class="text-slate-900 text-base leading-snug flex-shrink-0 select-none font-bold" aria-hidden="true">•</span>
+            <span class="flex-1">${item}</span>
+          </li>
+        `.trim()).join('');
+
+        const introHtml = introLines.length > 0
+          ? `<p class="text-slate-900 leading-relaxed font-normal mb-3">${introLines.join('<br>')}</p>`
+          : '';
+
+        return `
+          <div class="qb-notes-wrapper whitespace-normal space-y-3.5 my-1">
+            ${introHtml}
+            <ul class="qb-notes-list space-y-3 pl-3 sm:pl-4 list-none m-0 p-0">
+              ${listItemsHtml}
+            </ul>
+          </div>
+        `.trim();
+      }
+    }
+
+    return null;
+  },
+
   formatQuestionText(raw) {
     if (!raw) return '';
-    // Replace markdown image ![alt](url) with responsive img
-    return raw.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
+
+    // First replace markdown image ![alt](url) with responsive img
+    let formatted = raw.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
       return `<img src="${url}" alt="${alt || 'Figure'}" class="max-w-full h-auto rounded-xl border border-slate-700 bg-white/5 my-3 shadow-md mx-auto block" loading="lazy" />`;
     });
+
+    // Check if this text is a notes question
+    const notesHtml = this.formatNotesContent(formatted);
+    if (notesHtml) {
+      return notesHtml;
+    }
+
+    return formatted;
   }
 };

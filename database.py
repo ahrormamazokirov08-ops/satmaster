@@ -278,7 +278,26 @@ class RelationalDB:
     def init_db(self):
         """Initialize tables, foreign key constraints, and performance indexes."""
         if self.is_postgres:
-            # PostgreSQL schema is managed via migrate_supabase.py / migrations
+            try:
+                with self.cursor() as cur:
+                    cur.execute("""
+                    CREATE TABLE IF NOT EXISTS student_solved_questions (
+                        id UUID PRIMARY KEY DEFAULT COALESCE(
+                            gen_random_uuid(),
+                            uuid_generate_v4()
+                        ),
+                        student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                        question_id VARCHAR(100) NOT NULL,
+                        is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+                        selected_answer TEXT NULL,
+                        solved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT uq_student_question UNIQUE(student_id, question_id)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_solved_questions_student ON student_solved_questions(student_id);
+                    CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);
+                    """)
+            except Exception:
+                pass
             return
         else:
             with self.cursor() as cur:
@@ -310,11 +329,24 @@ class RelationalDB:
                     completed_at TEXT NOT NULL DEFAULT (datetime('now'))
                 );
                 """)
+                cur.execute("""
+                CREATE TABLE IF NOT EXISTS student_solved_questions (
+                    id TEXT PRIMARY KEY,
+                    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    question_id TEXT NOT NULL,
+                    is_correct INTEGER NOT NULL DEFAULT 0,
+                    selected_answer TEXT,
+                    solved_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (student_id, question_id)
+                );
+                """)
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_students_group_id ON students(group_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_students_telegram_id ON students(telegram_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_student_id ON test_results(student_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_group_id ON test_results(group_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_completed_at ON test_results(completed_at DESC);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_student ON student_solved_questions(student_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);")
 
     # --------------------------------------------------------------------------
     # GROUPS API METHODS
@@ -612,6 +644,114 @@ class RelationalDB:
             cur.execute(his_sql, (actual_id,))
             rows = cur.fetchall()
             return _format_rows(rows)
+
+    # --------------------------------------------------------------------------
+    # SOLVED QUESTIONS API METHODS
+    # --------------------------------------------------------------------------
+
+    def record_solved_question(self, student_id, question_id, is_correct=False, selected_answer=None):
+        """Record or update that a student has solved a question."""
+        if not student_id or not question_id:
+            return None
+
+        student = self.get_student(student_id)
+        if not student:
+            return None
+        actual_student_id = str(student["id"])
+        qid = str(question_id).strip()
+
+        solved_id = str(uuid.uuid4())
+        solved_at = datetime.utcnow().isoformat()
+
+        if self.is_postgres:
+            sql = """
+                INSERT INTO student_solved_questions (id, student_id, question_id, is_correct, selected_answer, solved_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (student_id, question_id) 
+                DO UPDATE SET 
+                    is_correct = EXCLUDED.is_correct,
+                    selected_answer = EXCLUDED.selected_answer,
+                    solved_at = EXCLUDED.solved_at
+                RETURNING id, student_id, question_id, is_correct, selected_answer, solved_at;
+            """
+            with self.cursor() as cur:
+                cur.execute(sql, (solved_id, actual_student_id, qid, bool(is_correct), selected_answer, solved_at))
+                row = cur.fetchone()
+                return _format_row(row)
+        else:
+            sql = """
+                INSERT INTO student_solved_questions (id, student_id, question_id, is_correct, selected_answer, solved_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(student_id, question_id) 
+                DO UPDATE SET 
+                    is_correct = excluded.is_correct,
+                    selected_answer = excluded.selected_answer,
+                    solved_at = excluded.solved_at;
+            """
+            with self.cursor() as cur:
+                cur.execute(sql, (solved_id, actual_student_id, qid, 1 if is_correct else 0, selected_answer, solved_at))
+                return {
+                    "id": solved_id,
+                    "student_id": actual_student_id,
+                    "question_id": qid,
+                    "is_correct": bool(is_correct),
+                    "selected_answer": selected_answer,
+                    "solved_at": solved_at
+                }
+
+    def record_solved_questions_batch(self, student_id, items):
+        """Batch record multiple solved questions for a student."""
+        if not student_id or not items:
+            return 0
+        student = self.get_student(student_id)
+        if not student:
+            return 0
+        actual_student_id = str(student["id"])
+
+        count = 0
+        for it in items:
+            if isinstance(it, str):
+                qid = it.strip()
+                is_corr = False
+                ans = None
+            elif isinstance(it, dict):
+                qid = (it.get("question_id") or it.get("id") or "").strip()
+                is_corr = bool(it.get("is_correct", False))
+                ans = it.get("selected_answer")
+            else:
+                continue
+
+            if qid:
+                self.record_solved_question(actual_student_id, qid, is_corr, ans)
+                count += 1
+        return count
+
+    def get_solved_questions(self, student_id):
+        """Return all solved questions records for a student."""
+        if not student_id:
+            return []
+        student = self.get_student(student_id)
+        if not student:
+            return []
+        actual_student_id = str(student["id"])
+
+        sql = self._query("""
+            SELECT id, student_id, question_id, is_correct, selected_answer, solved_at
+            FROM student_solved_questions
+            WHERE CAST(student_id AS TEXT) = %s
+            ORDER BY solved_at DESC
+        """)
+        with self.cursor() as cur:
+            cur.execute(sql, (actual_student_id,))
+            rows = cur.fetchall()
+            return _format_rows(rows)
+
+    def get_solved_question_ids(self, student_id):
+        """Return list of question_id strings that the student has solved."""
+        records = self.get_solved_questions(student_id)
+        if not records:
+            return []
+        return [str(r["question_id"]) for r in records]
 
     def sync_from_json_db(self, students_db_data):
         """Seed/sync groups from legacy JSON into relational structure."""
