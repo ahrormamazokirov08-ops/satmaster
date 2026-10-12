@@ -91,6 +91,71 @@
       color: #e0e7ff !important;
       z-index: 10;
     }
+
+    /* Digital SAT Question Bank: Authentic Bluebook Tables & Figures */
+    .qb-table-wrapper {
+      overflow-x: auto;
+      margin: 1rem 0;
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    .qb-data-table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+      margin: 0 auto !important;
+      font-size: 0.875rem !important;
+      line-height: 1.35 !important;
+      border: 1px solid #cbd5e1 !important;
+      white-space: normal !important;
+    }
+    .qb-data-table caption {
+      caption-side: top !important;
+      font-weight: 700 !important;
+      color: #0f172a !important;
+      padding-bottom: 0.5rem !important;
+      text-align: center !important;
+      white-space: normal !important;
+    }
+    .qb-data-table th {
+      border: 1px solid #cbd5e1 !important;
+      background-color: #f8fafc !important;
+      padding: 0.5rem 0.75rem !important;
+      font-weight: 600 !important;
+      color: #1e293b !important;
+      white-space: normal !important;
+    }
+    .qb-data-table td {
+      border: 1px solid #cbd5e1 !important;
+      padding: 0.5rem 0.75rem !important;
+      color: #334155 !important;
+      white-space: normal !important;
+    }
+    #qb-passage-content table,
+    #qb-prompt-content table,
+    #qb-passage-content .qb-data-table,
+    #qb-prompt-content .qb-data-table {
+      white-space: normal !important;
+    }
+    .qb-figure-wrapper {
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      margin: 1rem 0 !important;
+      width: 100% !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+      white-space: normal !important;
+    }
+    .qb-figure-wrapper svg {
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
+      margin: 0 auto !important;
+    }
+    #qb-passage-content svg,
+    #qb-prompt-content svg {
+      white-space: normal !important;
+    }
   </style>
 </head>
 <body class="bg-[#f8fafc] text-slate-800 min-h-screen font-sans antialiased selection:bg-blue-600/20 pb-20 md:pb-8">
@@ -11381,17 +11446,21 @@
 
   renderMath(el) {
     if (!el) return;
+    const katexConfig = {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'svg'],
+      ignoredClasses: ['qb-figure-wrapper'],
+      throwOnError: false
+    };
+
     if (typeof window.renderMathInElement === 'function') {
       try {
-        window.renderMathInElement(el, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\(', right: '\\)', display: false },
-            { left: '\\[', right: '\\]', display: true }
-          ],
-          throwOnError: false
-        });
+        window.renderMathInElement(el, katexConfig);
       } catch (err) {
         console.warn("[qbEngine] KaTeX render error:", err);
       }
@@ -11399,15 +11468,7 @@
       setTimeout(() => {
         if (typeof window.renderMathInElement === 'function') {
           try {
-            window.renderMathInElement(el, {
-              delimiters: [
-                { left: '$$', right: '$$', display: true },
-                { left: '$', right: '$', display: false },
-                { left: '\\(', right: '\\)', display: false },
-                { left: '\\[', right: '\\]', display: true }
-              ],
-              throwOnError: false
-            });
+            window.renderMathInElement(el, katexConfig);
           } catch (e) {}
         }
       }, 250);

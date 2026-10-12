@@ -1467,17 +1467,21 @@ window.qbEngine = {
 
   renderMath(el) {
     if (!el) return;
+    const katexConfig = {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'svg'],
+      ignoredClasses: ['qb-figure-wrapper'],
+      throwOnError: false
+    };
+
     if (typeof window.renderMathInElement === 'function') {
       try {
-        window.renderMathInElement(el, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\(', right: '\\)', display: false },
-            { left: '\\[', right: '\\]', display: true }
-          ],
-          throwOnError: false
-        });
+        window.renderMathInElement(el, katexConfig);
       } catch (err) {
         console.warn("[qbEngine] KaTeX render error:", err);
       }
@@ -1485,15 +1489,7 @@ window.qbEngine = {
       setTimeout(() => {
         if (typeof window.renderMathInElement === 'function') {
           try {
-            window.renderMathInElement(el, {
-              delimiters: [
-                { left: '$$', right: '$$', display: true },
-                { left: '$', right: '$', display: false },
-                { left: '\\(', right: '\\)', display: false },
-                { left: '\\[', right: '\\]', display: true }
-              ],
-              throwOnError: false
-            });
+            window.renderMathInElement(el, katexConfig);
           } catch (e) {}
         }
       }, 250);

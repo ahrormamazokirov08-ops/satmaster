@@ -137,18 +137,91 @@ def convert_spoken_math_to_latex(alt):
     s = re.sub(r"\s+", " ", s).strip()
     return f"${s}$"
 
+def clean_cell_content(content):
+    """Strips paragraph/div wrappers inside table cells while keeping content."""
+    return re.sub(r"<\/?(p|div)[^>]*>", " ", content).strip()
+
+
+def clean_table_html(tbl_html):
+    """Standardizes College Board tables into clean, responsive Bluebook tables."""
+    tbl = tbl_html.strip()
+
+    # 1. Clean caption
+    def repl_cap(m):
+        c = re.sub(r"<\/?(p|div|span)[^>]*>", "", m.group(1)).strip()
+        c = html.unescape(c)
+        return f"<caption class=\"font-bold text-slate-900 pb-2 text-center text-sm sm:text-base\">{c}</caption>"
+    tbl = re.sub(r"<caption[^>]*>([\s\S]*?)<\/caption>", repl_cap, tbl, flags=re.I)
+
+    # 2. Standardize th (table header cells)
+    def repl_th(m):
+        attrs = m.group(1)
+        align = "text-left" if ("text-align: left" in attrs or "scope=\"row\"" in attrs or "scope=\x27row\x27" in attrs) else "text-center"
+        scope = ""
+        if "scope=\"col\"" in attrs or "scope=\x27col\x27" in attrs:
+            scope = " scope=\"col\""
+        elif "scope=\"row\"" in attrs or "scope=\x27row\x27" in attrs:
+            scope = " scope=\"row\""
+        colspan = re.search(r"colspan=[\x27\"](\d+)[\x27\"]", attrs)
+        rowspan = re.search(r"rowspan=[\x27\"](\d+)[\x27\"]", attrs)
+        cs = f" colspan=\"{colspan.group(1)}\"" if colspan else ""
+        rs = f" rowspan=\"{rowspan.group(1)}\"" if rowspan else ""
+        return f"<th class=\"border border-slate-300 bg-slate-50 px-3 py-2 {align} font-semibold text-slate-800\"{scope}{cs}{rs}>"
+    tbl = re.sub(r"<th\b([^>]*)>", repl_th, tbl, flags=re.I)
+
+    # 3. Standardize td (table data cells)
+    def repl_td(m):
+        attrs = m.group(1)
+        align = "text-left" if "text-align: left" in attrs else "text-center"
+        colspan = re.search(r"colspan=[\x27\"](\d+)[\x27\"]", attrs)
+        rowspan = re.search(r"rowspan=[\x27\"](\d+)[\x27\"]", attrs)
+        cs = f" colspan=\"{colspan.group(1)}\"" if colspan else ""
+        rs = f" rowspan=\"{rowspan.group(1)}\"" if rowspan else ""
+        return f"<td class=\"border border-slate-300 px-3 py-2 {align} text-slate-700\"{cs}{rs}>"
+    tbl = re.sub(r"<td\b([^>]*)>", repl_td, tbl, flags=re.I)
+
+    # 4. Clean block elements inside cells
+    def repl_cell(m):
+        tag = m.group(1)
+        attrs = m.group(2)
+        inner = clean_cell_content(m.group(3))
+        return f"<{tag}{attrs}>{inner}</{tag}>"
+    tbl = re.sub(r"<(th|td)\b([^>]*)>([\s\S]*?)<\/\1>", repl_cell, tbl, flags=re.I)
+
+    # 5. Wrap table with responsive overflow container
+    tbl = re.sub(r"<table[^>]*>", "<div class=\"qb-table-wrapper overflow-x-auto my-4 w-full\"><table class=\"qb-data-table min-w-full border-collapse border border-slate-300 text-sm\">", tbl, flags=re.I, count=1)
+    tbl = re.sub(r"<\/table>", "</table></div>", tbl, flags=re.I, count=1)
+
+    return tbl
+
+
+def clean_svg_html(raw_svg):
+    """Standardizes College Board SVG graphics into responsive containers."""
+    svg = raw_svg.strip()
+    if "class=" in svg[:120]:
+        svg = re.sub(r"<svg([^>]*?)class=[\x27\"]([^\x27\"]*)[\x27\"]", r"<svg\1class=\"\2 max-w-full h-auto mx-auto block\"", svg, count=1, flags=re.I)
+    else:
+        svg = re.sub(r"<svg\b", r"<svg class=\"max-w-full h-auto mx-auto block\"", svg, count=1, flags=re.I)
+    return f"<div class=\"qb-figure-wrapper my-4 flex justify-center overflow-x-auto w-full\">{svg}</div>"
+
+
 def clean_html_and_convert_math(raw_html):
     """
-    Cleans College Board HTML and converts MathML / math images to LaTeX $...$.
+    Cleans College Board HTML, strips accessibility screen-reader texts,
+    preserves authentic HTML tables & vector SVGs, and converts MathML / math images to LaTeX.
     """
     if not raw_html:
         return ""
-    
-    # Remove screen-reader noise and placeholders
-    s = re.sub(r'<span[^>]*class=[\'"][^\'"]*sr-only[^\'"]*[\'"][^>]*>\s*blank\s*</span>', '', raw_html, flags=re.I)
+    s = raw_html
+
+    # 1. Strip screen-reader noise and placeholders
+    s = re.sub(r'<span[^>]*\bsr-only\b[^>]*>[\s\S]*?<\/span>', '', s, flags=re.I)
+    s = re.sub(r'<div[^>]*\bsr-only\b[^>]*>[\s\S]*?<\/div>', '', s, flags=re.I)
+
+    # 2. Normalize fill-in blanks
     s = re.sub(r'<span[^>]*aria-hidden=[\'"]true[\'"][^>]*>_{3,}<\/span>', '______', s, flags=re.I)
-    
-    # Convert MathML to LaTeX
+
+    # 3. Convert MathML to LaTeX
     def repl_math(match):
         xml_str = match.group(0)
         try:
@@ -166,20 +239,20 @@ def clean_html_and_convert_math(raw_html):
 
     s = re.sub(r'<math[\s\S]*?<\/math>', repl_math, s, flags=re.I)
 
-    # Process images:
+    # 4. Process images
     def repl_img(match):
         tag = match.group(0)
         alt_match = re.search(r'alt=[\'"]([^\'"]*)[\'"]', tag, flags=re.I)
         src_match = re.search(r'src=[\'"]([^\'"]*)[\'"]', tag, flags=re.I)
         alt = alt_match.group(1).strip() if alt_match else ""
         src = src_match.group(1).strip() if src_match else ""
-        
+
         # If base64 math image, convert spoken alt to LaTeX math
         if "data:image" in src:
             if alt:
                 return f" {convert_spoken_math_to_latex(alt)} "
             return ""
-        
+
         # If external URL, format as absolute markdown image
         if src.startswith("/"):
             src = f"https://satsuitequestionbank.collegeboard.org{src}"
@@ -187,18 +260,47 @@ def clean_html_and_convert_math(raw_html):
 
     s = re.sub(r'<img[^>]+>', repl_img, s, flags=re.I)
 
-    # Preserve block formatting (paragraphs, breaks, list items)
-    s = re.sub(r'<\/(p|div|tr|li|h[1-6])>', '\n\n', s, flags=re.I)
+    # 5. Extract and protect HTML tables
+    tables = []
+    def repl_extract_table(m):
+        idx = len(tables)
+        tables.append(clean_table_html(m.group(0)))
+        return f"\n\n__TABLE_PLACEHOLDER_{idx}__\n\n"
+
+    s = re.sub(r'<table[\s\S]*?<\/table>', repl_extract_table, s, flags=re.I)
+
+    # 6. Extract and protect vector SVGs
+    svgs = []
+    def repl_extract_svg(m):
+        idx = len(svgs)
+        svgs.append(clean_svg_html(m.group(0)))
+        return f"\n\n__SVG_PLACEHOLDER_{idx}__\n\n"
+
+    s = re.sub(r'<svg[\s\S]*?<\/svg>', repl_extract_svg, s, flags=re.I)
+
+    # 7. Convert list items to formatted bullets (preserves 203 notes questions)
+    s = re.sub(r'<li>\s*', '• ', s, flags=re.I)
+    s = re.sub(r'<\/li>\s*', '\n\n', s, flags=re.I)
+
+    # 8. Preserve block formatting (paragraphs, breaks)
+    s = re.sub(r'<\/(p|div|tr|h[1-6])>', '\n\n', s, flags=re.I)
     s = re.sub(r'<br\s*\/?>', '\n', s, flags=re.I)
-    
-    # Strip remaining HTML tags
+
+    # 9. Strip remaining HTML tags
     s = re.sub(r'<[^>]+>', '', s)
     s = html.unescape(s)
-    
-    # Normalize whitespaces and clean newlines
+
+    # 10. Normalize whitespaces and clean newlines
     lines = [re.sub(r'[ \t]+', ' ', line).strip() for line in s.split('\n')]
     cleaned = '\n'.join(lines)
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned).strip()
+
+    # 11. Restore table and SVG placeholders
+    for i, tbl in enumerate(tables):
+        cleaned = cleaned.replace(f"__TABLE_PLACEHOLDER_{i}__", tbl)
+    for i, svg in enumerate(svgs):
+        cleaned = cleaned.replace(f"__SVG_PLACEHOLDER_{i}__", svg)
+
     return cleaned
 
 def extract_spr_answer_from_rationale(rat_text):
