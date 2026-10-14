@@ -690,220 +690,305 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- TAB 3: CREATE HOMEWORK -->
+    <!-- TAB 3: CREATE HOMEWORK & HOMEWORK HUB -->
     <!-- ========================================== -->
-    <section id="tab-creator" class="hidden space-y-6 max-w-4xl mx-auto">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-extrabold text-slate-900">Create Digital SAT Homework</h1>
-          <p class="text-xs text-slate-500">Assemble homework drills from the Question Bank, set timers, and generate student PIN codes.</p>
+    <section id="tab-creator" class="hidden space-y-6 max-w-5xl mx-auto">
+
+      <!-- SUB-VIEW 1: HOMEWORK HUB VIEW (STAGING QUEUE + ACTIVE SQUARES) -->
+      <div id="creator-hub-view" class="space-y-6">
+        <!-- Hub Top Header Banner -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">📋</span>
+              <h1 class="text-2xl font-black text-slate-900">Teacher Homework Hub</h1>
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-700">Digital SAT</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Stage multiple homework drills, selectively dispatch to students, and monitor active assignments until deadlines pass.</p>
+          </div>
+          <div class="flex items-center gap-2.5 shrink-0">
+            <button type="button" onclick="openCreateHomeworkForm()" id="btn-hub-create-new" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+              <span>➕</span><span>Create New Homework</span>
+            </button>
+            <button type="button" onclick="switchTab('groups')" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 font-semibold px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all">
+              <span>Groups</span><span>→</span>
+            </button>
+          </div>
         </div>
-        <button onclick="switchTab('groups')" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 font-semibold">
-          <span>Manage Groups</span><span>→</span>
-        </button>
+
+        <!-- SECTION A: STAGING QUEUE (DONE / ADD ANOTHER ITEMS COLLAPSED HERE) -->
+        <div id="creator-staging-section" class="p-6 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm text-slate-800">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="staging-select-all" checked onchange="toggleSelectAllStagedHomework(this.checked)" class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-pointer">
+                <span class="text-xs font-bold text-slate-800">Select All</span>
+              </label>
+              <div class="h-4 w-px bg-slate-200"></div>
+              <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span>📥</span><span>Staging Queue</span>
+                <span id="staged-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">0 staged</span>
+              </h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="openCreateHomeworkForm()" id="btn-hub-add-another" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1">
+                <span>➕</span><span>Add Another</span>
+              </button>
+              <button type="button" onclick="handleSendSelectedHomework()" id="btn-send-selected-staged" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all flex items-center gap-1.5">
+                <span>🚀</span><span>Send Selected to Students</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Staged Items List -->
+          <div id="creator-staging-list" class="space-y-2">
+            <!-- Dynamically populated or empty state -->
+          </div>
+        </div>
+
+        <!-- SECTION B: ACTIVE HOMEWORK (SQUARE CARDS REMAIN VISIBLE UNTIL DEADLINE) -->
+        <div id="creator-active-section" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span>🟢</span><span>Active Homework in Progress</span>
+                <span id="active-hw-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">0 active</span>
+              </h2>
+              <p class="text-[11px] text-slate-500">Assignments sent to students remain visible until their deadline passes.</p>
+            </div>
+          </div>
+
+          <div id="creator-active-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Dynamically populated square cards -->
+          </div>
+        </div>
       </div>
 
-      <div class="p-6 sm:p-8 rounded-3xl border border-slate-200 bg-white space-y-6 shadow-sm text-slate-800">
-        
-        <!-- STEP 1: General Assignment Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 border-b border-slate-100">
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>👥</span><span>Target Class Cohort</span>
-            </label>
-            <select id="creator-class-select" onchange="updateCreatorAutoTitle()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
-              <!-- Dynamic class options -->
-            </select>
+      <!-- SUB-VIEW 2: HOMEWORK CREATOR FORM (THE BUILDER) -->
+      <div id="creator-form-view" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <button type="button" onclick="closeCreateHomeworkForm()" id="btn-creator-back" class="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1.5 mb-1 transition-all">
+              <span>←</span><span>Back to Homework Hub</span>
+            </button>
+            <h1 class="text-2xl font-extrabold text-slate-900">Create Digital SAT Homework</h1>
+            <p class="text-xs text-slate-500">Configure homework drills, then click "Done" to stage or "Add Another" to batch create.</p>
           </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>🎯</span><span>Select Homework Type</span>
-            </label>
-            <select id="creator-hw-type-select" onchange="switchCreatorHwType(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-semibold">
-              <option value="vocab" selected>📚 SAT Vocabulary Unit Test</option>
-              <option value="qbank">📖 SAT Question Bank Practice</option>
-            </select>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>🏷️</span><span>Homework Title</span>
-            </label>
-            <input type="text" id="creator-hw-title" oninput="handleCreatorTitleInput(this.value)" placeholder="e.g. SAT Vocab: Lesson 1 Unit Test" value="SAT Vocab: Lesson 1 Unit Test" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
-          </div>
-
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <span>📅</span><span>Submission Deadline</span>
-              </label>
-              <div class="flex items-center gap-1.5 text-[10px]">
-                <button type="button" onclick="setCreatorDeadlinePreset(1)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+24h</button>
-                <button type="button" onclick="setCreatorDeadlinePreset(3)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+3 Days</button>
-                <button type="button" onclick="setCreatorDeadlinePreset(7)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+1 Wk</button>
-              </div>
-            </div>
-            <input type="datetime-local" id="creator-hw-deadline" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>⏱️</span><span>Timer Limit</span>
-            </label>
-            <select id="creator-hw-timer" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
-              <option value="0">Untimed (Practice Drill)</option>
-              <option value="10">10 Minutes</option>
-              <option value="15" selected>15 Minutes</option>
-              <option value="20">20 Minutes</option>
-              <option value="30">30 Minutes</option>
-              <option value="45">45 Minutes</option>
-              <option value="60">60 Minutes</option>
-            </select>
-          </div>
+          <button type="button" onclick="closeCreateHomeworkForm()" class="text-xs text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all">
+            Cancel
+          </button>
         </div>
 
-        <!-- STEP 3A: VOCABULARY SETTINGS CONTAINER -->
-        <div id="creator-vocab-settings" class="space-y-4 p-5 rounded-2xl bg-purple-50/30 border border-purple-100">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-bold text-slate-900 flex items-center gap-2">
-              <span>📚</span><span>Vocabulary Scope & Question Count</span>
-            </h3>
-            <span class="text-[11px] text-purple-700 font-semibold">Lesson Unit Test</span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="p-6 sm:p-8 rounded-3xl border border-slate-200 bg-white space-y-6 shadow-sm text-slate-800">
+          
+          <!-- STEP 1: General Assignment Info -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 border-b border-slate-100">
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-slate-700">Choose Lesson or Scope</label>
-              <select id="creator-vocab-scope" onchange="updateCreatorAutoTitle()" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:border-purple-500 outline-none shadow-xs font-medium">
-                <optgroup label="Single Lessons (20 Words each)">
-                  <option value="lesson1" selected>Lesson 1 (Words 1 – 20)</option>
-                  <option value="lesson2">Lesson 2 (Words 21 – 40)</option>
-                  <option value="lesson3">Lesson 3 (Words 41 – 60)</option>
-                  <option value="lesson4">Lesson 4 (Words 61 – 80)</option>
-                  <option value="lesson5">Lesson 5 (Words 81 – 100)</option>
-                  <option value="lesson6">Lesson 6 (Words 101 – 120)</option>
-                  <option value="lesson7">Lesson 7 (Words 121 – 140)</option>
-                  <option value="lesson8">Lesson 8 (Words 141 – 153)</option>
-                  <option value="lesson9">Lesson 9 (Words 154 – 173)</option>
-                  <option value="lesson10">Lesson 10 (Words 174 – 193)</option>
-                  <option value="lesson11">Lesson 11 (Words 194 – 213)</option>
-                  <option value="lesson12">Lesson 12 (Words 214 – 233)</option>
-                  <option value="lesson13">Lesson 13 (Words 234 – 253)</option>
-                  <option value="lesson14">Lesson 14 (Words 254 – 273)</option>
-                  <option value="lesson15">Lesson 15 (Words 274 – 293)</option>
-                  <option value="lesson16">Lesson 16 (Words 294 – 313)</option>
-                  <option value="lesson17">Lesson 17 (Words 314 – 331)</option>
-                  <option value="lesson18">Lesson 18 (Words 332 – 352)</option>
-                  <option value="lesson19">Lesson 19 (Words 353 – 373)</option>
-                  <option value="lesson20">Lesson 20 (Words 374 – 394)</option>
-                  <option value="lesson21">Lesson 21 (Words 395 – 414)</option>
-                  <option value="lesson22">Lesson 22 (Words 415 – 434)</option>
-                </optgroup>
-                <optgroup label="Multi-Lesson Review Bundles">
-                  <option value="bundle_1_2">Lessons 1 – 2 Review (First 40 Words)</option>
-                  <option value="bundle_1_3">Lessons 1 – 3 Review (First 60 Words)</option>
-                  <option value="bundle_1_5">Lessons 1 – 5 Review (First 100 Words)</option>
-                  <option value="bundle_6_10">Lessons 6 – 10 Review (Words 101 – 193)</option>
-                  <option value="bundle_11_15">Lessons 11 – 15 Review (Words 194 – 293)</option>
-                  <option value="bundle_16_20">Lessons 16 – 20 Review (Words 294 – 394)</option>
-                  <option value="bundle_21_22">Lessons 21 – 22 Review (Words 395 – 434)</option>
-                  <option value="all">Full Scope (All 434 Words Comprehensive)</option>
-                </optgroup>
+              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>👥</span><span>Target Class Cohort</span>
+              </label>
+              <select id="creator-class-select" onchange="updateCreatorAutoTitle()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
+                <!-- Dynamic class options -->
               </select>
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-slate-700">Question Count</label>
-              <div class="flex items-center gap-2 pt-0.5">
-                <button type="button" onclick="setCreatorVocabCount('10')" id="btn-vocab-count-10" class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">10 Qs</button>
-                <button type="button" onclick="setCreatorVocabCount('20')" id="btn-vocab-count-20" class="flex-1 py-2.5 rounded-xl border-2 border-purple-600 bg-purple-600 text-white font-bold text-xs transition-all shadow-xs">20 Qs</button>
-                <button type="button" onclick="setCreatorVocabCount('all')" id="btn-vocab-count-all" class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">Full Scope</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- STEP 3B: QUESTION BANK SETTINGS CONTAINER -->
-        <div id="creator-qbank-settings" class="hidden space-y-5 p-5 rounded-2xl bg-sky-50/30 border border-sky-100">
-          
-          <!-- Guaranteed Unsolved Pill Banner -->
-          <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-            <div class="flex items-center gap-2">
-              <span class="text-base">✨</span>
-              <span><strong>Unsolved Questions Guarantee:</strong> Questions are dynamically selected from each student's personal unsolved question pool.</span>
-            </div>
-            <span class="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider">Active</span>
-          </div>
-
-          <!-- Section / Part Choice -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold text-slate-700">1. Choose Subject / Section</label>
-            <div class="flex items-center gap-2 flex-wrap">
-              <button type="button" onclick="switchCreatorQBankSection('rw')" id="btn-creator-sec-rw" class="px-4 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5">
-                <span>📖</span><span>Reading & Writing (R&W)</span>
-              </button>
-              <button type="button" onclick="switchCreatorQBankSection('math')" id="btn-creator-sec-math" class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
-                <span>📐</span><span>Math</span>
-              </button>
-              <button type="button" onclick="switchCreatorQBankSection('all')" id="btn-creator-sec-all" class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
-                <span>⚡</span><span>All Questions (Mixed)</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Detailed Question Types (Domains & Skills - Matching Pic 5) -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
-              <label class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <span>2. Select Question Types & Skills</span>
-                <span class="text-slate-400 font-normal text-[11px]">(Mark ticks on specific skills to test)</span>
+              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>🎯</span><span>Select Homework Type</span>
               </label>
-              <div class="flex items-center gap-2 text-xs">
-                <button type="button" onclick="toggleAllCreatorSkills(true)" class="text-[11px] text-sky-600 hover:underline font-bold">Select All</button>
-                <span class="text-slate-300">|</span>
-                <button type="button" onclick="toggleAllCreatorSkills(false)" class="text-[11px] text-slate-500 hover:underline">Clear</button>
-              </div>
+              <select id="creator-hw-type-select" onchange="switchCreatorHwType(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-semibold">
+                <option value="vocab" selected>📚 SAT Vocabulary Unit Test</option>
+                <option value="qbank">📖 SAT Question Bank Practice</option>
+              </select>
             </div>
 
-            <!-- Detailed Skills List by Domain (Matching Pic 5) -->
-            <div id="creator-domains-container" class="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-              <!-- Dynamically populated skills hierarchy with domain headers and counts -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>🏷️</span><span>Homework Title</span>
+              </label>
+              <input type="text" id="creator-hw-title" oninput="handleCreatorTitleInput(this.value)" placeholder="e.g. SAT Vocab: Lesson 1 Unit Test" value="SAT Vocab: Lesson 1 Unit Test" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <span>📅</span><span>Submission Deadline</span>
+                </label>
+                <div class="flex items-center gap-1.5 text-[10px]">
+                  <button type="button" onclick="setCreatorDeadlinePreset(1)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+24h</button>
+                  <button type="button" onclick="setCreatorDeadlinePreset(3)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+3 Days</button>
+                  <button type="button" onclick="setCreatorDeadlinePreset(7)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+1 Wk</button>
+                </div>
+              </div>
+              <input type="datetime-local" id="creator-hw-deadline" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>⏱️</span><span>Timer Limit</span>
+              </label>
+              <select id="creator-hw-timer" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
+                <option value="0">Untimed (Practice Drill)</option>
+                <option value="10">10 Minutes</option>
+                <option value="15" selected>15 Minutes</option>
+                <option value="20">20 Minutes</option>
+                <option value="30">30 Minutes</option>
+                <option value="45">45 Minutes</option>
+                <option value="60">60 Minutes</option>
+              </select>
             </div>
           </div>
 
-          <!-- Question Count Selection -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold text-slate-700">3. Select Number of Questions</label>
-            <div class="flex items-center gap-2 flex-wrap">
-              <button type="button" onclick="setCreatorQBankCount(10)" id="btn-qb-count-10" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">10</button>
-              <button type="button" onclick="setCreatorQBankCount(20)" id="btn-qb-count-20" class="px-3.5 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs">20</button>
-              <button type="button" onclick="setCreatorQBankCount(30)" id="btn-qb-count-30" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">30</button>
-              <button type="button" onclick="setCreatorQBankCount(40)" id="btn-qb-count-40" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">40</button>
-              <div class="flex items-center gap-1.5 ml-1">
-                <span class="text-xs text-slate-500 font-medium">Or Custom:</span>
-                <input type="number" id="creator-qb-custom-count" oninput="handleCreatorCustomCountInput(this.value)" min="1" max="100" placeholder="Count" class="w-20 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold outline-none focus:border-sky-500 shadow-xs">
+          <!-- STEP 3A: VOCABULARY SETTINGS CONTAINER -->
+          <div id="creator-vocab-settings" class="space-y-4 p-5 rounded-2xl bg-purple-50/30 border border-purple-100">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <span>📚</span><span>Vocabulary Scope & Question Count</span>
+              </h3>
+              <span class="text-[11px] text-purple-700 font-semibold">Lesson Unit Test</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-700">Choose Lesson or Scope</label>
+                <select id="creator-vocab-scope" onchange="updateCreatorAutoTitle()" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:border-purple-500 outline-none shadow-xs font-medium">
+                  <optgroup label="Single Lessons (20 Words each)">
+                    <option value="lesson1" selected>Lesson 1 (Words 1 – 20)</option>
+                    <option value="lesson2">Lesson 2 (Words 21 – 40)</option>
+                    <option value="lesson3">Lesson 3 (Words 41 – 60)</option>
+                    <option value="lesson4">Lesson 4 (Words 61 – 80)</option>
+                    <option value="lesson5">Lesson 5 (Words 81 – 100)</option>
+                    <option value="lesson6">Lesson 6 (Words 101 – 120)</option>
+                    <option value="lesson7">Lesson 7 (Words 121 – 140)</option>
+                    <option value="lesson8">Lesson 8 (Words 141 – 153)</option>
+                    <option value="lesson9">Lesson 9 (Words 154 – 173)</option>
+                    <option value="lesson10">Lesson 10 (Words 174 – 193)</option>
+                    <option value="lesson11">Lesson 11 (Words 194 – 213)</option>
+                    <option value="lesson12">Lesson 12 (Words 214 – 233)</option>
+                    <option value="lesson13">Lesson 13 (Words 234 – 253)</option>
+                    <option value="lesson14">Lesson 14 (Words 254 – 273)</option>
+                    <option value="lesson15">Lesson 15 (Words 274 – 293)</option>
+                    <option value="lesson16">Lesson 16 (Words 294 – 313)</option>
+                    <option value="lesson17">Lesson 17 (Words 314 – 331)</option>
+                    <option value="lesson18">Lesson 18 (Words 332 – 352)</option>
+                    <option value="lesson19">Lesson 19 (Words 353 – 373)</option>
+                    <option value="lesson20">Lesson 20 (Words 374 – 394)</option>
+                    <option value="lesson21">Lesson 21 (Words 395 – 414)</option>
+                    <option value="lesson22">Lesson 22 (Words 415 – 434)</option>
+                  </optgroup>
+                  <optgroup label="Multi-Lesson Review Bundles">
+                    <option value="bundle_1_2">Lessons 1 – 2 Review (First 40 Words)</option>
+                    <option value="bundle_1_3">Lessons 1 – 3 Review (First 60 Words)</option>
+                    <option value="bundle_1_5">Lessons 1 – 5 Review (First 100 Words)</option>
+                    <option value="bundle_6_10">Lessons 6 – 10 Review (Words 101 – 193)</option>
+                    <option value="bundle_11_15">Lessons 11 – 15 Review (Words 194 – 293)</option>
+                    <option value="bundle_16_20">Lessons 16 – 20 Review (Words 294 – 394)</option>
+                    <option value="bundle_21_22">Lessons 21 – 22 Review (Words 395 – 434)</option>
+                    <option value="all">Full Scope (All 434 Words Comprehensive)</option>
+                  </optgroup>
+                </select>
               </div>
+
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-700">Question Count</label>
+                <div class="flex items-center gap-2 pt-0.5">
+                  <button type="button" onclick="setCreatorVocabCount('10')" id="btn-vocab-count-10" class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">10 Qs</button>
+                  <button type="button" onclick="setCreatorVocabCount('20')" id="btn-vocab-count-20" class="flex-1 py-2.5 rounded-xl border-2 border-purple-600 bg-purple-600 text-white font-bold text-xs transition-all shadow-xs">20 Qs</button>
+                  <button type="button" onclick="setCreatorVocabCount('all')" id="btn-vocab-count-all" class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">Full Scope</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3B: QUESTION BANK SETTINGS CONTAINER -->
+          <div id="creator-qbank-settings" class="hidden space-y-5 p-5 rounded-2xl bg-sky-50/30 border border-sky-100">
+            
+            <!-- Guaranteed Unsolved Pill Banner -->
+            <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+              <div class="flex items-center gap-2">
+                <span class="text-base">✨</span>
+                <span><strong>Unsolved Questions Guarantee:</strong> Questions are dynamically selected from each student's personal unsolved question pool.</span>
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider">Active</span>
+            </div>
+
+            <!-- Section / Part Choice -->
+            <div class="space-y-2">
+              <label class="text-xs font-semibold text-slate-700">1. Choose Subject / Section</label>
+              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="switchCreatorQBankSection('rw')" id="btn-creator-sec-rw" class="px-4 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5">
+                  <span>📖</span><span>Reading & Writing (R&W)</span>
+                </button>
+                <button type="button" onclick="switchCreatorQBankSection('math')" id="btn-creator-sec-math" class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
+                  <span>📐</span><span>Math</span>
+                </button>
+                <button type="button" onclick="switchCreatorQBankSection('all')" id="btn-creator-sec-all" class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
+                  <span>⚡</span><span>All Questions (Mixed)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Detailed Question Types (Domains & Skills - Matching Pic 5) -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                <label class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>2. Select Question Types & Skills</span>
+                  <span class="text-slate-400 font-normal text-[11px]">(Mark ticks on specific skills to test)</span>
+                </label>
+                <div class="flex items-center gap-2 text-xs">
+                  <button type="button" onclick="toggleAllCreatorSkills(true)" class="text-[11px] text-sky-600 hover:underline font-bold">Select All</button>
+                  <span class="text-slate-300">|</span>
+                  <button type="button" onclick="toggleAllCreatorSkills(false)" class="text-[11px] text-slate-500 hover:underline">Clear</button>
+                </div>
+              </div>
+
+              <!-- Detailed Skills List by Domain (Matching Pic 5) -->
+              <div id="creator-domains-container" class="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                <!-- Dynamically populated skills hierarchy with domain headers and counts -->
+              </div>
+            </div>
+
+            <!-- Question Count Selection -->
+            <div class="space-y-2">
+              <label class="text-xs font-semibold text-slate-700">3. Select Number of Questions</label>
+              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="setCreatorQBankCount(10)" id="btn-qb-count-10" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">10</button>
+                <button type="button" onclick="setCreatorQBankCount(20)" id="btn-qb-count-20" class="px-3.5 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs">20</button>
+                <button type="button" onclick="setCreatorQBankCount(30)" id="btn-qb-count-30" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">30</button>
+                <button type="button" onclick="setCreatorQBankCount(40)" id="btn-qb-count-40" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">40</button>
+                <div class="flex items-center gap-1.5 ml-1">
+                  <span class="text-xs text-slate-500 font-medium">Or Custom:</span>
+                  <input type="number" id="creator-qb-custom-count" oninput="handleCreatorCustomCountInput(this.value)" min="1" max="100" placeholder="Count" class="w-20 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold outline-none focus:border-sky-500 shadow-xs">
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SUMMARY & ACTIONS BAR -->
+          <div class="pt-4 border-t border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-0.5">
+              <div class="text-xs font-bold text-slate-900 flex items-center gap-2" id="creator-summary-title">
+                <span>Ready to Add:</span>
+                <span class="text-purple-700 font-extrabold" id="creator-summary-pill">SAT Vocab • Lesson 1 (20 Qs)</span>
+              </div>
+              <p class="text-[11px] text-slate-500" id="creator-summary-desc">Click "Done" to save to the staging queue, or "Add Another" to batch create.</p>
+            </div>
+
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <button type="button" onclick="handleAddToQueue(true)" id="btn-add-another-homework" class="px-4 py-2.5 rounded-xl border-2 border-blue-600 bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-xs">
+                <span>➕</span><span>Add Another Homework</span>
+              </button>
+              <button type="button" onclick="handleAddToQueue(false)" id="btn-add-done-homework" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-1.5">
+                <span>✓</span><span>Done (Save to Queue)</span>
+              </button>
+              <button type="button" onclick="handlePublishHomework()" id="btn-submit-homework" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1.5">
+                <span>🚀</span><span>Assign Immediately</span>
+              </button>
             </div>
           </div>
 
         </div>
-
-        <!-- SUMMARY & ASSIGN ACTION BAR -->
-        <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="space-y-0.5">
-            <div class="text-xs font-bold text-slate-900 flex items-center gap-2" id="creator-summary-title">
-              <span>Ready to Assign:</span>
-              <span class="text-purple-700 font-extrabold" id="creator-summary-pill">SAT Vocab • Lesson 1 (20 Qs)</span>
-            </div>
-            <p class="text-[11px] text-slate-500" id="creator-summary-desc">Will appear immediately in student portal for the selected class.</p>
-          </div>
-
-          <button type="button" onclick="handlePublishHomework()" id="btn-submit-homework" class="px-7 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 font-bold text-xs text-white shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2">
-            <span>🚀 Assign Homework to Class</span>
-          </button>
-        </div>
-
       </div>
     </section>
 
@@ -6174,6 +6259,8 @@
       toggleAllCreatorSkills(true, false);
       renderCreatorDomains();
       updateCreatorAutoTitle();
+      renderStagingQueue();
+      renderActiveHomeworkGrid();
     }
 
     function switchCreatorHwType(type) {
@@ -6512,17 +6599,440 @@
         saveAssignments(assignments);
 
         showToast("🚀 Homework Assigned!", `"${title}" is LIVE for ${selectedClassName}. Unsolved questions guaranteed!`, "success");
-        switchTab('dashboard');
+        renderActiveHomeworkGrid();
+        closeCreateHomeworkForm();
       } catch (err) {
         console.error("Homework publish error:", err);
         showToast("⚠️ Notice", `Homework saved locally with PIN ${pin}.`, "info");
-        switchTab('dashboard');
+        renderActiveHomeworkGrid();
+        closeCreateHomeworkForm();
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = `<span>🚀 Assign Homework to Class</span>`;
         }
       }
+    }
+
+    // =========================================================
+    // STAGED HOMEWORK QUEUE & ACTIVE HOMEWORK HUB CONTROLLERS
+    // =========================================================
+
+    function getStagedHomework() {
+      try {
+        const raw = localStorage.getItem('satmaster_staged_homework');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {
+        console.error("Error reading staged homework:", e);
+      }
+      return [];
+    }
+
+    function saveStagedHomework(list) {
+      try {
+        localStorage.setItem('satmaster_staged_homework', JSON.stringify(list));
+      } catch (e) {
+        console.error("Error saving staged homework:", e);
+      }
+      renderStagingQueue();
+    }
+
+    function openCreateHomeworkForm() {
+      const hubView = document.getElementById('creator-hub-view');
+      const formView = document.getElementById('creator-form-view');
+      if (hubView) hubView.classList.add('hidden');
+      if (formView) formView.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeCreateHomeworkForm() {
+      const hubView = document.getElementById('creator-hub-view');
+      const formView = document.getElementById('creator-form-view');
+      if (formView) formView.classList.add('hidden');
+      if (hubView) hubView.classList.remove('hidden');
+      renderStagingQueue();
+      renderActiveHomeworkGrid();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function formatDeadlineDisplay(deadline) {
+      if (!deadline) return 'No deadline';
+      const d = new Date(deadline);
+      if (isNaN(d.getTime())) return 'No deadline';
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getDeadlineStatus(deadline) {
+      if (!deadline) return { text: 'Untimed Drill', isExpired: false, badgeClass: 'bg-slate-100 text-slate-600' };
+      const d = new Date(deadline);
+      if (isNaN(d.getTime())) return { text: 'Active', isExpired: false, badgeClass: 'bg-slate-100 text-slate-600' };
+      const diffMs = d.getTime() - Date.now();
+      if (diffMs < 0) {
+        return { text: 'Deadline Passed', isExpired: true, badgeClass: 'bg-rose-100 text-rose-700' };
+      }
+      const hours = Math.round(diffMs / (1000 * 60 * 60));
+      if (hours > 48) {
+        const days = Math.round(hours / 24);
+        return { text: `${days}d left`, isExpired: false, badgeClass: 'bg-emerald-100 text-emerald-800' };
+      } else if (hours > 0) {
+        return { text: `${hours}h left`, isExpired: false, badgeClass: 'bg-amber-100 text-amber-800' };
+      } else {
+        const mins = Math.max(1, Math.round(diffMs / (1000 * 60)));
+        return { text: `${mins}m left`, isExpired: false, badgeClass: 'bg-rose-100 text-rose-800' };
+      }
+    }
+
+    function handleAddToQueue(keepOpen = false) {
+      const select = document.getElementById('creator-class-select');
+      const groupId = select ? select.value : '';
+      const selectedClassName = (select && select.options && select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex].text : (groupId || 'Group A');
+
+      const title = document.getElementById('creator-hw-title')?.value.trim() || 'SAT Practice Drill';
+      const deadline = document.getElementById('creator-hw-deadline')?.value || null;
+      const timerVal = parseInt(document.getElementById('creator-hw-timer')?.value || '15', 10);
+
+      let config = {};
+      const hwType = creatorHwState.type;
+
+      if (hwType === 'vocab') {
+        const scopeSelect = document.getElementById('creator-vocab-scope');
+        const scopeId = scopeSelect ? scopeSelect.value : 'lesson1';
+        const scopeName = (typeof getScopeDisplayName === 'function') ? getScopeDisplayName(scopeId) : scopeId;
+        const qCount = creatorHwState.vocabCount === 'all' ? 20 : parseInt(creatorHwState.vocabCount, 10);
+        config = {
+          scopeId: scopeId,
+          scopeName: scopeName,
+          question_count: qCount,
+          timer: timerVal
+        };
+      } else {
+        const skills = Array.from(creatorHwState.qbankSkills);
+        if (skills.length === 0) {
+          showToast("⚠️ Select Question Types", "Please select at least 1 question type / skill for this homework!", "error");
+          return;
+        }
+        const allGroups = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
+        const domains = Array.from(new Set(
+          allGroups.filter(g => g.skills.some(sk => creatorHwState.qbankSkills.has(sk.name))).map(g => g.domain)
+        ));
+        config = {
+          subject: creatorHwState.qbankSection,
+          skills: skills,
+          domains: domains,
+          question_count: creatorHwState.qbankCount,
+          timer: timerVal,
+          filter: 'unsolved' // GUARANTEE: Always select fresh, unsolved questions for each student!
+        };
+      }
+
+      const stagedItem = {
+        id: `staged_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        title: title,
+        type: hwType,
+        groupId: groupId || selectedClassName,
+        className: selectedClassName,
+        config: config,
+        deadline: deadline,
+        timer: timerVal,
+        createdAt: new Date().toISOString()
+      };
+
+      const stagedList = getStagedHomework();
+      stagedList.push(stagedItem);
+      saveStagedHomework(stagedList);
+
+      showToast("📥 Added to Queue", `"${title}" staged successfully.`, "success");
+
+      // Reset custom title flag so next homework gets fresh auto-title
+      creatorHwState.hasCustomTitle = false;
+
+      if (keepOpen) {
+        updateCreatorAutoTitle();
+      } else {
+        updateCreatorAutoTitle();
+        closeCreateHomeworkForm();
+      }
+    }
+
+    function renderStagingQueue() {
+      const listEl = document.getElementById('creator-staging-list');
+      const badgeEl = document.getElementById('staged-count-badge');
+      if (!listEl) return;
+
+      const staged = getStagedHomework();
+      if (badgeEl) {
+        badgeEl.textContent = `${staged.length} staged`;
+        badgeEl.className = staged.length > 0 
+          ? 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800'
+          : 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500';
+      }
+
+      if (staged.length === 0) {
+        listEl.innerHTML = `
+          <div class="py-8 px-4 text-center rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 space-y-2">
+            <div class="text-3xl">📭</div>
+            <div class="text-xs font-bold text-slate-600">No Assignments in Staging Queue</div>
+            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">Prepare drills with the builder, click "Done" or "Add Another", then selectively dispatch them to your classes.</p>
+            <button type="button" onclick="openCreateHomeworkForm()" class="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs transition-all">
+              <span>➕</span><span>Create First Assignment</span>
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = staged.map(item => {
+        const isVocab = item.type === 'vocab';
+        const typeBadge = isVocab 
+          ? '<span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-100 text-purple-700">📚 Vocab</span>'
+          : '<span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-sky-100 text-sky-700">📖 QBank</span>';
+        const qCount = item.config?.question_count || 20;
+        const timerText = item.timer ? `${item.timer}m` : 'Untimed';
+        const deadlineText = formatDeadlineDisplay(item.deadline);
+
+        return `
+          <div class="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all text-xs">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <input type="checkbox" class="staged-hw-checkbox w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-pointer" data-staged-id="${item.id}" checked>
+              <div class="flex items-center gap-2 flex-wrap min-w-0">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">👥 ${escapeHtml(item.className)}</span>
+                ${typeBadge}
+                <span class="font-bold text-slate-900 truncate max-w-xs sm:max-w-md">${escapeHtml(item.title)}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="text-[11px] text-slate-500 font-medium hidden md:inline-block">${qCount} Qs • ${timerText}</span>
+              <span class="text-[11px] text-slate-400 font-medium hidden sm:inline-block">📅 ${deadlineText}</span>
+              <button type="button" onclick="handleSendSingleStagedHomework('${item.id}')" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all flex items-center gap-1 shadow-xs active:scale-95">
+                <span>🚀</span><span>Send</span>
+              </button>
+              <button type="button" onclick="handleDeleteStagedHomework('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs" title="Remove from queue">
+                ✕
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSelectAllStagedHomework(checked) {
+      const checkboxes = document.querySelectorAll('.staged-hw-checkbox');
+      checkboxes.forEach(cb => { cb.checked = checked; });
+    }
+
+    function handleDeleteStagedHomework(stagedId) {
+      let staged = getStagedHomework();
+      staged = staged.filter(item => item.id !== stagedId);
+      saveStagedHomework(staged);
+      showToast("🗑️ Removed", "Assignment removed from staging queue.", "info");
+    }
+
+    async function dispatchAssignmentObject(item) {
+      const pin = generateNewHwPin();
+      const teacherId = (currentSession && (currentSession.uid || currentSession.telegram_id || currentSession.name)) || 'teacher';
+
+      try {
+        await fetch('/api/homework', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: item.title,
+            type: item.type,
+            group_id: item.groupId || item.className,
+            config: item.config,
+            deadline: item.deadline,
+            created_by: teacherId
+          })
+        });
+      } catch (err) {
+        console.warn("Backend /api/homework sync warning:", err);
+      }
+
+      const assignments = getAssignments();
+      const newAssignment = {
+        id: `hw_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        code: pin,
+        className: item.className,
+        groupId: item.groupId,
+        title: item.title,
+        type: item.type,
+        config: item.config,
+        deadline: item.deadline,
+        timeLimitMinutes: item.timer,
+        questionIds: [],
+        createdAt: new Date().toISOString()
+      };
+      assignments.unshift(newAssignment);
+      saveAssignments(assignments);
+      return newAssignment;
+    }
+
+    async function handleSendSingleStagedHomework(stagedId) {
+      let staged = getStagedHomework();
+      const item = staged.find(it => it.id === stagedId);
+      if (!item) return;
+
+      await dispatchAssignmentObject(item);
+      staged = staged.filter(it => it.id !== stagedId);
+      saveStagedHomework(staged);
+
+      renderActiveHomeworkGrid();
+      showToast("🚀 Assignment Sent!", `"${item.title}" is now LIVE for ${item.className}.`, "success");
+    }
+
+    async function handleSendSelectedHomework() {
+      const checkboxes = Array.from(document.querySelectorAll('.staged-hw-checkbox:checked'));
+      const selectedIds = new Set(checkboxes.map(cb => cb.getAttribute('data-staged-id')));
+
+      if (selectedIds.size === 0) {
+        showToast("⚠️ Nothing Selected", "Please select at least one staged assignment to send.", "warning");
+        return;
+      }
+
+      const sendBtn = document.getElementById('btn-send-selected-staged');
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `<span>⏳ Sending ${selectedIds.size} Drills...</span>`;
+      }
+
+      try {
+        let staged = getStagedHomework();
+        const toSend = staged.filter(it => selectedIds.has(it.id));
+        for (const item of toSend) {
+          await dispatchAssignmentObject(item);
+        }
+
+        staged = staged.filter(it => !selectedIds.has(it.id));
+        saveStagedHomework(staged);
+
+        renderActiveHomeworkGrid();
+        showToast("🚀 Homework Sent!", `Successfully dispatched ${toSend.length} assignment(s) to students.`, "success");
+      } catch (err) {
+        console.error("Batch dispatch error:", err);
+        showToast("⚠️ Error", "An error occurred while sending selected homework.", "error");
+      } finally {
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.innerHTML = `<span>🚀</span><span>Send Selected to Students</span>`;
+        }
+      }
+    }
+
+    function renderActiveHomeworkGrid() {
+      const grid = document.getElementById('creator-active-cards-grid');
+      const badgeEl = document.getElementById('active-hw-count-badge');
+      if (!grid) return;
+
+      const assignments = getAssignments();
+      const now = Date.now();
+
+      // STRICT USER REQUIREMENT: Assignments remain visible until their deadline passes!
+      // Filter out items whose deadline has passed:
+      const activeAssignments = assignments.filter(hw => {
+        if (!hw.deadline) return true; // untimed / open deadline stays visible
+        const dl = new Date(hw.deadline).getTime();
+        if (isNaN(dl)) return true;
+        return dl >= now;
+      });
+
+      if (badgeEl) {
+        badgeEl.textContent = `${activeAssignments.length} active`;
+      }
+
+      if (activeAssignments.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-10 px-4 text-center rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 space-y-2 bg-white">
+            <div class="text-3xl">🎯</div>
+            <div class="text-xs font-bold text-slate-600">No Active Assignments in Progress</div>
+            <p class="text-[11px] text-slate-400 max-w-sm mx-auto">Assignments assigned to students will appear here and remain visible until their deadlines pass.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = activeAssignments.map(hw => {
+        const isVocab = hw.type === 'vocab';
+        const isQBank = hw.type === 'qbank';
+        const typeBadge = isVocab 
+          ? '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-100 text-purple-700">📚 SAT Vocab</span>'
+          : '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-sky-100 text-sky-700">📖 SAT QBank</span>';
+        
+        const qCount = isVocab 
+          ? (hw.config?.question_count || 20) 
+          : (isQBank ? (hw.config?.question_count || 20) : (hw.questionIds || []).length);
+
+        const timerText = hw.timeLimitMinutes > 0 ? `${hw.timeLimitMinutes} Mins` : (hw.config?.timer > 0 ? `${hw.config.timer} Mins` : 'Untimed');
+        const deadlineStatus = getDeadlineStatus(hw.deadline);
+        const formattedDeadline = formatDeadlineDisplay(hw.deadline);
+
+        return `
+          <div class="p-5 rounded-3xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 shadow-xs text-slate-800">
+            <!-- Top: Type Badge & Active Status -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                ${typeBadge}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${deadlineStatus.badgeClass} flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>${deadlineStatus.text}</span>
+                </span>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2">${escapeHtml(hw.title)}</h3>
+                <p class="text-[11px] text-slate-500 font-medium mt-1">👥 ${escapeHtml(hw.className || 'All Students')}</p>
+              </div>
+            </div>
+
+            <!-- Middle: Key Metrics -->
+            <div class="space-y-1.5 py-3 border-y border-slate-100 text-xs">
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Drill Size:</span>
+                <span class="font-bold text-slate-800">${qCount} Questions</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Timer:</span>
+                <span class="font-bold text-slate-800">${timerText}</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Student PIN:</span>
+                <span class="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">${hw.code || 'ACTIVE'}</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Deadline:</span>
+                <span class="font-semibold text-slate-700">${formattedDeadline}</span>
+              </div>
+            </div>
+
+            <!-- Bottom: Action Buttons -->
+            <div class="flex items-center gap-2 pt-1">
+              <button type="button" onclick="handleNotifyOrCopyHomework('${hw.id}', '${hw.code || ''}', '${escapeHtml(hw.title).replace(/'/g, "\\'")}')" class="flex-1 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
+                <span>📢</span><span>Send to Students</span>
+              </button>
+              <button type="button" onclick="handleDeleteActiveHomework('${hw.id}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs" title="Delete Homework">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleNotifyOrCopyHomework(hwId, code, title) {
+      const msg = `📢 Digital SAT Homework "${title}" (PIN: ${code}) is active! Complete before deadline.`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(msg).catch(() => {});
+      }
+      showToast("📢 Notification Sent", `Shared "${title}" with PIN ${code}. Invite copied to clipboard!`, "success");
+    }
+
+    function handleDeleteActiveHomework(hwId) {
+      let assignments = getAssignments();
+      assignments = assignments.filter(hw => hw.id !== hwId);
+      saveAssignments(assignments);
+      renderActiveHomeworkGrid();
+      showToast("🗑️ Homework Removed", "The assignment was deleted.", "info");
     }
 
     // =========================================================

@@ -73,5 +73,36 @@ class TestHomeworkCreator(unittest.TestCase):
             self.assertIn('satAudio', html)
             self.assertIn('speakWord', html)
 
+    def test_07_homework_hub_views_and_staging_queue_dom(self):
+        for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
+            self.assertIn('id="creator-hub-view"', html, f"Hub view missing in {name}")
+            self.assertIn('id="creator-form-view"', html, f"Form view missing in {name}")
+            self.assertIn('id="creator-staging-section"', html, f"Staging section missing in {name}")
+            self.assertIn('id="creator-staging-list"', html, f"Staging list missing in {name}")
+            self.assertIn('id="staging-select-all"', html, f"Staging select-all missing in {name}")
+            self.assertIn('id="btn-send-selected-staged"', html, f"Send selected button missing in {name}")
+            self.assertIn('id="btn-add-another-homework"', html, f"Add another button missing in {name}")
+            self.assertIn('id="btn-add-done-homework"', html, f"Add done button missing in {name}")
+            self.assertIn('id="btn-creator-back"', html, f"Back button missing in {name}")
+
+    def test_08_active_homework_grid_and_deadline_persistence(self):
+        for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
+            self.assertIn('id="creator-active-cards-grid"', html, f"Active cards grid missing in {name}")
+            self.assertIn('id="active-hw-count-badge"', html, f"Active count badge missing in {name}")
+            self.assertIn('dl >= now', html, f"Deadline expiration filter missing in {name}")
+            self.assertIn('handleNotifyOrCopyHomework', html, f"Notify/share handler missing in {name}")
+            self.assertIn('handleDeleteActiveHomework', html, f"Delete active hw handler missing in {name}")
+
+    def test_09_staging_and_selective_batch_dispatch_controllers(self):
+        for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
+            self.assertIn('getStagedHomework', html, f"getStagedHomework missing in {name}")
+            self.assertIn('saveStagedHomework', html, f"saveStagedHomework missing in {name}")
+            self.assertIn('handleAddToQueue', html, f"handleAddToQueue missing in {name}")
+            self.assertIn('renderStagingQueue', html, f"renderStagingQueue missing in {name}")
+            self.assertIn('toggleSelectAllStagedHomework', html, f"toggleSelectAllStagedHomework missing in {name}")
+            self.assertIn('handleSendSelectedHomework', html, f"handleSendSelectedHomework missing in {name}")
+            self.assertIn('handleSendSingleStagedHomework', html, f"handleSendSingleStagedHomework missing in {name}")
+            self.assertIn('renderActiveHomeworkGrid', html, f"renderActiveHomeworkGrid missing in {name}")
+
 if __name__ == '__main__':
     unittest.main()
