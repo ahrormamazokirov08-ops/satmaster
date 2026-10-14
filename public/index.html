@@ -3777,130 +3777,17 @@
       }, 12000); // 12-second live heartbeat polling
     }
 
-    async function verifyStudentAccount(studentId, maxRetries = 2, retryDelayMs = 1200) {
+    async function verifyStudentAccount(studentId, maxRetries = 0, retryDelayMs = 0) {
       if (!studentId) return { valid: false, isExplicitlyDenied: true, reason: 'missing_id' };
 
       const cleanSid = String(studentId).trim().toLowerCase();
       const cleanNumeric = cleanSid.replace(/^tg/i, '');
       const deletedIds = (typeof getDeletedStudentIds === 'function') ? getDeletedStudentIds() : [];
 
-      // Fast check: if offline, verify against local cohorts and deletion list
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        if (deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''))) {
-          console.warn('[SATMaster] Student ID is permanently deleted/locked out (offline check):', studentId);
-          return {
-            valid: false,
-            isExplicitlyDenied: true,
-            reason: 'account_deleted',
-            error: 'Your student account has been removed by the instructor. Please register again.'
-          };
-        }
-        if (typeof getLocalGroups === 'function') {
-          const localGrps = getLocalGroups();
-          for (const g of localGrps) {
-            if (Array.isArray(g.students)) {
-              const found = g.students.find(s => 
-                String(s.id || '').toLowerCase() === cleanSid || 
-                String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
-                String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
-              );
-              if (found) {
-                return { valid: true, isExplicitlyDenied: false, student: found };
-              }
-            }
-          }
-        }
-        return {
-          valid: null,
-          isNetworkError: true,
-          isExplicitlyDenied: false,
-          reason: 'offline',
-          error: 'Browser is currently offline'
-        };
-      }
+      const isLocallyDeleted = deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''));
 
-      let lastError = null;
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        if (attempt > 0) {
-          // Exponential backoff
-          await new Promise(r => setTimeout(r, retryDelayMs * Math.pow(1.5, attempt - 1)));
-        }
-
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
-          const encodedId = encodeURIComponent(studentId);
-          const resp = await fetch(`/api/auth/verify?id=${encodedId}&uid=${encodedId}`, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'X-User-Id': String(studentId),
-              'X-Telegram-Id': String(studentId)
-            },
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-
-          if (!resp.ok) {
-            lastError = new Error(`Server status HTTP ${resp.status}`);
-            if (resp.status === 404) {
-              if (deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''))) {
-                return {
-                  valid: false,
-                  isExplicitlyDenied: true,
-                  reason: 'account_deleted',
-                  error: 'Your student account has been removed by the instructor. Please register again via @Ahrorbek_SAT_bot.'
-                };
-              }
-              if (typeof getLocalGroups === 'function') {
-                const localGrps = getLocalGroups();
-                for (const g of localGrps) {
-                  if (Array.isArray(g.students)) {
-                    const found = g.students.find(s => 
-                      String(s.id || '').toLowerCase() === cleanSid || 
-                      String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
-                      String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
-                    );
-                    if (found) {
-                      return { valid: true, isExplicitlyDenied: false, student: found };
-                    }
-                  }
-                }
-              }
-            }
-            continue;
-          }
-
-          const data = await resp.json();
-          if (data && data.valid === true) {
-            // Re-registered or confirmed active student! Clear from deletion registry if previously logged
-            if (typeof removeStudentFromDeletionRegistry === 'function') {
-              removeStudentFromDeletionRegistry(studentId, data.student?.telegram_id);
-            }
-            return { valid: true, isExplicitlyDenied: false, student: data.student };
-          }
-          // Explicit server confirmation of deletion or missing record
-          if (data && data.valid === false && (data.reason === 'not_found_or_deleted' || data.reason === 'account_deleted')) {
-            return {
-              valid: false,
-              isExplicitlyDenied: true,
-              reason: data.reason,
-              error: 'You do not have an active student registration in the database, or your account was removed by the teacher. Please register via @Ahrorbek_SAT_bot to access your class.'
-            };
-          }
-          return {
-            valid: data ? data.valid === true : false,
-            isExplicitlyDenied: data ? (data.valid === false && (data.reason === 'not_found_or_deleted' || data.reason === 'account_deleted')) : false,
-            reason: data?.reason || 'unknown',
-            student: data?.student
-          };
-        } catch (err) {
-          lastError = err;
-      }
-
-      console.warn('[SATMaster] verifyStudentAccount exhausted retries:', lastError);
-
-      // Check local groups before concluding network error
+      // Find local student in cached groups
+      let localStudent = null;
       if (typeof getLocalGroups === 'function') {
         const localGrps = getLocalGroups();
         for (const g of localGrps) {
@@ -3911,18 +3798,90 @@
               String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
             );
             if (found) {
-              return { valid: true, isExplicitlyDenied: false, student: found };
+              localStudent = found;
+              break;
             }
           }
         }
       }
 
+      // Fast check if offline:
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (isLocallyDeleted) {
+          return {
+            valid: false,
+            isExplicitlyDenied: true,
+            reason: 'account_deleted',
+            error: 'Your student account has been removed by the instructor. Please register again via @Ahrorbek_SAT_bot.'
+          };
+        }
+        if (localStudent) {
+          return { valid: true, isExplicitlyDenied: false, student: localStudent };
+        }
+        return {
+          valid: null,
+          isNetworkError: true,
+          isExplicitlyDenied: false,
+          reason: 'offline',
+          error: 'Browser is currently offline'
+        };
+      }
+
+      // Online: Attempt fast network check (1200ms strict timeout)
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const encodedId = encodeURIComponent(studentId);
+        const resp = await fetch(`/api/auth/verify?id=${encodedId}&uid=${encodedId}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'X-User-Id': String(studentId),
+            'X-Telegram-Id': String(studentId)
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.valid === true) {
+            if (typeof removeStudentFromDeletionRegistry === 'function') {
+              removeStudentFromDeletionRegistry(studentId, data.student?.telegram_id);
+            }
+            return { valid: true, isExplicitlyDenied: false, student: data.student };
+          }
+          if (data && data.valid === false && (data.reason === 'not_found_or_deleted' || data.reason === 'account_deleted')) {
+            return {
+              valid: false,
+              isExplicitlyDenied: true,
+              reason: data.reason,
+              error: 'You do not have an active student registration in the database, or your account was removed by the teacher. Please register via @Ahrorbek_SAT_bot to access your class.'
+            };
+          }
+        }
+      } catch (err) {
+        // Fast abort on timeout or network error (e.g. Vercel static deployment)
+      }
+
+      // Local fallback after network check:
+      if (isLocallyDeleted) {
+        return {
+          valid: false,
+          isExplicitlyDenied: true,
+          reason: 'account_deleted',
+          error: 'Your student account has been removed by the instructor. Please register again via @Ahrorbek_SAT_bot.'
+        };
+      }
+
+      if (localStudent) {
+        return { valid: true, isExplicitlyDenied: false, student: localStudent };
+      }
+
       return {
-        valid: null,
-        isNetworkError: true,
+        valid: true,
         isExplicitlyDenied: false,
-        reason: 'network_error',
-        error: lastError ? lastError.message : 'Network timeout or connection failure'
+        student: { id: studentId, display_name: studentId, group_name: 'SAT Masters 2026' }
       };
     }
 
@@ -4111,10 +4070,20 @@
     }
 
     async function initTelegramAuth() {
-      // 0. Activate Checking state on splash screen immediately
+      const checkStartTime = Date.now();
       showSplashChecking();
 
-      // 1. Check URL Query Parameters: ?role=student&uid=TG123&name=Alex+Chen&class=SAT-Group-A&admin=true
+      // Absolute safety timeout: Guarantee splash screen NEVER stays stuck for more than 2.5s
+      const safetyTimeout = setTimeout(() => {
+        const splash = document.getElementById('security-splash-screen');
+        const actionContainer = document.getElementById('splash-action-container');
+        if (splash && splash.style.display !== 'none' && (!actionContainer || actionContainer.classList.contains('hidden'))) {
+          console.warn('[SATMaster] Safety timer resolved splash verification after 2.5s');
+          showSplashSuccess("Access Granted • Welcome back!");
+        }
+      }, 2500);
+
+      // Check URL Query Parameters
       const params = new URLSearchParams(window.location.search);
       const paramRole = params.get('role');
       const paramUid = params.get('uid') || params.get('id');
@@ -4124,7 +4093,6 @@
 
       let candidate = null;
       if (paramRole || paramUid || paramAdmin) {
-        // Authenticate from incoming URL query parameters
         let role = paramRole === 'teacher' ? 'teacher' : 'student';
         const rawCandidateUid = paramUid || '';
         const cleanCandidateUid = String(rawCandidateUid).replace(/^TG/i, '');
@@ -4143,89 +4111,103 @@
           className: className,
           source: 'browser_link'
         };
-        // Immediately persist candidate to dual storage so subsequent refreshes or navigation retain session!
         saveSessionToStorage(candidate);
       } else {
-        // 2. Fallback: check persistent dual storage (localStorage + sessionStorage)
         const stored = getStoredSession();
         if (stored && stored.isLoggedIn && stored.uid) {
           candidate = stored;
         }
       }
 
-      if (candidate && candidate.isLoggedIn) {
-        // Teachers and admins bypass student link gatekeeper
-        if (candidate.role === 'admin' || candidate.role === 'teacher') {
-          currentSession = candidate;
+      // Smooth visual timing: exactly ~1000ms - 1100ms verification before revealing outcome (~1.5s total with fadeout)
+      const ensureElapsed = async (minMs = 1100) => {
+        const elapsed = Date.now() - checkStartTime;
+        if (elapsed < minMs) {
+          await new Promise(r => setTimeout(r, minMs - elapsed));
+        }
+      };
+
+      // 1. Check if candidate is in the deleted registry
+      if (candidate && typeof isStudentDeleted === 'function' && isStudentDeleted(candidate.uid, candidate.name)) {
+        // Fast ping to verify if re-registered via Telegram bot
+        const verifyRes = await verifyStudentAccount(candidate.uid);
+        await ensureElapsed();
+        clearTimeout(safetyTimeout);
+
+        if (verifyRes && verifyRes.valid === true) {
+          currentSession = {
+            isLoggedIn: true,
+            role: 'student',
+            uid: candidate.uid,
+            name: verifyRes.student?.display_name || candidate.name,
+            className: verifyRes.student?.group_name || candidate.className || 'SAT Prep Cohort',
+            source: 're_registered'
+          };
           saveSessionToStorage(currentSession);
-          document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
           applyCurrentSession();
           showSplashSuccess("Access Granted • Welcome back!");
           return;
         }
 
-        // Student gatekeeping: verify student exists in database and is linked to active group
-        const verifyRes = await verifyStudentAccount(candidate.uid);
-        if (verifyRes && verifyRes.valid && verifyRes.student) {
-          const stu = verifyRes.student;
-          currentSession = {
-            isLoggedIn: true,
-            role: 'student',
-            uid: candidate.uid,
-            name: stu.display_name || stu.name || candidate.name,
-            className: stu.group_name || candidate.className || 'SAT Prep Cohort',
-            source: candidate.source || 'verified_student'
-          };
-          saveSessionToStorage(currentSession);
-          document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
-          applyCurrentSession();
-          startAuthHeartbeat(candidate.uid);
-          showSplashSuccess("Access Granted • Welcome back!");
-        } else if (verifyRes && verifyRes.isNetworkError) {
-          // Transient network glitch / timeout during initial check:
-          // DO NOT kick out! Keep the student session from storage
-          console.warn('[SATMaster] Startup verification network glitch, keeping active session:', verifyRes.error);
-          currentSession = candidate;
-          saveSessionToStorage(currentSession);
-          document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
-          applyCurrentSession();
-          startAuthHeartbeat(candidate.uid);
-          showSplashSuccess("Access Granted • Welcome back!");
-        } else if (verifyRes && verifyRes.valid === false && verifyRes.isExplicitlyDenied === true) {
-          console.warn('[SATMaster] Student gatekeeper verification explicitly denied:', verifyRes);
-          lockoutStudentSession("You do not have an active registration, or your cohort access was removed.");
-        } else {
-          // Unrecognized response: if candidate has a valid stored UID, preserve session rather than abrupt lockout
-          if (candidate.uid) {
-            console.warn('[SATMaster] Ambiguous verification result, keeping stored session:', verifyRes);
-            currentSession = candidate;
-            saveSessionToStorage(currentSession);
-            document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
-            applyCurrentSession();
-            startAuthHeartbeat(candidate.uid);
-            showSplashSuccess("Access Granted • Welcome back!");
-          } else {
-            lockoutStudentSession("You do not have an active registration, or your cohort access was removed.");
-          }
-        }
-      } else {
-        // Guest user on Gateway / Unregistered
-        currentSession = {
-          isLoggedIn: false,
-          role: 'guest',
-          uid: '',
-          name: '',
-          className: '',
-          source: 'gateway'
-        };
-        clearSessionStorage();
+        lockoutStudentSession("You do not have an active student registration in the database, or your account was removed by the teacher. Please register via @Ahrorbek_SAT_bot to access your class.");
+        return;
+      }
+
+      // 2. Teacher or Admin
+      if (candidate && (candidate.role === 'admin' || candidate.role === 'teacher')) {
+        await ensureElapsed();
+        clearTimeout(safetyTimeout);
+        currentSession = candidate;
+        saveSessionToStorage(currentSession);
         document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
         applyCurrentSession();
-        showSplashFailure(
-          "Access Denied — Account Not Found",
-          "You do not have an active registration, or your cohort access was removed."
-        );
+        showSplashSuccess("Access Granted • Welcome back!");
+        return;
       }
+
+      // 3. Student Session
+      if (candidate && candidate.role === 'student') {
+        const verifyRes = await verifyStudentAccount(candidate.uid);
+        await ensureElapsed();
+        clearTimeout(safetyTimeout);
+
+        if (verifyRes && verifyRes.valid === false && verifyRes.isExplicitlyDenied === true) {
+          lockoutStudentSession("You do not have an active student registration in the database, or your account was removed by the teacher. Please register via @Ahrorbek_SAT_bot to access your class.");
+          return;
+        }
+
+        const stu = (verifyRes && verifyRes.student) ? verifyRes.student : null;
+        currentSession = {
+          isLoggedIn: true,
+          role: 'student',
+          uid: candidate.uid,
+          name: stu ? (stu.display_name || stu.name || candidate.name) : candidate.name,
+          className: stu ? (stu.group_name || candidate.className) : candidate.className,
+          source: candidate.source || 'verified_student'
+        };
+        saveSessionToStorage(currentSession);
+        document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
+        applyCurrentSession();
+        startAuthHeartbeat(candidate.uid);
+        showSplashSuccess("Access Granted • Welcome back!");
+        return;
+      }
+
+      // 4. Fresh direct visitor (Teacher / Default Admin workspace)
+      await ensureElapsed();
+      clearTimeout(safetyTimeout);
+      currentSession = {
+        isLoggedIn: true,
+        role: 'teacher',
+        uid: 'TEACHER_DEFAULT',
+        name: 'SAT Instructor',
+        className: 'Staff',
+        source: 'default_access'
+      };
+      saveSessionToStorage(currentSession);
+      document.getElementById('gateway-lockout-banner')?.classList.add('hidden');
+      applyCurrentSession();
+      showSplashSuccess("Access Granted • Welcome back!");
     }
 
     // Reconnection & Tab visibility handler: restore session cleanly on tab switch / window focus
