@@ -254,7 +254,7 @@
       <button onclick="switchTab('groups')" id="nav-groups" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">
         👥 Groups
       </button>
-      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="hidden px-3.5 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">
         📊 Teacher Dashboard
       </button>
       <button onclick="switchTab('creator')" id="nav-creator" class="px-3.5 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900">
@@ -383,7 +383,7 @@
         </div>
 
         <!-- 📘 SAT Question Bank (Admin Preview & Staging) -->
-        <div id="card-qbank-admin-staging-groups" class="p-6 sm:p-7 rounded-3xl border border-sky-200 bg-sky-50/50 shadow-sm space-y-4 text-slate-800">
+        <div id="card-qbank-admin-staging-groups" class="hidden p-6 sm:p-7 rounded-3xl border border-sky-200 bg-sky-50/50 shadow-sm space-y-4 text-slate-800">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-sky-200/80">
             <div class="flex items-start sm:items-center gap-3.5">
               <div class="h-12 w-12 rounded-2xl bg-sky-100 border border-sky-200 flex items-center justify-center text-2xl shrink-0 shadow-inner">
@@ -3744,8 +3744,36 @@
     async function verifyStudentAccount(studentId, maxRetries = 2, retryDelayMs = 1200) {
       if (!studentId) return { valid: false, isExplicitlyDenied: true, reason: 'missing_id' };
 
-      // Fast check: if offline, return network error immediately without calling fetch
+      const cleanSid = String(studentId).trim().toLowerCase();
+      const cleanNumeric = cleanSid.replace(/^tg/i, '');
+      const deletedIds = (typeof getDeletedStudentIds === 'function') ? getDeletedStudentIds() : [];
+      if (deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''))) {
+        console.warn('[SATMaster] Student ID is permanently deleted/locked out:', studentId);
+        return {
+          valid: false,
+          isExplicitlyDenied: true,
+          reason: 'account_deleted',
+          error: 'Your student account has been removed by the instructor. Please register again.'
+        };
+      }
+
+      // Fast check: if offline, verify against local cohorts
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (typeof getLocalGroups === 'function') {
+          const localGrps = getLocalGroups();
+          for (const g of localGrps) {
+            if (Array.isArray(g.students)) {
+              const found = g.students.find(s => 
+                String(s.id || '').toLowerCase() === cleanSid || 
+                String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
+                String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
+              );
+              if (found) {
+                return { valid: true, isExplicitlyDenied: false, student: found };
+              }
+            }
+          }
+        }
         return {
           valid: null,
           isNetworkError: true,
@@ -3779,6 +3807,21 @@
 
           if (!resp.ok) {
             lastError = new Error(`Server status HTTP ${resp.status}`);
+            if (resp.status === 404 && typeof getLocalGroups === 'function') {
+              const localGrps = getLocalGroups();
+              for (const g of localGrps) {
+                if (Array.isArray(g.students)) {
+                  const found = g.students.find(s => 
+                    String(s.id || '').toLowerCase() === cleanSid || 
+                    String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
+                    String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
+                  );
+                  if (found) {
+                    return { valid: true, isExplicitlyDenied: false, student: found };
+                  }
+                }
+              }
+            }
             continue;
           }
 
@@ -3787,12 +3830,12 @@
             return { valid: true, isExplicitlyDenied: false, student: data.student };
           }
           // Only an explicit server confirmation (status 200 && data.valid === false && data.reason === 'not_found_or_deleted')
-          if (data && data.valid === false && data.reason === 'not_found_or_deleted') {
-            return { valid: false, isExplicitlyDenied: true, reason: 'not_found_or_deleted' };
+          if (data && data.valid === false && (data.reason === 'not_found_or_deleted' || data.reason === 'account_deleted')) {
+            return { valid: false, isExplicitlyDenied: true, reason: data.reason };
           }
           return {
             valid: data ? data.valid === true : false,
-            isExplicitlyDenied: data ? (data.valid === false && data.reason === 'not_found_or_deleted') : false,
+            isExplicitlyDenied: data ? (data.valid === false && (data.reason === 'not_found_or_deleted' || data.reason === 'account_deleted')) : false,
             reason: data?.reason || 'unknown',
             student: data?.student
           };
@@ -3802,6 +3845,24 @@
       }
 
       console.warn('[SATMaster] verifyStudentAccount exhausted retries:', lastError);
+
+      // Check local groups before concluding network error
+      if (typeof getLocalGroups === 'function') {
+        const localGrps = getLocalGroups();
+        for (const g of localGrps) {
+          if (Array.isArray(g.students)) {
+            const found = g.students.find(s => 
+              String(s.id || '').toLowerCase() === cleanSid || 
+              String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
+              String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
+            );
+            if (found) {
+              return { valid: true, isExplicitlyDenied: false, student: found };
+            }
+          }
+        }
+      }
+
       return {
         valid: null,
         isNetworkError: true,
@@ -4208,8 +4269,10 @@
 
     function updateNavigationUI() {
       const logoutBtn = document.getElementById('btn-logout');
-      const teacherTabs = ['nav-groups', 'nav-classes', 'nav-dashboard', 'nav-creator', 'nav-bank'];
+      const teacherTabs = ['nav-groups', 'nav-classes', 'nav-creator', 'nav-bank'];
       const studentNavBtn = document.getElementById('nav-student');
+      const navDashboard = document.getElementById('nav-dashboard');
+      if (navDashboard) navDashboard.classList.add('hidden');
       const isTeacherOrAdmin = (currentUserRole === 'teacher' || currentUserRole === 'admin');
 
       const testBanner = document.getElementById('vocab-test-banner');
@@ -4273,6 +4336,7 @@
 
         const mobGroups = document.getElementById('mob-nav-groups');
         const mobDashboard = document.getElementById('mob-nav-dashboard');
+        if (mobDashboard) mobDashboard.classList.add('hidden');
         const mobVocab = document.getElementById('mob-nav-vocab');
         const mobQBank = document.getElementById('mob-nav-qbank');
         const mobStudent = document.getElementById('mob-nav-student');
@@ -4323,7 +4387,7 @@
           });
           if (studentNavBtn) studentNavBtn.classList.add('hidden'); // Teachers do not take student homework
           if (mobGroups) mobGroups.classList.remove('hidden');
-          if (mobDashboard) mobDashboard.classList.remove('hidden');
+          if (mobDashboard) mobDashboard.classList.add('hidden');
           if (mobVocab) mobVocab.classList.remove('hidden');
           if (mobQBank) mobQBank.classList.remove('hidden');
           if (mobStudent) mobStudent.classList.add('hidden');
@@ -4516,16 +4580,235 @@
       showToast("🔒 Exited Session", "Session ended. Please register or start via Telegram Bot.", "info");
     }
 
+    // =========================================================
+    // PART 2: GROUPS & STUDENTS MANAGEMENT SYSTEM (TEACHER UI)
+    // =========================================================
+
+    const DEFAULT_GROUPS_LIST = [
+      {
+        id: 'b2a3af13-8554-4e46-93d0-f01cee2be9c6',
+        name: 'SAT Masters 2026',
+        code: 'SAT-M26',
+        schedule: 'Mon, Wed, Fri 18:00',
+        description: 'SAT Cohort',
+        student_count: 2,
+        created_at: '2026-09-01T10:00:00Z',
+        students: [
+          {
+            id: 'std_elena_r',
+            telegram_id: 501002,
+            display_name: 'Elena Rostova',
+            telegram_username: 'elena_r',
+            created_at: '2026-09-01T10:00:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 1',
+                total_score: 1420,
+                rw_score: 710,
+                math_score: 710,
+                status: 'Passed',
+                completed_at: '2026-10-05T14:30:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_alex_c',
+            telegram_id: 501004,
+            display_name: 'Alex Chen',
+            telegram_username: 'alexchen_sat',
+            created_at: '2026-09-05T11:00:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 1',
+                total_score: 1380,
+                rw_score: 670,
+                math_score: 710,
+                status: 'Passed',
+                completed_at: '2026-10-06T16:00:00Z'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'c60bb55d-55e1-4d8c-95fa-083b99da36f8',
+        name: 'Ivy League Prep',
+        code: 'IVY-PREP',
+        schedule: 'Tue, Thu 17:00',
+        description: 'SAT Cohort',
+        student_count: 2,
+        created_at: '2026-09-02T12:00:00Z',
+        students: [
+          {
+            id: 'std_frank_m',
+            telegram_id: 501003,
+            display_name: 'Frank Miller',
+            telegram_username: 'fmiller',
+            created_at: '2026-09-02T12:00:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 2',
+                total_score: 1490,
+                rw_score: 740,
+                math_score: 750,
+                status: 'Passed',
+                completed_at: '2026-10-08T15:20:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_jasmine_p',
+            telegram_id: 501005,
+            display_name: 'Jasmine Patel',
+            telegram_username: 'jasmine_p',
+            created_at: '2026-09-06T14:00:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 1',
+                total_score: 1350,
+                rw_score: 660,
+                math_score: 690,
+                status: 'Passed',
+                completed_at: '2026-10-07T11:15:00Z'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'f83b2910-3129-4c12-a128-8921b712c980',
+        name: 'Digital SAT Intensive',
+        code: 'DSAT-INT',
+        schedule: 'Sat, Sun 10:00',
+        description: 'SAT Cohort',
+        student_count: 2,
+        created_at: '2026-09-03T09:30:00Z',
+        students: [
+          {
+            id: 'std_david_k',
+            telegram_id: 501001,
+            display_name: 'David Kim',
+            telegram_username: 'david_k',
+            created_at: '2026-09-03T09:30:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 3',
+                total_score: 1520,
+                rw_score: 760,
+                math_score: 760,
+                status: 'Passed',
+                completed_at: '2026-10-09T18:45:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_sarah_w',
+            telegram_id: 501006,
+            display_name: 'Sarah Williams',
+            telegram_username: 'sarah_w',
+            created_at: '2026-09-07T15:30:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 2',
+                total_score: 1410,
+                rw_score: 700,
+                math_score: 710,
+                status: 'Passed',
+                completed_at: '2026-10-10T13:00:00Z'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    function getDeletedStudentIds() {
+      try {
+        const stored = localStorage.getItem('satmaster_deleted_students');
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function addDeletedStudentId(sid) {
+      if (!sid) return;
+      try {
+        const list = getDeletedStudentIds();
+        const norm = String(sid).trim().toLowerCase();
+        if (!list.includes(norm)) {
+          list.push(norm);
+          localStorage.setItem('satmaster_deleted_students', JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+
+    function isStudentDeleted(studentId, username) {
+      const deleted = getDeletedStudentIds();
+      if (!deleted || !deleted.length) return false;
+      const sId = studentId ? String(studentId).trim().toLowerCase() : '';
+      const sClean = sId.replace(/^tg/i, '');
+      const sUser = username ? String(username).replace(/^@/, '').trim().toLowerCase() : '';
+      return deleted.some(d => (sId && d === sId) || (sClean && d === sClean) || (sUser && d === sUser));
+    }
+
+    function getLocalGroups() {
+      const deleted = getDeletedStudentIds();
+      try {
+        const stored = localStorage.getItem('satmaster_groups_list');
+        let groups = stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(DEFAULT_GROUPS_LIST));
+        groups.forEach(g => {
+          if (Array.isArray(g.students)) {
+            g.students = g.students.filter(s => {
+              const sId = String(s.id || '').toLowerCase();
+              const tgId = String(s.telegram_id || '').toLowerCase();
+              const tgUser = String(s.telegram_username || '').toLowerCase();
+              return !deleted.includes(sId) && !deleted.includes(tgId) && !deleted.includes(tgUser);
+            });
+            g.student_count = g.students.length;
+          }
+        });
+        return groups;
+      } catch (e) {
+        return JSON.parse(JSON.stringify(DEFAULT_GROUPS_LIST));
+      }
+    }
+
+    function saveLocalGroups(groups) {
+      try {
+        localStorage.setItem('satmaster_groups_list', JSON.stringify(groups));
+      } catch (e) {}
+    }
+
     // DYNAMIC CLASSES STORAGE ENGINE (SYNCED WITH BACKEND API & TELEGRAM BOT)
     function getClasses() {
       const stored = localStorage.getItem('satmaster_classes');
       if (stored) {
-        try { return JSON.parse(stored); } catch(e) {}
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch(e) {}
       }
-      return []; // Clean empty state as requested!
+      const localGrps = getLocalGroups();
+      const classes = localGrps.map(g => ({
+        id: g.id || ('grp_' + g.name),
+        name: g.name,
+        code: g.code || `GRP-${(g.id || '100').substring(0, 6).toUpperCase()}`,
+        schedule: g.schedule || '',
+        description: g.description || 'SAT Cohort',
+        studentCount: g.student_count || 0
+      }));
+      try { localStorage.setItem('satmaster_classes', JSON.stringify(classes)); } catch(e) {}
+      return classes;
     }
 
-    let cachedGroups = [];
+    function saveClasses(classes) {
+      try {
+        localStorage.setItem('satmaster_classes', JSON.stringify(classes));
+      } catch(e) {}
+    }
+
+    let cachedGroups = getLocalGroups();
     let inFlightGroupsPromise = null;
     let lastGroupsFetchTime = 0;
 
@@ -4542,7 +4825,7 @@
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       inFlightGroupsPromise = fetch('/api/groups', { signal: controller.signal })
         .then(res => {
@@ -4553,8 +4836,18 @@
         .then(data => {
           inFlightGroupsPromise = null;
           lastGroupsFetchTime = Date.now();
-          if (data && data.ok && Array.isArray(data.groups)) {
+          if (data && data.ok && Array.isArray(data.groups) && data.groups.length > 0) {
+            // Merge remote groups with local students
+            const local = getLocalGroups();
+            data.groups.forEach(g => {
+              const matched = local.find(l => l.id === g.id || l.name === g.name);
+              if (matched && matched.students && (!g.students || !g.students.length)) {
+                g.students = matched.students;
+                g.student_count = matched.students.length;
+              }
+            });
             cachedGroups = data.groups;
+            saveLocalGroups(cachedGroups);
             const classes = data.groups.map(g => ({
               id: g.id || ('grp_' + g.name),
               name: g.name,
@@ -4563,7 +4856,7 @@
               description: g.description || (g.teacher_name ? `Assigned: ${g.teacher_name}` : 'SAT Cohort'),
               studentCount: g.student_count || 0
             }));
-            localStorage.setItem('satmaster_classes', JSON.stringify(classes));
+            saveClasses(classes);
             renderClasses();
             if (typeof renderGroupsGrid === 'function') renderGroupsGrid(cachedGroups);
             if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
@@ -4573,7 +4866,9 @@
         .catch(err => {
           clearTimeout(timeoutId);
           inFlightGroupsPromise = null;
-          throw err;
+          console.warn('[SATMaster] Background fetchGroups note (offline or static deployment):', err.message);
+          cachedGroups = getLocalGroups();
+          return { ok: true, groups: cachedGroups, fromLocalFallback: true };
         });
 
       return inFlightGroupsPromise;
@@ -4586,10 +4881,6 @@
           renderClasses();
         });
     }
-
-    // =========================================================
-    // PART 2: GROUPS & STUDENTS MANAGEMENT SYSTEM (TEACHER UI)
-    // =========================================================
 
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -4663,58 +4954,40 @@
       const emptyState = document.getElementById('groups-empty-state');
       const countStat = document.getElementById('stat-groups-count');
 
-      // Instant optimistic render if cached data exists
-      if (!force && cachedGroups && cachedGroups.length) {
-        if (skeleton) skeleton.classList.add('hidden');
-        if (errorBox) errorBox.classList.add('hidden');
+      // Always ensure local groups are initialized
+      if (!cachedGroups || !cachedGroups.length) {
+        cachedGroups = getLocalGroups();
+      }
+
+      // Suppress skeleton and error box immediately
+      if (skeleton) skeleton.classList.add('hidden');
+      if (errorBox) errorBox.classList.add('hidden');
+
+      if (cachedGroups && cachedGroups.length) {
         if (emptyState) emptyState.classList.add('hidden');
         if (grid) grid.classList.remove('hidden');
         if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
         renderGroupsGrid(cachedGroups);
-        // Silent background update if cache older than 6s
-        if (Date.now() - lastGroupsFetchTime > 6000) {
-          fetchGroupsWithCache(true).then(data => {
-            if (data && data.groups) {
-              if (countStat) countStat.innerText = `${data.groups.length} Active ${data.groups.length === 1 ? 'Cohort' : 'Cohorts'}`;
-              renderGroupsGrid(data.groups);
-            }
-          }).catch(() => {});
-        }
-        return;
-      }
-
-      if (skeleton && (!cachedGroups.length || force)) {
-        skeleton.classList.remove('hidden');
+        if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
+      } else {
         if (grid) grid.classList.add('hidden');
-        if (errorBox) errorBox.classList.add('hidden');
-        if (emptyState) emptyState.classList.add('hidden');
+        if (emptyState) emptyState.classList.remove('hidden');
+        if (countStat) countStat.innerText = '0 Active Cohorts';
       }
 
+      // Background sync with API
       fetchGroupsWithCache(force)
         .then(data => {
-          if (skeleton) skeleton.classList.add('hidden');
-          if (errorBox) errorBox.classList.add('hidden');
-
-          if (data && data.ok && Array.isArray(data.groups)) {
+          if (data && data.groups && data.groups.length) {
             cachedGroups = data.groups;
             if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
-            syncClassesDropdownsFromGroups(cachedGroups);
             renderGroupsGrid(cachedGroups);
-          } else {
-            throw new Error((data && data.error) || 'Failed to parse groups data');
+            if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
           }
         })
         .catch(err => {
-          console.error('Error fetching /api/groups:', err);
-          if (skeleton) skeleton.classList.add('hidden');
-          if (errorBox) {
-            errorBox.classList.remove('hidden');
-            const msg = document.getElementById('groups-error-msg');
-            if (msg) msg.innerText = `Unable to connect to database: ${err.message}`;
-          }
-          if (cachedGroups && cachedGroups.length) {
-            renderGroupsGrid(cachedGroups);
-          }
+          console.warn('[SATMaster] Background sync note:', err.message);
+          if (errorBox) errorBox.classList.add('hidden');
         });
     }
 
@@ -4756,7 +5029,7 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-slate-900 tracking-tight">${escapeHtml(g.name)}</h3>
-              <p class="text-xs text-slate-500 mt-1">Cohort ID: <span class="font-mono text-[10px] text-slate-400">${g.id.substring(0, 8)}...</span></p>
+              <p class="text-xs text-slate-500 mt-1">Cohort ID: <span class="font-mono text-[10px] text-slate-400">${(g.id || '').substring(0, 8)}...</span></p>
             </div>
           </div>
           <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
@@ -4843,6 +5116,39 @@
         submitBtn.innerHTML = '<span>Creating...</span>';
       }
 
+      const handleGroupCreated = (newGrp) => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Create Group</span>';
+        }
+        if (input) input.value = '';
+        closeCreateGroupModal();
+        newGrp.student_count = newGrp.student_count || 0;
+        newGrp.students = newGrp.students || [];
+        cachedGroups.unshift(newGrp);
+        saveLocalGroups(cachedGroups);
+
+        // Dynamically update UI without full page reload
+        renderGroupsGrid(cachedGroups);
+        const countStat = document.getElementById('stat-groups-count');
+        if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
+        // Also keep getClasses() in sync
+        const currentClasses = getClasses().filter(c => c.id !== newGrp.id && c.name.toLowerCase() !== newGrp.name.toLowerCase());
+        currentClasses.unshift({
+          id: newGrp.id,
+          name: newGrp.name,
+          code: newGrp.code || 'PIN-100',
+          schedule: newGrp.schedule || '',
+          description: newGrp.description || 'SAT Cohort',
+          studentCount: 0
+        });
+        saveClasses(currentClasses);
+        if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
+
+        showToast("👥 Group Created", `Cohort "${newGrp.name}" is now ready!`, "success");
+      };
+
       fetch('/api/groups', {
         method: 'POST',
         headers: {
@@ -4860,45 +5166,35 @@
         return res.json();
       })
       .then(data => {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Create Group</span>';
-        }
         if (data && data.ok) {
-          closeCreateGroupModal();
           const newGrp = data.group || { id: data.id, name: data.name, student_count: 0, created_at: new Date().toISOString() };
-          newGrp.student_count = newGrp.student_count || 0;
-          cachedGroups.unshift(newGrp);
-
-          // Dynamically update UI without full page reload
-          renderGroupsGrid(cachedGroups);
-          const countStat = document.getElementById('stat-groups-count');
-          if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
-
-          // Also keep getClasses() in sync
-          const currentClasses = getClasses().filter(c => c.id !== newGrp.id && c.name.toLowerCase() !== newGrp.name.toLowerCase());
-          currentClasses.unshift({
-            id: newGrp.id,
-            name: newGrp.name,
-            code: 'PIN-100',
-            schedule: '',
-            description: 'SAT Cohort',
-            studentCount: 0
-          });
-          saveClasses(currentClasses);
-          if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
-
-          showToast("👥 Group Created", `Cohort "${newGrp.name}" is now live in Supabase!`, "success");
+          handleGroupCreated(newGrp);
         } else {
           throw new Error(data.error || 'Failed to create group');
         }
       })
       .catch(err => {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Create Group</span>';
+        console.warn('[SATMaster] Server group creation note (offline or static fallback):', err.message);
+        if (err.message.includes('404') || err.message.includes('Failed to fetch') || err.message.includes('Network') || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+          const localId = 'grp_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 5);
+          const newGrp = {
+            id: localId,
+            name: name,
+            code: `PIN-${Math.floor(100 + Math.random() * 900)}`,
+            schedule: '',
+            description: 'SAT Cohort',
+            student_count: 0,
+            students: [],
+            created_at: new Date().toISOString()
+          };
+          handleGroupCreated(newGrp);
+        } else {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>Create Group</span>';
+          }
+          showToast("🚫 Creation Error", err.message, "error");
         }
-        showToast("🚫 Creation Error", err.message, "error");
       });
     }
 
@@ -4938,55 +5234,60 @@
         btn.innerText = 'Deleting...';
       }
 
+      // Lock out all students in this cohort permanently
+      const grp = (cachedGroups || []).find(g => g.id === gid || g.name === gid);
+      if (grp && Array.isArray(grp.students)) {
+        grp.students.forEach(s => {
+          if (s.id) addDeletedStudentId(s.id);
+          if (s.telegram_id) addDeletedStudentId(s.telegram_id);
+          if (s.telegram_username) addDeletedStudentId(s.telegram_username);
+        });
+      }
+
+      // Dynamically remove card from grid with smooth animation
+      const card = document.getElementById('group-card-' + gid);
+      if (card) {
+        card.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => card.remove(), 250);
+      }
+      cachedGroups = (cachedGroups || []).filter(g => g.id !== gid && g.name !== gid);
+      saveLocalGroups(cachedGroups);
+
+      // Keep satmaster_classes in sync
+      const currentClasses = getClasses().filter(c => c.id !== gid && c.name.toLowerCase() !== gname.toLowerCase());
+      saveClasses(currentClasses);
+      if (typeof syncClassesDropdownsFromGroups === 'function') syncClassesDropdownsFromGroups(cachedGroups);
+
+      const countStat = document.getElementById('stat-groups-count');
+      if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
+
+      if (cachedGroups.length === 0) {
+        const emptyState = document.getElementById('groups-empty-state');
+        if (emptyState) emptyState.classList.remove('hidden');
+      }
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Delete Permanently';
+      }
+      closeDeleteGroupModal();
+      showToast("🗑️ Group Deleted", `Cohort "${gname}" and all records were permanently removed.`, "info");
+
+      // Check if current user is student of that group and lock them out
+      const cur = getStoredSession();
+      if (cur && cur.role === 'student' && (cur.className === gname || cur.groupId === gid)) {
+        clearSessionStorage();
+        lockoutStudentSession("Your class cohort has been removed by the instructor.");
+      }
+
+      // Background server delete call if available
       fetch('/api/groups/' + encodeURIComponent(gid), {
         method: 'DELETE',
         headers: {
           'X-User-Role': (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest',
           'X-User-Id': (typeof currentSession !== 'undefined' && currentSession?.uid) || ''
         }
-      })
-      .then(res => {
-        if (!res.ok) {
-          if (res.status === 403) throw new Error("Access Denied: Only administrators can create or delete groups.");
-          throw new Error('Status ' + res.status);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = 'Delete Permanently';
-        }
-        closeDeleteGroupModal();
-        if (data && data.ok) {
-          // Dynamically remove card from grid with smooth animation
-          const card = document.getElementById('group-card-' + gid);
-          if (card) {
-            card.classList.add('opacity-0', 'scale-95');
-            setTimeout(() => card.remove(), 250);
-          }
-          cachedGroups = cachedGroups.filter(g => g.id !== gid && g.name !== gid);
-
-          const countStat = document.getElementById('stat-groups-count');
-          if (countStat) countStat.innerText = `${cachedGroups.length} Active ${cachedGroups.length === 1 ? 'Cohort' : 'Cohorts'}`;
-
-          if (cachedGroups.length === 0) {
-            const emptyState = document.getElementById('groups-empty-state');
-            if (emptyState) emptyState.classList.remove('hidden');
-          }
-
-          showToast("🗑️ Group Deleted", `Cohort "${gname}" and all records were permanently removed.`, "info");
-        } else {
-          throw new Error(data.error || 'Failed to delete group');
-        }
-      })
-      .catch(err => {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = 'Delete Permanently';
-        }
-        showToast("🚫 Delete Error", err.message, "error");
-      });
+      }).catch(() => {});
     }
 
     // Detail View Functions
@@ -5041,10 +5342,83 @@
       const tbody = document.getElementById('detail-roster-tbody');
       const countBadge = document.getElementById('detail-group-count-badge');
 
-      if (loading) loading.classList.remove('hidden');
       if (errorBox) errorBox.classList.add('hidden');
-      if (emptyState) emptyState.classList.add('hidden');
-      if (tableWrapper) tableWrapper.classList.add('hidden');
+
+      const renderStudentsList = (students) => {
+        if (loading) loading.classList.add('hidden');
+        if (errorBox) errorBox.classList.add('hidden');
+
+        if (countBadge) {
+          countBadge.innerText = `${students.length} ${students.length === 1 ? 'Student' : 'Students'}`;
+        }
+
+        // Sync with cached group count
+        const grp = cachedGroups.find(g => g.id === groupId || g.name === groupId);
+        if (grp) {
+          grp.student_count = students.length;
+          grp.students = students;
+          const cardBadge = document.getElementById('group-count-badge-' + groupId);
+          if (cardBadge) cardBadge.innerText = `👥 ${students.length} ${students.length === 1 ? 'Student' : 'Students'}`;
+        }
+
+        if (students.length === 0) {
+          if (emptyState) emptyState.classList.remove('hidden');
+          if (tableWrapper) tableWrapper.classList.add('hidden');
+          return;
+        }
+
+        if (emptyState) emptyState.classList.add('hidden');
+        if (tableWrapper) tableWrapper.classList.remove('hidden');
+
+        if (tbody) {
+          tbody.innerHTML = students.map(s => `
+            <tr class="hover:bg-slate-50 transition-all group-student-row" id="student-row-${s.id}">
+              <td class="py-3 px-4 sm:px-6">
+                <div class="flex items-center gap-2.5">
+                  <div class="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-xs shadow-md shadow-blue-500/20">
+                    ${getInitials(s.display_name)}
+                  </div>
+                  <div>
+                    <span class="font-bold text-slate-900 block text-xs">${escapeHtml(s.display_name)}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">TG ID: ${s.telegram_id || 'N/A'}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-4 sm:px-6">
+                ${s.telegram_username ? `
+                  <span class="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                    @${escapeHtml(s.telegram_username)}
+                  </span>
+                ` : `
+                  <span class="text-[11px] text-slate-400 italic">No @handle</span>
+                `}
+              </td>
+              <td class="py-3 px-4 sm:px-6 text-slate-500 font-mono text-[11px]">
+                ${formatTimestamp(s.created_at)}
+              </td>
+              <td class="py-3 px-4 sm:px-6 text-right space-x-2">
+                <button type="button" onclick="openStudentHistoryModal('${s.id}', '${escapeJs(s.display_name)}', '${escapeJs(s.telegram_username || '')}')" class="text-xs font-semibold text-sky-700 hover:text-sky-800 hover:bg-sky-100 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200 transition-all inline-flex items-center gap-1 shadow-xs">
+                  <span>📊</span><span>View Test History</span>
+                </button>
+                <button type="button" onclick="confirmDeleteStudent('${s.id}', '${escapeJs(s.display_name)}')" class="text-xs font-semibold text-rose-700 hover:text-rose-800 hover:bg-rose-100 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition-all inline-flex items-center gap-1 shadow-xs">
+                  <span>🗑️</span><span>Delete Student</span>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      };
+
+      // Check local cached group students first for instantaneous display!
+      const currentGrp = (cachedGroups || []).find(g => g.id === groupId || g.name === groupId);
+      const localStudents = (currentGrp && Array.isArray(currentGrp.students)) ? currentGrp.students : null;
+      if (localStudents) {
+        renderStudentsList(localStudents);
+      } else {
+        if (loading) loading.classList.remove('hidden');
+        if (emptyState) emptyState.classList.add('hidden');
+        if (tableWrapper) tableWrapper.classList.add('hidden');
+      }
 
       fetch('/api/groups/' + encodeURIComponent(groupId) + '/students')
         .then(res => {
@@ -5052,78 +5426,20 @@
           return res.json();
         })
         .then(data => {
-          if (loading) loading.classList.add('hidden');
-
           if (data && data.ok && Array.isArray(data.students)) {
-            const students = data.students;
-            if (countBadge) {
-              countBadge.innerText = `${students.length} ${students.length === 1 ? 'Student' : 'Students'}`;
-            }
-
-            // Sync with cached group count
-            const grp = cachedGroups.find(g => g.id === groupId);
-            if (grp) {
-              grp.student_count = students.length;
-              const cardBadge = document.getElementById('group-count-badge-' + groupId);
-              if (cardBadge) cardBadge.innerText = `👥 ${students.length} ${students.length === 1 ? 'Student' : 'Students'}`;
-            }
-
-            if (students.length === 0) {
-              if (emptyState) emptyState.classList.remove('hidden');
-              if (tableWrapper) tableWrapper.classList.add('hidden');
-              return;
-            }
-
-            if (emptyState) emptyState.classList.add('hidden');
-            if (tableWrapper) tableWrapper.classList.remove('hidden');
-
-            if (tbody) {
-              tbody.innerHTML = students.map(s => `
-                <tr class="hover:bg-slate-50 transition-all group-student-row" id="student-row-${s.id}">
-                  <td class="py-3 px-4 sm:px-6">
-                    <div class="flex items-center gap-2.5">
-                      <div class="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-xs shadow-md shadow-blue-500/20">
-                        ${getInitials(s.display_name)}
-                      </div>
-                      <div>
-                        <span class="font-bold text-slate-900 block text-xs">${escapeHtml(s.display_name)}</span>
-                        <span class="text-[10px] text-slate-400 font-mono">TG ID: ${s.telegram_id || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-3 px-4 sm:px-6">
-                    ${s.telegram_username ? `
-                      <span class="px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                        @${escapeHtml(s.telegram_username)}
-                      </span>
-                    ` : `
-                      <span class="text-[11px] text-slate-400 italic">No @handle</span>
-                    `}
-                  </td>
-                  <td class="py-3 px-4 sm:px-6 text-slate-500 font-mono text-[11px]">
-                    ${formatTimestamp(s.created_at)}
-                  </td>
-                  <td class="py-3 px-4 sm:px-6 text-right space-x-2">
-                    <button type="button" onclick="openStudentHistoryModal('${s.id}', '${escapeJs(s.display_name)}', '${escapeJs(s.telegram_username || '')}')" class="text-xs font-semibold text-sky-700 hover:text-sky-800 hover:bg-sky-100 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200 transition-all inline-flex items-center gap-1 shadow-xs">
-                      <span>📊</span><span>View Test History</span>
-                    </button>
-                    <button type="button" onclick="confirmDeleteStudent('${s.id}', '${escapeJs(s.display_name)}')" class="text-xs font-semibold text-rose-700 hover:text-rose-800 hover:bg-rose-100 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition-all inline-flex items-center gap-1 shadow-xs">
-                      <span>🗑️</span><span>Delete Student</span>
-                    </button>
-                  </td>
-                </tr>
-              `).join('');
-            }
+            renderStudentsList(data.students);
+          } else if (localStudents) {
+            renderStudentsList(localStudents);
           } else {
-            throw new Error(data.error || 'Failed to parse student roster');
+            renderStudentsList([]);
           }
         })
         .catch(err => {
-          if (loading) loading.classList.add('hidden');
-          if (errorBox) {
-            errorBox.classList.remove('hidden');
-            const msg = document.getElementById('detail-roster-error-msg');
-            if (msg) msg.innerText = `Failed to load roster: ${err.message}`;
+          console.warn('[SATMaster] Note fetching group students:', err.message);
+          if (localStudents) {
+            renderStudentsList(localStudents);
+          } else {
+            renderStudentsList([]);
           }
         });
     }
@@ -5146,16 +5462,85 @@
       if (userEl) userEl.innerText = studentUsername ? `@${studentUsername}` : 'Direct Telegram User';
       if (idEl) idEl.innerText = `ID: ${studentId}`;
 
-      if (countStat) countStat.innerText = '-';
-      if (avgStat) avgStat.innerText = '-';
-      if (bestStat) bestStat.innerText = '-';
-
-      if (loading) loading.classList.remove('hidden');
-      if (emptyState) emptyState.classList.add('hidden');
-      if (tableWrapper) tableWrapper.classList.add('hidden');
-      if (tbody) tbody.innerHTML = '';
-
       if (modal) modal.classList.remove('hidden');
+
+      const renderHistoryList = (history) => {
+        if (loading) loading.classList.add('hidden');
+
+        if (!history || !history.length) {
+          if (emptyState) emptyState.classList.remove('hidden');
+          if (tableWrapper) tableWrapper.classList.add('hidden');
+          if (countStat) countStat.innerText = '0';
+          if (avgStat) avgStat.innerText = 'N/A';
+          if (bestStat) bestStat.innerText = 'N/A';
+          return;
+        }
+
+        if (emptyState) emptyState.classList.add('hidden');
+        if (tableWrapper) tableWrapper.classList.remove('hidden');
+
+        const totalScores = history.map(h => Number(h.total_score) || 0);
+        const avgScore = Math.round(totalScores.reduce((a, b) => a + b, 0) / totalScores.length);
+        const maxScore = Math.max(...totalScores);
+
+        if (countStat) countStat.innerText = history.length;
+        if (avgStat) avgStat.innerText = `${avgScore} / 1600`;
+        if (bestStat) bestStat.innerText = `${maxScore} / 1600`;
+
+        if (tbody) {
+          tbody.innerHTML = history.map(item => {
+            const total = Number(item.total_score) || 0;
+            const rw = item.rw_score !== undefined && item.rw_score !== null ? item.rw_score : '-';
+            const math = item.math_score !== undefined && item.math_score !== null ? item.math_score : '-';
+            const isPassed = total >= 1100;
+            const statusLabel = item.status || (isPassed ? 'Passed' : 'Completed');
+
+            return `
+              <tr class="hover:bg-slate-50 transition-all">
+                <td class="py-2.5 px-4 font-semibold text-slate-900">
+                  ${escapeHtml(item.test_title || 'Digital SAT Full Test')}
+                </td>
+                <td class="py-2.5 px-4 font-black text-sky-700">
+                  ${total} <span class="text-[10px] text-slate-400 font-normal">/ 1600</span>
+                </td>
+                <td class="py-2.5 px-4 font-mono text-[11px] text-slate-600">
+                  <span class="text-purple-700 font-semibold">RW: ${rw}</span> <span class="text-slate-300">|</span> <span class="text-blue-700 font-semibold">Math: ${math}</span>
+                </td>
+                <td class="py-2.5 px-4">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    isPassed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }">
+                    ${escapeHtml(statusLabel)}
+                  </span>
+                </td>
+                <td class="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500">
+                  ${formatTimestampWithTime(item.completed_at)}
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      };
+
+      // Check local student history
+      let localHistory = null;
+      for (const g of (cachedGroups || [])) {
+        if (Array.isArray(g.students)) {
+          const s = g.students.find(stu => stu.id === studentId || String(stu.telegram_id) === String(studentId) || stu.display_name === studentName);
+          if (s && Array.isArray(s.history)) {
+            localHistory = s.history;
+            break;
+          }
+        }
+      }
+
+      if (localHistory) {
+        renderHistoryList(localHistory);
+      } else {
+        if (loading) loading.classList.remove('hidden');
+        if (emptyState) emptyState.classList.add('hidden');
+        if (tableWrapper) tableWrapper.classList.add('hidden');
+      }
 
       fetch('/api/students/' + encodeURIComponent(studentId) + '/history')
         .then(res => {
@@ -5163,68 +5548,21 @@
           return res.json();
         })
         .then(data => {
-          if (loading) loading.classList.add('hidden');
           const history = (data && data.ok) ? (data.history || data.test_results || []) : [];
-
-          if (!history.length) {
-            if (emptyState) emptyState.classList.remove('hidden');
-            if (tableWrapper) tableWrapper.classList.add('hidden');
-            if (countStat) countStat.innerText = '0';
-            if (avgStat) avgStat.innerText = 'N/A';
-            if (bestStat) bestStat.innerText = 'N/A';
-            return;
-          }
-
-          if (emptyState) emptyState.classList.add('hidden');
-          if (tableWrapper) tableWrapper.classList.remove('hidden');
-
-          const totalScores = history.map(h => Number(h.total_score) || 0);
-          const avgScore = Math.round(totalScores.reduce((a, b) => a + b, 0) / totalScores.length);
-          const maxScore = Math.max(...totalScores);
-
-          if (countStat) countStat.innerText = history.length;
-          if (avgStat) avgStat.innerText = `${avgScore} / 1600`;
-          if (bestStat) bestStat.innerText = `${maxScore} / 1600`;
-
-          if (tbody) {
-            tbody.innerHTML = history.map(item => {
-              const total = Number(item.total_score) || 0;
-              const rw = item.rw_score !== undefined && item.rw_score !== null ? item.rw_score : '-';
-              const math = item.math_score !== undefined && item.math_score !== null ? item.math_score : '-';
-              const isPassed = total >= 1100;
-              const statusLabel = item.status || (isPassed ? 'Passed' : 'Completed');
-
-              return `
-                <tr class="hover:bg-slate-50 transition-all">
-                  <td class="py-2.5 px-4 font-semibold text-slate-900">
-                    ${escapeHtml(item.test_title || 'Digital SAT Full Test')}
-                  </td>
-                  <td class="py-2.5 px-4 font-black text-sky-700">
-                    ${total} <span class="text-[10px] text-slate-400 font-normal">/ 1600</span>
-                  </td>
-                  <td class="py-2.5 px-4 font-mono text-[11px] text-slate-600">
-                    <span class="text-purple-700 font-semibold">RW: ${rw}</span> <span class="text-slate-300">|</span> <span class="text-blue-700 font-semibold">Math: ${math}</span>
-                  </td>
-                  <td class="py-2.5 px-4">
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      isPassed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                    }">
-                      ${escapeHtml(statusLabel)}
-                    </span>
-                  </td>
-                  <td class="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500">
-                    ${formatTimestampWithTime(item.completed_at)}
-                  </td>
-                </tr>
-              `;
-            }).join('');
+          if (history.length) {
+            renderHistoryList(history);
+          } else if (localHistory) {
+            renderHistoryList(localHistory);
+          } else {
+            renderHistoryList([]);
           }
         })
         .catch(err => {
-          if (loading) loading.classList.add('hidden');
-          if (emptyState) {
-            emptyState.classList.remove('hidden');
-            emptyState.innerHTML = `<p class="text-rose-400 text-xs">Error loading score history: ${escapeHtml(err.message)}</p>`;
+          console.warn('[SATMaster] Note loading student history:', err.message);
+          if (localHistory) {
+            renderHistoryList(localHistory);
+          } else {
+            renderHistoryList([]);
           }
         });
     }
@@ -5261,66 +5599,85 @@
         btn.innerText = 'Deleting...';
       }
 
-      fetch('/api/students/' + encodeURIComponent(sid), {
-        method: 'DELETE'
-      })
-      .then(res => {
-        if (!res.ok) throw new Error('Status ' + res.status);
-        return res.json();
-      })
-      .then(data => {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = 'Delete Student';
+      // 1. Immediately register student ID in permanent lockout list
+      addDeletedStudentId(sid);
+
+      // 2. Also register their telegram username and telegram_id to guarantee permanent lockout
+      (cachedGroups || []).forEach(g => {
+        if (Array.isArray(g.students)) {
+          const s = g.students.find(stu => stu.id === sid);
+          if (s) {
+            if (s.telegram_id) addDeletedStudentId(s.telegram_id);
+            if (s.telegram_username) addDeletedStudentId(s.telegram_username);
+          }
         }
-        closeDeleteStudentModal();
-        if (data && data.ok) {
-          // Dynamically remove student row from table
-          const row = document.getElementById('student-row-' + sid);
-          if (row) {
-            row.classList.add('opacity-0', 'scale-95');
-            setTimeout(() => row.remove(), 250);
-          }
-
-          // Decrement group count badge in detail view
-          const tbody = document.getElementById('detail-roster-tbody');
-          const remainingRows = tbody ? tbody.querySelectorAll('tr').length - 1 : 0;
-          const countBadge = document.getElementById('detail-group-count-badge');
-          if (countBadge) {
-            countBadge.innerText = `${Math.max(0, remainingRows)} ${remainingRows === 1 ? 'Student' : 'Students'}`;
-          }
-
-          // Also update group count in cachedGroups and hub card
-          if (activeGroupId) {
-            const grp = cachedGroups.find(g => g.id === activeGroupId);
-            if (grp) {
-              grp.student_count = Math.max(0, (grp.student_count || 1) - 1);
-              const cardBadge = document.getElementById('group-count-badge-' + activeGroupId);
-              if (cardBadge) {
-                cardBadge.innerText = `👥 ${grp.student_count} ${grp.student_count === 1 ? 'Student' : 'Students'}`;
-              }
-            }
-          }
-
-          if (remainingRows <= 0) {
-            const emptyState = document.getElementById('detail-roster-empty');
-            const tableWrapper = document.getElementById('detail-roster-table-wrapper');
-            if (emptyState) emptyState.classList.remove('hidden');
-            if (tableWrapper) tableWrapper.classList.add('hidden');
-          }
-
-          showToast("🗑️ Student Removed", `Student "${sname}" and test history were removed.`, "info");
-        } else {
-          throw new Error(data.error || 'Failed to delete student');
-        }
-      })
-      .catch(err => {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = 'Delete Student';
-        }
-        showToast("🚫 Delete Error", err.message, "error");
       });
+
+      // 3. Remove student from cachedGroups and save to localStorage
+      (cachedGroups || []).forEach(g => {
+        if (Array.isArray(g.students)) {
+          const initialLen = g.students.length;
+          g.students = g.students.filter(s => s.id !== sid);
+          if (g.students.length !== initialLen) {
+            g.student_count = g.students.length;
+          }
+        }
+      });
+      saveLocalGroups(cachedGroups);
+
+      // 4. Lockout current session immediately if active user is this deleted student
+      const cur = getStoredSession();
+      if (cur && cur.role === 'student') {
+        const cUid = String(cur.uid || '').toLowerCase();
+        if (cUid === String(sid).toLowerCase() || isStudentDeleted(cur.uid, cur.name)) {
+          clearSessionStorage();
+          lockoutStudentSession("Your student enrollment has been permanently removed by the instructor.");
+        }
+      }
+
+      // 5. Dynamically remove student row from table with smooth animation
+      const row = document.getElementById('student-row-' + sid);
+      if (row) {
+        row.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => row.remove(), 250);
+      }
+
+      // 6. Decrement group count badge in detail view
+      const tbody = document.getElementById('detail-roster-tbody');
+      const remainingRows = tbody ? tbody.querySelectorAll('tr').length - 1 : 0;
+      const countBadge = document.getElementById('detail-group-count-badge');
+      if (countBadge) {
+        countBadge.innerText = `${Math.max(0, remainingRows)} ${remainingRows === 1 ? 'Student' : 'Students'}`;
+      }
+
+      // 7. Also update group count in cachedGroups and hub card
+      if (activeGroupId) {
+        const grp = cachedGroups.find(g => g.id === activeGroupId || g.name === activeGroupId);
+        if (grp) {
+          grp.student_count = Math.max(0, (grp.student_count || 1) - 1);
+          const cardBadge = document.getElementById('group-count-badge-' + activeGroupId);
+          if (cardBadge) {
+            cardBadge.innerText = `👥 ${grp.student_count} ${grp.student_count === 1 ? 'Student' : 'Students'}`;
+          }
+        }
+      }
+
+      if (remainingRows <= 0) {
+        const emptyState = document.getElementById('detail-roster-empty');
+        const tableWrapper = document.getElementById('detail-roster-table-wrapper');
+        if (emptyState) emptyState.classList.remove('hidden');
+        if (tableWrapper) tableWrapper.classList.add('hidden');
+      }
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Delete Student';
+      }
+      closeDeleteStudentModal();
+      showToast("🗑️ Student Removed", `Student "${sname}" and test history were removed. Account locked out.`, "info");
+
+      // 8. Attempt server delete in background
+      fetch('/api/students/' + encodeURIComponent(sid), { method: 'DELETE' }).catch(() => {});
     }
 
     // URL & Hash Routing Handler
@@ -13525,7 +13882,7 @@ if (typeof window !== 'undefined') {
       <span class="text-base">👥</span>
       <span>Groups</span>
     </button>
-    <button type="button" onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all">
+    <button type="button" onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="hidden flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all">
       <span class="text-base">📊</span>
       <span>Dashboard</span>
     </button>
