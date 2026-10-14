@@ -705,83 +705,230 @@
 
       <div class="p-6 sm:p-8 rounded-3xl border border-slate-200 bg-white space-y-6 shadow-sm text-slate-800">
         
-        <!-- Top Form: Class, Title, PIN, Timer -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- STEP 1: General Assignment Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
           <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700">Target Class Cohort</label>
-            <select id="creator-class-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs">
+            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <span>👥</span><span>Target Class Cohort</span>
+            </label>
+            <select id="creator-class-select" onchange="updateCreatorAutoTitle()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
               <!-- Dynamic class options -->
             </select>
           </div>
 
           <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700">Homework Title</label>
-            <input type="text" id="creator-hw-title" placeholder="e.g. Week 2: SAT Math Quadratics & Reading Conventions" value="Digital SAT Practice Drill #1" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs">
+            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <span>🏷️</span><span>Homework Title</span>
+            </label>
+            <input type="text" id="creator-hw-title" placeholder="e.g. SAT Vocab: Lesson 1 Unit Test" value="SAT Vocab: Lesson 1 Unit Test" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
           </div>
 
           <div class="space-y-1.5">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-slate-700">Assignment PIN Code</label>
-              <button type="button" onclick="generateNewHwPin()" class="text-[10px] text-sky-600 hover:text-sky-700 font-bold">🎲 Random PIN</button>
+              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>📅</span><span>Submission Deadline</span>
+              </label>
+              <div class="flex items-center gap-1.5 text-[10px]">
+                <button type="button" onclick="setCreatorDeadlinePreset(1)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+24h</button>
+                <button type="button" onclick="setCreatorDeadlinePreset(3)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+3 Days</button>
+                <button type="button" onclick="setCreatorDeadlinePreset(7)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition-all">+1 Wk</button>
+              </div>
             </div>
-            <input type="text" id="creator-hw-pin" value="SAT-01" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 font-mono uppercase font-bold focus:bg-white focus:border-blue-500 outline-none shadow-xs">
+            <input type="datetime-local" id="creator-hw-deadline" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
           </div>
 
           <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-slate-700">Timer Limit</label>
-            <select id="creator-hw-timer" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs">
+            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <span>⏱️</span><span>Timer Limit</span>
+            </label>
+            <select id="creator-hw-timer" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
               <option value="0">Untimed (Practice Drill)</option>
               <option value="10">10 Minutes</option>
               <option value="15" selected>15 Minutes</option>
               <option value="20">20 Minutes</option>
               <option value="30">30 Minutes</option>
+              <option value="45">45 Minutes</option>
+              <option value="60">60 Minutes</option>
             </select>
           </div>
         </div>
 
-        <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-slate-700">Assignment Description / Notes (Optional)</label>
-          <input type="text" id="creator-hw-desc" placeholder="e.g. Focus on elimination of trap answers and vertex form quadratics." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs">
+        <!-- STEP 2: Choose Homework Type Toggle Cards -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <span>🎯</span><span>Select Homework Type</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <!-- Type 1: SAT Vocab Card -->
+            <div id="creator-card-type-vocab" onclick="switchCreatorHwType('vocab')" class="p-4 rounded-2xl border-2 border-purple-500 bg-purple-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-purple-600">
+              <div class="h-10 w-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl shrink-0">
+                📚
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-extrabold text-slate-900">SAT Vocabulary Unit Test</h4>
+                  <span id="creator-radio-vocab" class="w-4 h-4 rounded-full border-2 border-purple-600 bg-purple-600 flex items-center justify-center text-[9px] text-white font-bold">✓</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">Lesson-based flashcards, definition recognition, sentence blanks, and precision meaning.</p>
+                <div class="mt-2 text-[10px] text-purple-700 font-bold bg-purple-100/70 px-2 py-0.5 rounded-md inline-block">Passing Threshold: ≥80%</div>
+              </div>
+            </div>
+
+            <!-- Type 2: SAT Question Bank Card -->
+            <div id="creator-card-type-qbank" onclick="switchCreatorHwType('qbank')" class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-slate-300">
+              <div class="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-xl shrink-0">
+                📖
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-extrabold text-slate-900">SAT Question Bank Practice</h4>
+                  <span id="creator-radio-qbank" class="w-4 h-4 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-[9px] text-white font-bold"></span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">Authentic Bluebook questions covering R&W and Math. <strong class="text-sky-700">Pulls from each student's unsolved questions pool only.</strong></p>
+                <div class="mt-2 text-[10px] text-sky-700 font-bold bg-sky-100/70 px-2 py-0.5 rounded-md inline-block">Pass: Math ≥85% | R&W ≥75%</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Question Selection Section -->
-        <div class="pt-4 border-t border-slate-200 space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span>📖</span><span>Select Questions from SAT Question Bank</span>
-              </h3>
-              <p class="text-xs text-slate-500">Select authentic questions covering Reading &amp; Writing and Math.</p>
-            </div>
-            
-            <!-- Quick Selection Filters & Actions -->
-            <div class="flex items-center gap-2 flex-wrap text-xs">
-              <button type="button" onclick="filterCreatorQuestions('all')" id="btn-filter-q-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] shadow-xs">All</button>
-              <button type="button" onclick="filterCreatorQuestions('rw')" id="btn-filter-q-rw" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 font-semibold text-[11px] transition-all">R&amp;W</button>
-              <button type="button" onclick="filterCreatorQuestions('math')" id="btn-filter-q-math" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 font-semibold text-[11px] transition-all">Math</button>
-              <span class="text-slate-300">|</span>
-              <button type="button" onclick="selectAllCreatorQuestions(true)" class="text-[11px] text-sky-600 hover:underline font-bold">Select All</button>
-              <button type="button" onclick="selectAllCreatorQuestions(false)" class="text-[11px] text-slate-500 hover:underline">Clear</button>
-            </div>
+        <!-- STEP 3A: VOCABULARY SETTINGS CONTAINER -->
+        <div id="creator-vocab-settings" class="space-y-4 p-5 rounded-2xl bg-purple-50/30 border border-purple-100">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <span>📚</span><span>Vocabulary Scope & Question Count</span>
+            </h3>
+            <span class="text-[11px] text-purple-700 font-semibold">Lesson Unit Test</span>
           </div>
 
-          <!-- Counter Banner -->
-          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-            <span class="text-slate-700">Selected Questions: <strong id="creator-selected-count" class="text-emerald-700 font-bold text-sm">0</strong> / <span id="creator-total-count">16</span></span>
-            <span class="text-slate-500 text-[11px]" id="creator-est-time">Est. completion time: ~0 mins</span>
-          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-slate-700">Choose Lesson or Scope</label>
+              <select id="creator-vocab-scope" onchange="updateCreatorAutoTitle()" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:border-purple-500 outline-none shadow-xs font-medium">
+                <optgroup label="Single Lessons (20 Words each)">
+                  <option value="lesson1" selected>Lesson 1 (Words 1 – 20)</option>
+                  <option value="lesson2">Lesson 2 (Words 21 – 40)</option>
+                  <option value="lesson3">Lesson 3 (Words 41 – 60)</option>
+                  <option value="lesson4">Lesson 4 (Words 61 – 80)</option>
+                  <option value="lesson5">Lesson 5 (Words 81 – 100)</option>
+                  <option value="lesson6">Lesson 6 (Words 101 – 120)</option>
+                  <option value="lesson7">Lesson 7 (Words 121 – 140)</option>
+                  <option value="lesson8">Lesson 8 (Words 141 – 153)</option>
+                  <option value="lesson9">Lesson 9 (Words 154 – 173)</option>
+                  <option value="lesson10">Lesson 10 (Words 174 – 193)</option>
+                  <option value="lesson11">Lesson 11 (Words 194 – 213)</option>
+                  <option value="lesson12">Lesson 12 (Words 214 – 233)</option>
+                  <option value="lesson13">Lesson 13 (Words 234 – 253)</option>
+                  <option value="lesson14">Lesson 14 (Words 254 – 273)</option>
+                  <option value="lesson15">Lesson 15 (Words 274 – 293)</option>
+                  <option value="lesson16">Lesson 16 (Words 294 – 313)</option>
+                  <option value="lesson17">Lesson 17 (Words 314 – 331)</option>
+                  <option value="lesson18">Lesson 18 (Words 332 – 352)</option>
+                  <option value="lesson19">Lesson 19 (Words 353 – 373)</option>
+                  <option value="lesson20">Lesson 20 (Words 374 – 394)</option>
+                  <option value="lesson21">Lesson 21 (Words 395 – 414)</option>
+                  <option value="lesson22">Lesson 22 (Words 415 – 434)</option>
+                </optgroup>
+                <optgroup label="Multi-Lesson Review Bundles">
+                  <option value="bundle_1_2">Lessons 1 – 2 Review (First 40 Words)</option>
+                  <option value="bundle_1_3">Lessons 1 – 3 Review (First 60 Words)</option>
+                  <option value="bundle_1_5">Lessons 1 – 5 Review (First 100 Words)</option>
+                  <option value="bundle_6_10">Lessons 6 – 10 Review (Words 101 – 193)</option>
+                  <option value="bundle_11_15">Lessons 11 – 15 Review (Words 194 – 293)</option>
+                  <option value="bundle_16_20">Lessons 16 – 20 Review (Words 294 – 394)</option>
+                  <option value="bundle_21_22">Lessons 21 – 22 Review (Words 395 – 434)</option>
+                  <option value="all">Full Scope (All 434 Words Comprehensive)</option>
+                </optgroup>
+              </select>
+            </div>
 
-          <!-- Question Picker Scrollable List -->
-          <div id="creator-questions-list" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-            <!-- Dynamically populated question cards with checkboxes -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-slate-700">Question Count</label>
+              <div class="flex items-center gap-2 pt-0.5">
+                <button type="button" onclick="setCreatorVocabCount('10')" id="btn-vocab-count-10" class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">10 Qs</button>
+                <button type="button" onclick="setCreatorVocabCount('20')" id="btn-vocab-count-20" class="flex-1 py-2.5 rounded-xl border-2 border-purple-600 bg-purple-600 text-white font-bold text-xs transition-all shadow-xs">20 Qs</button>
+                <button type="button" onclick="setCreatorVocabCount('all')" id="btn-vocab-count-all" class="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">Full Scope</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Publish Button -->
-        <div class="pt-4 border-t border-slate-200 flex items-center justify-between">
-          <span class="text-xs text-slate-500">Students access instantly via PIN code or Telegram link</span>
-          <button onclick="handlePublishHomework()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold text-xs text-white shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center gap-2">
-            <span>🚀 Publish Homework &amp; Generate PIN</span>
+        <!-- STEP 3B: QUESTION BANK SETTINGS CONTAINER -->
+        <div id="creator-qbank-settings" class="hidden space-y-5 p-5 rounded-2xl bg-sky-50/30 border border-sky-100">
+          
+          <!-- Guaranteed Unsolved Pill Banner -->
+          <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+            <div class="flex items-center gap-2">
+              <span class="text-base">✨</span>
+              <span><strong>Unsolved Questions Guarantee:</strong> Questions are dynamically selected from each student's personal unsolved question pool.</span>
+            </div>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider">Active</span>
+          </div>
+
+          <!-- Section / Part Choice -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-700">1. Choose Subject / Section</label>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" onclick="switchCreatorQBankSection('rw')" id="btn-creator-sec-rw" class="px-4 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5">
+                <span>📖</span><span>Reading & Writing (R&W)</span>
+              </button>
+              <button type="button" onclick="switchCreatorQBankSection('math')" id="btn-creator-sec-math" class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
+                <span>📐</span><span>Math</span>
+              </button>
+              <button type="button" onclick="switchCreatorQBankSection('all')" id="btn-creator-sec-all" class="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
+                <span>⚡</span><span>All Questions (Mixed)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Question Types (Domains) -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>2. Select Question Types / Domains</span>
+                <span class="text-slate-400 font-normal text-[11px]">(Mark ticks on themes to test)</span>
+              </label>
+              <div class="flex items-center gap-2 text-xs">
+                <button type="button" onclick="toggleAllCreatorDomains(true)" class="text-[11px] text-sky-600 hover:underline font-bold">Select All</button>
+                <span class="text-slate-300">|</span>
+                <button type="button" onclick="toggleAllCreatorDomains(false)" class="text-[11px] text-slate-500 hover:underline">Clear</button>
+              </div>
+            </div>
+
+            <!-- Domain Checkboxes Grid -->
+            <div id="creator-domains-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <!-- Dynamically populated checkboxes based on section -->
+            </div>
+          </div>
+
+          <!-- Question Count Selection -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-700">3. Select Number of Questions</label>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" onclick="setCreatorQBankCount(10)" id="btn-qb-count-10" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">10</button>
+              <button type="button" onclick="setCreatorQBankCount(20)" id="btn-qb-count-20" class="px-3.5 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs">20</button>
+              <button type="button" onclick="setCreatorQBankCount(30)" id="btn-qb-count-30" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">30</button>
+              <button type="button" onclick="setCreatorQBankCount(40)" id="btn-qb-count-40" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all">40</button>
+              <div class="flex items-center gap-1.5 ml-1">
+                <span class="text-xs text-slate-500 font-medium">Or Custom:</span>
+                <input type="number" id="creator-qb-custom-count" oninput="handleCreatorCustomCountInput(this.value)" min="1" max="100" placeholder="Count" class="w-20 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold outline-none focus:border-sky-500 shadow-xs">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SUMMARY & ASSIGN ACTION BAR -->
+        <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-0.5">
+            <div class="text-xs font-bold text-slate-900 flex items-center gap-2" id="creator-summary-title">
+              <span>Ready to Assign:</span>
+              <span class="text-purple-700 font-extrabold" id="creator-summary-pill">SAT Vocab • Lesson 1 (20 Qs)</span>
+            </div>
+            <p class="text-[11px] text-slate-500" id="creator-summary-desc">Will appear immediately in student portal for the selected class.</p>
+          </div>
+
+          <button type="button" onclick="handlePublishHomework()" id="btn-submit-homework" class="px-7 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 font-bold text-xs text-white shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <span>🚀 Assign Homework to Class</span>
           </button>
         </div>
 
@@ -5951,147 +6098,342 @@
     }
 
     function generateNewHwPin() {
-      const prefixes = ['MATH', 'READ', 'SAT', 'DRIL', 'HW'];
+      const prefixes = ['MATH', 'READ', 'SAT', 'DRIL', 'HW', 'UNIT'];
       const randPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
       const randNum = Math.floor(10 + Math.random() * 90);
-      const pin = `${randPrefix}-${randNum}`;
-      const input = document.getElementById('creator-hw-pin');
-      if (input) input.value = pin;
-      return pin;
+      return `${randPrefix}-${randNum}`;
     }
 
-    let creatorSelectedQuestionIds = ['m-alg-01', 'm-alg-02', 'm-spr-01', 'm-adv-01', 'm-geom-02'];
-    let creatorSubjectFilter = 'all';
+    // =========================================================
+    // STREAMLINED TEACHER HOMEWORK CREATOR STATE & CONTROLLERS
+    // =========================================================
+    const CREATOR_DOMAIN_META = {
+      rw: [
+        { id: "Craft and Structure", name: "Craft and Structure", desc: "Words in Context, Text Structure & Purpose, Connections", count: 471 },
+        { id: "Information and Ideas", name: "Information and Ideas", desc: "Command of Evidence, Inferences, Central Ideas", count: 555 },
+        { id: "Standard English Conventions", name: "Standard English Conventions", desc: "Boundaries, Form, Structure, and Sense", count: 421 },
+        { id: "Expression of Ideas", name: "Expression of Ideas", desc: "Rhetorical Synthesis, Transitions", count: 398 }
+      ],
+      math: [
+        { id: "Algebra", name: "Algebra", desc: "Linear equations, Systems, Inequalities", count: 616 },
+        { id: "Advanced Math", name: "Advanced Math", desc: "Nonlinear functions, Quadratics, Exponentials", count: 540 },
+        { id: "Problem-Solving and Data Analysis", name: "Problem-Solving & Data Analysis", desc: "Ratios, Percentages, Probability, Distributions", count: 421 },
+        { id: "Geometry and Trigonometry", name: "Geometry & Trigonometry", desc: "Area, Volume, Circles, Angles, Triangles", count: 348 }
+      ]
+    };
 
-    function filterCreatorQuestions(subject) {
-      creatorSubjectFilter = subject;
-      ['all', 'rw', 'math'].forEach(s => {
-        const btn = document.getElementById(`btn-filter-q-${s}`);
+    let creatorHwState = {
+      type: 'vocab', // 'vocab' | 'qbank'
+      vocabScope: 'lesson1',
+      vocabCount: '20', // '10' | '20' | 'all'
+      qbankSection: 'rw', // 'rw' | 'math' | 'all'
+      qbankDomains: new Set(["Craft and Structure", "Information and Ideas", "Standard English Conventions", "Expression of Ideas"]),
+      qbankCount: 20
+    };
+
+    function initCreatorDefaults() {
+      // Set default deadline to tomorrow 23:59
+      setCreatorDeadlinePreset(1);
+      renderCreatorDomains();
+      updateCreatorAutoTitle();
+    }
+
+    function switchCreatorHwType(type) {
+      creatorHwState.type = type;
+      const isVocab = type === 'vocab';
+
+      const cardVocab = document.getElementById('creator-card-type-vocab');
+      const cardQBank = document.getElementById('creator-card-type-qbank');
+      const radioVocab = document.getElementById('creator-radio-vocab');
+      const radioQBank = document.getElementById('creator-radio-qbank');
+      const vocabSettings = document.getElementById('creator-vocab-settings');
+      const qbankSettings = document.getElementById('creator-qbank-settings');
+
+      if (isVocab) {
+        if (cardVocab) cardVocab.className = 'p-4 rounded-2xl border-2 border-purple-500 bg-purple-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-purple-600';
+        if (cardQBank) cardQBank.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-slate-300';
+        if (radioVocab) { radioVocab.className = 'w-4 h-4 rounded-full border-2 border-purple-600 bg-purple-600 flex items-center justify-center text-[9px] text-white font-bold'; radioVocab.innerText = '✓'; }
+        if (radioQBank) { radioQBank.className = 'w-4 h-4 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-[9px] text-white font-bold'; radioQBank.innerText = ''; }
+        if (vocabSettings) vocabSettings.classList.remove('hidden');
+        if (qbankSettings) qbankSettings.classList.add('hidden');
+      } else {
+        if (cardVocab) cardVocab.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-slate-300';
+        if (cardQBank) cardQBank.className = 'p-4 rounded-2xl border-2 border-sky-500 bg-sky-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-sky-600';
+        if (radioVocab) { radioVocab.className = 'w-4 h-4 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-[9px] text-white font-bold'; radioVocab.innerText = ''; }
+        if (radioQBank) { radioQBank.className = 'w-4 h-4 rounded-full border-2 border-sky-600 bg-sky-600 flex items-center justify-center text-[9px] text-white font-bold'; radioQBank.innerText = '✓'; }
+        if (vocabSettings) vocabSettings.classList.add('hidden');
+        if (qbankSettings) qbankSettings.classList.remove('hidden');
+      }
+
+      updateCreatorAutoTitle();
+    }
+
+    function switchCreatorQBankSection(sec) {
+      creatorHwState.qbankSection = sec;
+      ['rw', 'math', 'all'].forEach(s => {
+        const btn = document.getElementById(`btn-creator-sec-${s}`);
         if (btn) {
-          if (s === subject) {
-            btn.className = 'px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px]';
+          if (s === sec) {
+            btn.className = 'px-4 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5';
           } else {
-            btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-semibold text-[11px]';
+            btn.className = 'px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5';
           }
         }
       });
-      renderCreatorQuestionSelector();
-    }
 
-    function selectAllCreatorQuestions(selectAll) {
-      const allQ = getAllBankQuestions();
-      const visible = allQ.filter(q => {
-        if (creatorSubjectFilter === 'all') return true;
-        return q.section === creatorSubjectFilter || (creatorSubjectFilter === 'rw' && q.id.startsWith('rw')) || (creatorSubjectFilter === 'math' && q.id.startsWith('m'));
-      });
-
-      if (selectAll) {
-        visible.forEach(q => {
-          if (!creatorSelectedQuestionIds.includes(q.id)) {
-            creatorSelectedQuestionIds.push(q.id);
-          }
-        });
-      } else {
-        const visibleIds = visible.map(q => q.id);
-        creatorSelectedQuestionIds = creatorSelectedQuestionIds.filter(id => !visibleIds.includes(id));
+      // Reset selected domains to all domains of that section by default
+      creatorHwState.qbankDomains.clear();
+      if (sec === 'rw' || sec === 'all') {
+        CREATOR_DOMAIN_META.rw.forEach(d => creatorHwState.qbankDomains.add(d.id));
       }
-      renderCreatorQuestionSelector();
-    }
-
-    function toggleSelectCreatorQuestion(id) {
-      const idx = creatorSelectedQuestionIds.indexOf(id);
-      if (idx > -1) {
-        creatorSelectedQuestionIds.splice(idx, 1);
-      } else {
-        creatorSelectedQuestionIds.push(id);
+      if (sec === 'math' || sec === 'all') {
+        CREATOR_DOMAIN_META.math.forEach(d => creatorHwState.qbankDomains.add(d.id));
       }
-      renderCreatorQuestionSelector();
+
+      renderCreatorDomains();
+      updateCreatorAutoTitle();
     }
 
-    function renderCreatorQuestionSelector() {
-      const container = document.getElementById('creator-questions-list');
-      const countEl = document.getElementById('creator-selected-count');
-      const totalEl = document.getElementById('creator-total-count');
-      const estTimeEl = document.getElementById('creator-est-time');
-
-      const allQ = getAllBankQuestions();
-      if (totalEl) totalEl.innerText = allQ.length;
-      if (countEl) countEl.innerText = creatorSelectedQuestionIds.length;
-      if (estTimeEl) estTimeEl.innerText = `Est. completion time: ~${Math.max(5, creatorSelectedQuestionIds.length * 2)} mins`;
-
+    function renderCreatorDomains() {
+      const container = document.getElementById('creator-domains-container');
       if (!container) return;
 
-      const filtered = allQ.filter(q => {
-        if (creatorSubjectFilter === 'all') return true;
-        return q.section === creatorSubjectFilter || (creatorSubjectFilter === 'rw' && q.id.startsWith('rw')) || (creatorSubjectFilter === 'math' && q.id.startsWith('m'));
-      });
-
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No questions match the current filter.</div>`;
-        return;
+      let list = [];
+      if (creatorHwState.qbankSection === 'rw') {
+        list = CREATOR_DOMAIN_META.rw;
+      } else if (creatorHwState.qbankSection === 'math') {
+        list = CREATOR_DOMAIN_META.math;
+      } else {
+        list = [...CREATOR_DOMAIN_META.rw, ...CREATOR_DOMAIN_META.math];
       }
 
-      container.innerHTML = filtered.map(q => {
-        const isSelected = creatorSelectedQuestionIds.includes(q.id);
-        const isRw = q.section === 'rw' || q.id.startsWith('rw');
-        const badgeColor = isRw ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-sky-50 text-sky-700 border-sky-200';
-        const diffColor = q.difficulty === 'Easy' ? 'text-emerald-700 font-bold' : q.difficulty === 'Hard' ? 'text-rose-700 font-bold' : 'text-amber-700 font-bold';
-
+      container.innerHTML = list.map(item => {
+        const isChecked = creatorHwState.qbankDomains.has(item.id);
         return `
-          <div onclick="toggleSelectCreatorQuestion('${q.id}')" class="p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${isSelected ? 'bg-blue-50/80 border-blue-400 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 shadow-xs'}">
-            <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelectCreatorQuestion('${q.id}')" class="mt-1 w-4 h-4 rounded text-blue-600 bg-white border-slate-300 cursor-pointer">
-            <div class="flex-1 min-w-0 space-y-1">
-              <div class="flex items-center gap-2 flex-wrap text-[10px]">
-                <span class="px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border ${badgeColor}">
-                  ${isRw ? 'Reading & Writing' : 'Math'}
-                </span>
-                <span class="font-bold text-slate-700">${q.domain || 'Core SAT'}</span>
-                <span class="text-slate-400">•</span>
-                <span class="font-semibold ${diffColor}">${q.difficulty || 'Medium'}</span>
-                ${q.type === 'spr' ? '<span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-extrabold uppercase text-[9px]">SPR Grid-in</span>' : ''}
+          <div onclick="toggleCreatorDomain('${item.id}')" class="p-3 rounded-xl border cursor-pointer select-none transition-all flex items-start gap-3 ${isChecked ? 'bg-sky-50/80 border-sky-400 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'}">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); toggleCreatorDomain('${item.id}')" class="mt-0.5 w-4 h-4 rounded text-sky-600 bg-white border-slate-300 cursor-pointer">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-900">${item.name}</span>
+                <span class="text-[10px] font-semibold text-slate-400">~${item.count} Qs</span>
               </div>
-              <p class="text-xs text-slate-800 line-clamp-2 leading-snug">${q.passage ? q.passage.substring(0, 110) + '... ' : ''}${q.prompt}</p>
+              <p class="text-[11px] text-slate-500 leading-tight mt-0.5">${item.desc}</p>
             </div>
           </div>
         `;
       }).join('');
     }
 
-    function handlePublishHomework() {
-      const classes = getClasses();
+    function toggleCreatorDomain(domainId) {
+      if (creatorHwState.qbankDomains.has(domainId)) {
+        creatorHwState.qbankDomains.delete(domainId);
+      } else {
+        creatorHwState.qbankDomains.add(domainId);
+      }
+      renderCreatorDomains();
+      updateCreatorAutoTitle();
+    }
+
+    function toggleAllCreatorDomains(selectAll) {
+      creatorHwState.qbankDomains.clear();
+      if (selectAll) {
+        if (creatorHwState.qbankSection === 'rw' || creatorHwState.qbankSection === 'all') {
+          CREATOR_DOMAIN_META.rw.forEach(d => creatorHwState.qbankDomains.add(d.id));
+        }
+        if (creatorHwState.qbankSection === 'math' || creatorHwState.qbankSection === 'all') {
+          CREATOR_DOMAIN_META.math.forEach(d => creatorHwState.qbankDomains.add(d.id));
+        }
+      }
+      renderCreatorDomains();
+      updateCreatorAutoTitle();
+    }
+
+    function setCreatorVocabCount(val) {
+      creatorHwState.vocabCount = val;
+      ['10', '20', 'all'].forEach(c => {
+        const btn = document.getElementById(`btn-vocab-count-${c}`);
+        if (btn) {
+          if (c === val) {
+            btn.className = 'flex-1 py-2.5 rounded-xl border-2 border-purple-600 bg-purple-600 text-white font-bold text-xs transition-all shadow-xs';
+          } else {
+            btn.className = 'flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all';
+          }
+        }
+      });
+      updateCreatorAutoTitle();
+    }
+
+    function setCreatorQBankCount(count) {
+      creatorHwState.qbankCount = count;
+      const customInput = document.getElementById('creator-qb-custom-count');
+      if (customInput) customInput.value = '';
+
+      [10, 20, 30, 40].forEach(c => {
+        const btn = document.getElementById(`btn-qb-count-${c}`);
+        if (btn) {
+          if (c === count) {
+            btn.className = 'px-3.5 py-2 rounded-xl border-2 border-sky-600 bg-sky-600 text-white font-bold text-xs transition-all shadow-xs';
+          } else {
+            btn.className = 'px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all';
+          }
+        }
+      });
+      updateCreatorAutoTitle();
+    }
+
+    function handleCreatorCustomCountInput(val) {
+      const parsed = parseInt(val, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        creatorHwState.qbankCount = parsed;
+        [10, 20, 30, 40].forEach(c => {
+          const btn = document.getElementById(`btn-qb-count-${c}`);
+          if (btn) btn.className = 'px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all';
+        });
+        updateCreatorAutoTitle();
+      }
+    }
+
+    function setCreatorDeadlinePreset(days) {
+      const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+      d.setHours(23, 59, 0, 0);
+      const iso = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0') + 'T' +
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0');
+      const input = document.getElementById('creator-hw-deadline');
+      if (input) input.value = iso;
+    }
+
+    function updateCreatorAutoTitle() {
+      const titleInput = document.getElementById('creator-hw-title');
+      const summaryPill = document.getElementById('creator-summary-pill');
       const select = document.getElementById('creator-class-select');
-      const selectedClassName = (select && select.options && select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex].text : (select?.value || 'Group A');
+      const scopeSelect = document.getElementById('creator-vocab-scope');
+
+      if (creatorHwState.type === 'vocab') {
+        const scopeId = scopeSelect ? scopeSelect.value : 'lesson1';
+        creatorHwState.vocabScope = scopeId;
+        const scopeName = (typeof getScopeDisplayName === 'function') ? getScopeDisplayName(scopeId) : scopeId;
+        const countText = creatorHwState.vocabCount === 'all' ? 'Full Scope' : `${creatorHwState.vocabCount} Questions`;
+
+        const generatedTitle = `SAT Vocab: ${scopeName}`;
+        if (titleInput && (!titleInput.value || titleInput.value.startsWith('SAT Vocab:') || titleInput.value.startsWith('Digital SAT'))) {
+          titleInput.value = generatedTitle;
+        }
+        if (summaryPill) {
+          summaryPill.className = 'text-purple-700 font-extrabold';
+          summaryPill.innerText = `📚 Vocab • ${scopeName} (${countText})`;
+        }
+      } else {
+        const secLabel = creatorHwState.qbankSection === 'rw' ? 'Reading & Writing' : (creatorHwState.qbankSection === 'math' ? 'Math' : 'Mixed R&W + Math');
+        const countText = `${creatorHwState.qbankCount} Unsolved Questions`;
+        const domainsList = Array.from(creatorHwState.qbankDomains);
+        const domainsDesc = domainsList.length === 0 ? 'No domains' : (domainsList.length <= 2 ? domainsList.join(', ') : `${domainsList.length} Domains`);
+
+        const generatedTitle = `Digital SAT ${secLabel} Practice Drill`;
+        if (titleInput && (!titleInput.value || titleInput.value.startsWith('SAT Vocab:') || titleInput.value.startsWith('Digital SAT'))) {
+          titleInput.value = generatedTitle;
+        }
+        if (summaryPill) {
+          summaryPill.className = 'text-sky-700 font-extrabold';
+          summaryPill.innerText = `📖 QBank • ${secLabel}: ${domainsDesc} (${countText})`;
+        }
+      }
+    }
+
+    async function handlePublishHomework() {
+      const select = document.getElementById('creator-class-select');
+      const groupId = select ? select.value : '';
+      const selectedClassName = (select && select.options && select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex].text : (groupId || 'Group A');
 
       const title = document.getElementById('creator-hw-title')?.value.trim() || 'SAT Practice Drill';
-      const pin = (document.getElementById('creator-hw-pin')?.value.trim() || generateNewHwPin()).toUpperCase();
+      const deadline = document.getElementById('creator-hw-deadline')?.value || null;
       const timerVal = parseInt(document.getElementById('creator-hw-timer')?.value || '15', 10);
-      const desc = document.getElementById('creator-hw-desc')?.value.trim() || 'Comprehensive Digital SAT homework assignment.';
+      const pin = generateNewHwPin();
 
-      if (creatorSelectedQuestionIds.length === 0) {
-        showToast("⚠️ Select Questions", "Please select at least 1 question from the question bank to include in this homework!", "error");
-        return;
+      let config = {};
+      const hwType = creatorHwState.type;
+
+      if (hwType === 'vocab') {
+        const scopeSelect = document.getElementById('creator-vocab-scope');
+        const scopeId = scopeSelect ? scopeSelect.value : 'lesson1';
+        const scopeName = (typeof getScopeDisplayName === 'function') ? getScopeDisplayName(scopeId) : scopeId;
+        const qCount = creatorHwState.vocabCount === 'all' ? 20 : parseInt(creatorHwState.vocabCount, 10);
+        config = {
+          scopeId: scopeId,
+          scopeName: scopeName,
+          question_count: qCount,
+          timer: timerVal
+        };
+      } else {
+        const domains = Array.from(creatorHwState.qbankDomains);
+        if (domains.length === 0) {
+          showToast("⚠️ Select Question Types", "Please select at least 1 question type / domain for this homework!", "error");
+          return;
+        }
+        config = {
+          subject: creatorHwState.qbankSection,
+          domains: domains,
+          question_count: creatorHwState.qbankCount,
+          timer: timerVal,
+          filter: 'unsolved' // GUARANTEE: Always select fresh, unsolved questions for each student!
+        };
       }
 
-      showLoading('Publishing Homework...', `Generating PIN: ${pin} & notifying class...`, 1200, function() {
+      const submitBtn = document.getElementById('btn-submit-homework');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>⏳ Assigning to Class...</span>`;
+      }
+
+      try {
+        const teacherId = (currentSession && (currentSession.uid || currentSession.telegram_id || currentSession.name)) || 'teacher';
+        
+        // Post to backend Relational DB
+        const res = await fetch('/api/homework', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title,
+            type: hwType,
+            group_id: groupId || selectedClassName,
+            config: config,
+            deadline: deadline,
+            created_by: teacherId
+          })
+        });
+
+        // Also save to local assignments cache for instant rendering
         const assignments = getAssignments();
         const newAssignment = {
-          id: `assign_${Date.now()}`,
+          id: `hw_${Date.now()}`,
           code: pin,
           className: selectedClassName,
+          groupId: groupId,
           title: title,
-          description: desc,
-          section: 'mixed',
-          questionIds: [...creatorSelectedQuestionIds],
+          type: hwType,
+          config: config,
+          deadline: deadline,
           timeLimitMinutes: timerVal,
+          questionIds: [],
           createdAt: new Date().toISOString()
         };
-
         assignments.unshift(newAssignment);
         saveAssignments(assignments);
 
-        showToast("🚀 Homework Published!", `"${title}" is LIVE for ${selectedClassName} with PIN: ${pin}`, "success");
+        showToast("🚀 Homework Assigned!", `"${title}" is LIVE for ${selectedClassName}. Unsolved questions guaranteed!`, "success");
         switchTab('dashboard');
-      });
+      } catch (err) {
+        console.error("Homework publish error:", err);
+        showToast("⚠️ Notice", `Homework saved locally with PIN ${pin}.`, "info");
+        switchTab('dashboard');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>🚀 Assign Homework to Class</span>`;
+        }
+      }
     }
 
     // =========================================================
@@ -6366,27 +6708,56 @@
       const assignments = getAssignments();
 
       if (assignments.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No active homework drills currently assigned. Ask your teacher for a PIN code!</div>`;
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No active homework drills currently assigned. Check back later or ask your teacher!</div>`;
         return;
       }
 
       container.innerHTML = assignments.map(hw => {
-        const qCount = (hw.questionIds || []).length;
-        const timerText = hw.timeLimitMinutes > 0 ? `${hw.timeLimitMinutes} Mins` : 'Untimed';
+        const isVocab = hw.type === 'vocab';
+        const isQBank = hw.type === 'qbank';
+        const timerText = hw.timeLimitMinutes > 0 ? `${hw.timeLimitMinutes} Mins` : (hw.config?.timer > 0 ? `${hw.config.timer} Mins` : 'Untimed');
+        const qCount = isVocab ? (hw.config?.question_count || 20) : (isQBank ? (hw.config?.question_count || 20) : (hw.questionIds || []).length);
+        
+        let typeBadge = '';
+        let passBadge = '';
+        let subtitle = hw.description || 'Digital SAT practice drill';
+
+        if (isVocab) {
+          typeBadge = '<span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">📚 Vocab Unit Test</span>';
+          passBadge = '<span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">Pass: ≥80%</span>';
+          subtitle = hw.config?.scopeName || hw.title;
+        } else if (isQBank) {
+          const isMath = hw.config?.subject === 'math';
+          typeBadge = isMath 
+            ? '<span class="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">📐 Math Question Bank</span>'
+            : '<span class="text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded border border-pink-200">📖 R&W Question Bank</span>';
+          passBadge = isMath
+            ? '<span class="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded">Pass: ≥85%</span>'
+            : '<span class="text-[10px] font-bold text-pink-600 bg-pink-50 px-2 py-0.5 rounded">Pass: ≥75%</span>';
+          const doms = (hw.config?.domains || []).slice(0, 2).join(', ');
+          subtitle = doms ? `${doms} (Fresh Unsolved Questions)` : 'Fresh Unsolved Question Bank Drill';
+        } else {
+          typeBadge = `<span class="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">PIN: ${hw.code}</span>`;
+        }
+
+        const deadlineText = hw.deadline ? `Due: ${new Date(hw.deadline).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '';
 
         return `
           <div class="p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs text-slate-800">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">PIN: ${hw.code}</span>
+            <div class="space-y-1.5 flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                ${typeBadge}
+                ${passBadge}
                 <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">${timerText}</span>
                 <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">${qCount} Questions</span>
+                ${deadlineText ? `<span class="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">⏱️ ${deadlineText}</span>` : ''}
               </div>
-              <h4 class="text-sm font-bold text-slate-900">${hw.title}</h4>
-              <p class="text-xs text-slate-500 line-clamp-1">${hw.description || 'Digital SAT practice drill'}</p>
+              <h4 class="text-sm font-bold text-slate-900 truncate">${hw.title}</h4>
+              <p class="text-xs text-slate-500 line-clamp-1">${subtitle}</p>
             </div>
-            <button type="button" onclick="handleStartStudentQuiz('${hw.code}')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 shrink-0 active:scale-95 transition-all">
-              Start Test →
+            <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 shrink-0 active:scale-95 transition-all flex items-center gap-1.5">
+              <span>Let's Do It</span>
+              <span>→</span>
             </button>
           </div>
         `;
@@ -6416,14 +6787,69 @@
       }
 
       const assignments = getAssignments();
-      const targetHw = assignments.find(a => a.code.toUpperCase() === pin || a.id === pin);
+      const targetHw = assignments.find(a => (a.code && a.code.toUpperCase() === pin) || a.id === pin || (a.id && a.id.toUpperCase() === pin));
 
       if (!targetHw) {
-        showToast("❌ Invalid PIN", `No homework found matching PIN: "${pin}". Check with your teacher!`, "error");
+        showToast("❌ Invalid PIN", `No homework found matching: "${pin}". Check with your teacher!`, "error");
         return;
       }
 
-      // Gather question objects
+      // Check for VOCAB type homework
+      if (targetHw.type === 'vocab') {
+        window.activeHomeworkAssignment = targetHw;
+        showLoading('Loading Vocab Test...', `Preparing ${targetHw.config?.scopeName || 'Vocab Test'} for ${studentName}...`, 600, function() {
+          switchTab('vocab');
+          switchVocabView('test');
+          const scopeSelect = document.getElementById('test-scope-select');
+          if (scopeSelect && targetHw.config?.scopeId) {
+            scopeSelect.value = targetHw.config.scopeId;
+          }
+          const countSelect = document.getElementById('test-question-count');
+          if (countSelect && targetHw.config?.question_count) {
+            countSelect.value = String(targetHw.config.question_count);
+          }
+          if (typeof handleStartVocabUnitTest === 'function') {
+            handleStartVocabUnitTest();
+          }
+        });
+        return;
+      }
+
+      // Check for QUESTION BANK type homework
+      if (targetHw.type === 'qbank') {
+        window.activeHomeworkAssignment = targetHw;
+        showLoading('Loading Question Bank Drill...', `Preparing authentic Bluebook drill (unsolved questions) for ${studentName}...`, 800, function() {
+          switchTab('qbank');
+          if (window.qbEngine) {
+            window.qbEngine.activeHomeworkId = targetHw.id;
+            const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
+            window.qbEngine.activeSubject = subj;
+            // STRICT GUARANTEE: Always select from unsolved questions pool only!
+            window.qbEngine.activeStatusFilter = 'unsolved';
+            window.qbEngine.activeCount = targetHw.config?.question_count || 20;
+            window.qbEngine.isCustomCount = false;
+            window.qbEngine.isAllCount = false;
+
+            // Preselect skills from specified domains
+            if (targetHw.config?.domains && Array.isArray(targetHw.config.domains)) {
+              window.qbEngine.selectedSkills.clear();
+              const hierarchy = (subj === 'math' ? window.qbEngine.skillHierarchy.math : (subj === 'rw' ? window.qbEngine.skillHierarchy.rw : [...(window.qbEngine.skillHierarchy.rw || []), ...(window.qbEngine.skillHierarchy.math || [])])) || [];
+              hierarchy.forEach(dom => {
+                if (targetHw.config.domains.includes(dom.domain)) {
+                  dom.skills.forEach(sk => window.qbEngine.selectedSkills.add(window.qbEngine.normalizeSkill(sk.name)));
+                }
+              });
+            }
+
+            if (typeof window.qbEngine.startPractice === 'function') {
+              window.qbEngine.startPractice();
+            }
+          }
+        });
+        return;
+      }
+
+      // Legacy fallback for manual question-list tests
       const questions = (targetHw.questionIds || []).map(id => getQuestionById(id)).filter(Boolean);
       if (questions.length === 0) {
         showToast("⚠️ Empty Homework", "This homework assignment does not contain any questions yet.", "error");
@@ -6988,7 +7414,9 @@
       }
 
       if (tabName === 'creator') {
-        renderCreatorQuestionSelector();
+        if (typeof initCreatorDefaults === 'function') {
+          initCreatorDefaults();
+        }
       }
 
       if (tabName === 'student') {

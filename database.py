@@ -299,6 +299,34 @@ class RelationalDB:
                         CONSTRAINT uq_student_solved_uid_qid UNIQUE(uid, question_id)
                     );
                     """)
+                    cur.execute("""
+                    CREATE TABLE IF NOT EXISTS homework_assignments (
+                        id TEXT PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        group_id TEXT NOT NULL,
+                        student_id TEXT NULL,
+                        config TEXT NOT NULL,
+                        deadline TEXT NULL,
+                        created_by TEXT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
+                    """)
+                    cur.execute("""
+                    CREATE TABLE IF NOT EXISTS homework_submissions (
+                        id TEXT PRIMARY KEY,
+                        homework_id TEXT NOT NULL REFERENCES homework_assignments(id) ON DELETE CASCADE,
+                        student_id TEXT NOT NULL,
+                        student_name TEXT NOT NULL,
+                        score_pct INTEGER NOT NULL,
+                        correct_count INTEGER NOT NULL,
+                        total_questions INTEGER NOT NULL,
+                        is_passed BOOLEAN NOT NULL DEFAULT FALSE,
+                        time_spent_seconds INTEGER NOT NULL DEFAULT 0,
+                        submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT uq_hw_sub_hw_stu UNIQUE (homework_id, student_id)
+                    );
+                    """)
                     pg_migrations = [
                         "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS uid TEXT;",
                         "ALTER TABLE student_solved_questions ADD COLUMN IF NOT EXISTS subject TEXT;",
@@ -310,7 +338,11 @@ class RelationalDB:
                         "CREATE UNIQUE INDEX IF NOT EXISTS idx_solved_questions_uid_qid ON student_solved_questions(uid, question_id);",
                         "CREATE INDEX IF NOT EXISTS idx_solved_questions_uid ON student_solved_questions(uid);",
                         "CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);",
-                        "CREATE INDEX IF NOT EXISTS idx_solved_questions_skill ON student_solved_questions(skill);"
+                        "CREATE INDEX IF NOT EXISTS idx_solved_questions_skill ON student_solved_questions(skill);",
+                        "CREATE INDEX IF NOT EXISTS idx_hw_group_id ON homework_assignments(group_id);",
+                        "CREATE INDEX IF NOT EXISTS idx_hw_student_id ON homework_assignments(student_id);",
+                        "CREATE INDEX IF NOT EXISTS idx_hw_sub_hw_id ON homework_submissions(homework_id);",
+                        "CREATE INDEX IF NOT EXISTS idx_hw_sub_student_id ON homework_submissions(student_id);"
                     ]
                     for m in pg_migrations:
                         try:
@@ -407,6 +439,35 @@ class RelationalDB:
                 except Exception:
                     pass
 
+                cur.execute("""
+                CREATE TABLE IF NOT EXISTS homework_assignments (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    group_id TEXT NOT NULL,
+                    student_id TEXT,
+                    config TEXT NOT NULL,
+                    deadline TEXT,
+                    created_by TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+                """)
+                cur.execute("""
+                CREATE TABLE IF NOT EXISTS homework_submissions (
+                    id TEXT PRIMARY KEY,
+                    homework_id TEXT NOT NULL REFERENCES homework_assignments(id) ON DELETE CASCADE,
+                    student_id TEXT NOT NULL,
+                    student_name TEXT NOT NULL,
+                    score_pct INTEGER NOT NULL,
+                    correct_count INTEGER NOT NULL,
+                    total_questions INTEGER NOT NULL,
+                    is_passed INTEGER NOT NULL DEFAULT 0,
+                    time_spent_seconds INTEGER NOT NULL DEFAULT 0,
+                    submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (homework_id, student_id)
+                );
+                """)
+
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_students_group_id ON students(group_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_students_telegram_id ON students(telegram_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_test_results_student_id ON test_results(student_id);")
@@ -415,6 +476,10 @@ class RelationalDB:
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_uid ON student_solved_questions(uid);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_qid ON student_solved_questions(question_id);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_solved_questions_skill ON student_solved_questions(skill);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_hw_group_id ON homework_assignments(group_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_hw_student_id ON homework_assignments(student_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_hw_sub_hw_id ON homework_submissions(homework_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_hw_sub_student_id ON homework_submissions(student_id);")
 
     # --------------------------------------------------------------------------
     # GROUPS API METHODS
@@ -911,6 +976,192 @@ class RelationalDB:
             existing = self.get_group(g_name)
             if not existing:
                 self.create_group(g_name)
+
+    # --------------------------------------------------------------------------
+    # HOMEWORK ASSIGNMENTS & SUBMISSIONS API METHODS
+    # --------------------------------------------------------------------------
+
+    def create_homework_assignment(self, title, hw_type, group_id, student_id=None, config=None, deadline=None, created_by=None):
+        """Create a new homework assignment targeting a group or specific student."""
+        self.invalidate_cache()
+        hw_id = f"hw_{int(time.time() * 1000)}"
+        cfg_str = json.dumps(config) if isinstance(config, (dict, list)) else (config or "{}")
+        created_at = datetime.utcnow().isoformat()
+        stu_id = str(student_id).strip() if (student_id and str(student_id).strip() != 'all') else None
+        deadline_str = str(deadline).strip() if deadline else None
+
+        if self.is_postgres:
+            sql = """
+                INSERT INTO homework_assignments (id, title, type, group_id, student_id, config, deadline, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                RETURNING id, title, type, group_id, student_id, config, deadline, created_by, created_at
+            """
+            with self.cursor() as cur:
+                cur.execute(sql, (hw_id, title, hw_type, str(group_id), stu_id, cfg_str, deadline_str, created_by))
+                row = _format_row(cur.fetchone())
+                if row and isinstance(row.get("config"), str):
+                    try: row["config"] = json.loads(row["config"])
+                    except Exception: pass
+                return row
+        else:
+            sql = """
+                INSERT INTO homework_assignments (id, title, type, group_id, student_id, config, deadline, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            with self.cursor() as cur:
+                cur.execute(sql, (hw_id, title, hw_type, str(group_id), stu_id, cfg_str, deadline_str, created_by, created_at))
+            return {
+                "id": hw_id,
+                "title": title,
+                "type": hw_type,
+                "group_id": str(group_id),
+                "student_id": stu_id,
+                "config": config if isinstance(config, (dict, list)) else {},
+                "deadline": deadline_str,
+                "created_by": created_by,
+                "created_at": created_at
+            }
+
+    def get_homework_assignments(self, group_id=None, student_id=None):
+        """Retrieve homework assignments with optional group / student filtering and submission status."""
+        clauses = []
+        params = []
+
+        if group_id:
+            clauses.append("CAST(group_id AS TEXT) = %s")
+            params.append(str(group_id).strip())
+
+        if student_id:
+            clauses.append("(student_id IS NULL OR student_id = '' OR student_id = 'all' OR CAST(student_id AS TEXT) = %s)")
+            params.append(str(student_id).strip())
+
+        where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        sql = self._query(f"""
+            SELECT id, title, type, group_id, student_id, config, deadline, created_by, created_at
+            FROM homework_assignments
+            {where_clause}
+            ORDER BY created_at DESC
+        """)
+
+        with self.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            assignments = _format_rows(cur.fetchall())
+
+        for a in assignments:
+            if isinstance(a.get("config"), str):
+                try: a["config"] = json.loads(a["config"])
+                except Exception: pass
+
+            # Attach student submission if student_id was provided
+            if student_id:
+                sub_sql = self._query("""
+                    SELECT id, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds, submitted_at
+                    FROM homework_submissions
+                    WHERE homework_id = %s AND (CAST(student_id AS TEXT) = %s)
+                """)
+                with self.cursor() as cur:
+                    cur.execute(sub_sql, (a["id"], str(student_id).strip()))
+                    sub_row = _format_row(cur.fetchone())
+                    a["submission"] = sub_row
+                    now_iso = datetime.utcnow().isoformat()
+                    a["is_overdue"] = bool(not sub_row and a.get("deadline") and a["deadline"] < now_iso)
+            else:
+                # Attach all submissions for teacher overview
+                sub_sql = self._query("""
+                    SELECT id, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds, submitted_at
+                    FROM homework_submissions
+                    WHERE homework_id = %s
+                    ORDER BY submitted_at DESC
+                """)
+                with self.cursor() as cur:
+                    cur.execute(sub_sql, (a["id"],))
+                    subs = _format_rows(cur.fetchall())
+                    a["submissions"] = subs
+
+        return assignments
+
+    def get_homework_assignment(self, assignment_id):
+        """Retrieve a single homework assignment by ID."""
+        sql = self._query("""
+            SELECT id, title, type, group_id, student_id, config, deadline, created_by, created_at
+            FROM homework_assignments
+            WHERE id = %s
+        """)
+        with self.cursor() as cur:
+            cur.execute(sql, (str(assignment_id),))
+            a = _format_row(cur.fetchone())
+            if a and isinstance(a.get("config"), str):
+                try: a["config"] = json.loads(a["config"])
+                except Exception: pass
+            return a
+
+    def record_homework_submission(self, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds=0):
+        """Record or upsert student completion for a homework assignment."""
+        sub_id = f"sub_{int(time.time() * 1000)}"
+        submitted_at = datetime.utcnow().isoformat()
+        stu_id_str = str(student_id).strip()
+        is_pass_val = bool(is_passed)
+
+        if self.is_postgres:
+            sql = """
+                INSERT INTO homework_submissions (id, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds, submitted_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (homework_id, student_id) DO UPDATE SET
+                    score_pct = EXCLUDED.score_pct,
+                    correct_count = EXCLUDED.correct_count,
+                    total_questions = EXCLUDED.total_questions,
+                    is_passed = EXCLUDED.is_passed,
+                    time_spent_seconds = EXCLUDED.time_spent_seconds,
+                    submitted_at = NOW()
+                RETURNING id, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds, submitted_at
+            """
+            with self.cursor() as cur:
+                cur.execute(sql, (sub_id, str(homework_id), stu_id_str, student_name, int(score_pct), int(correct_count), int(total_questions), is_pass_val, int(time_spent_seconds)))
+                return _format_row(cur.fetchone())
+        else:
+            sql = """
+                INSERT INTO homework_submissions (id, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds, submitted_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (homework_id, student_id) DO UPDATE SET
+                    score_pct = excluded.score_pct,
+                    correct_count = excluded.correct_count,
+                    total_questions = excluded.total_questions,
+                    is_passed = excluded.is_passed,
+                    time_spent_seconds = excluded.time_spent_seconds,
+                    submitted_at = excluded.submitted_at
+            """
+            with self.cursor() as cur:
+                cur.execute(sql, (sub_id, str(homework_id), stu_id_str, student_name, int(score_pct), int(correct_count), int(total_questions), 1 if is_pass_val else 0, int(time_spent_seconds), submitted_at))
+            return {
+                "id": sub_id,
+                "homework_id": str(homework_id),
+                "student_id": stu_id_str,
+                "student_name": student_name,
+                "score_pct": int(score_pct),
+                "correct_count": int(correct_count),
+                "total_questions": int(total_questions),
+                "is_passed": is_pass_val,
+                "time_spent_seconds": int(time_spent_seconds),
+                "submitted_at": submitted_at
+            }
+
+    def get_homework_submission(self, submission_id):
+        """Retrieve a single homework submission by ID."""
+        sql = self._query("""
+            SELECT id, homework_id, student_id, student_name, score_pct, correct_count, total_questions, is_passed, time_spent_seconds, submitted_at
+            FROM homework_submissions
+            WHERE id = %s
+        """)
+        with self.cursor() as cur:
+            cur.execute(sql, (str(submission_id),))
+            return _format_row(cur.fetchone())
+
+    def delete_homework_assignment(self, assignment_id):
+        """Delete homework assignment and its cascaded submissions."""
+        sql = self._query("DELETE FROM homework_assignments WHERE id = %s")
+        with self.cursor() as cur:
+            cur.execute(sql, (str(assignment_id),))
+            return True
 
 
 # Global singleton database instance connected to Supabase PostgreSQL (via .env)
