@@ -2,8 +2,8 @@
 """
 test_homework_creator.py
 Verifies the new streamlined Teacher Homework Creator UI,
-SAT Vocab vs SAT Question Bank selection, dynamic domain checkboxes,
-and the guaranteed selection from unsolved questions pool.
+SAT Vocab vs SAT Question Bank selection, dynamic detailed skills hierarchy,
+custom title protection, and guaranteed selection from unsolved questions pool.
 """
 
 import unittest
@@ -24,8 +24,7 @@ class TestHomeworkCreator(unittest.TestCase):
             self.assertIn('id="creator-hw-title"', html, f"Title input missing in {name}")
             self.assertIn('id="creator-hw-deadline"', html, f"Deadline input missing in {name}")
             self.assertIn('id="creator-hw-timer"', html, f"Timer select missing in {name}")
-            self.assertIn('id="creator-card-type-vocab"', html, f"Vocab card missing in {name}")
-            self.assertIn('id="creator-card-type-qbank"', html, f"QBank card missing in {name}")
+            self.assertIn('id="creator-hw-type-select"', html, f"Compact type select missing in {name}")
             self.assertIn('id="creator-vocab-settings"', html, f"Vocab settings missing in {name}")
             self.assertIn('id="creator-qbank-settings"', html, f"QBank settings missing in {name}")
             self.assertIn('id="creator-domains-container"', html, f"Domains container missing in {name}")
@@ -37,25 +36,38 @@ class TestHomeworkCreator(unittest.TestCase):
             self.assertIn("filter: 'unsolved'", html, f"Strict unsolved filter setting missing in {name}")
             self.assertIn("activeStatusFilter = 'unsolved'", html, f"Engine activeStatusFilter unsolved missing in {name}")
 
-    def test_03_qbank_section_and_domain_metadata(self):
+    def test_03_detailed_skills_hierarchy_matching_pic_5(self):
         for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
-            self.assertIn('Craft and Structure', html)
-            self.assertIn('Information and Ideas', html)
-            self.assertIn('Standard English Conventions', html)
-            self.assertIn('Expression of Ideas', html)
+            # Check domains
             self.assertIn('Algebra', html)
             self.assertIn('Advanced Math', html)
             self.assertIn('Problem-Solving and Data Analysis', html)
             self.assertIn('Geometry and Trigonometry', html)
+            self.assertIn('Craft and Structure', html)
+            self.assertIn('Information and Ideas', html)
+            self.assertIn('Standard English Conventions', html)
+            self.assertIn('Expression of Ideas', html)
+            # Check detailed skills from Pic 5
+            self.assertIn('Linear functions', html)
+            self.assertIn('Linear equations in two variables', html)
+            self.assertIn('Systems of two linear equations in two variables', html)
+            self.assertIn('Nonlinear functions', html)
+            self.assertIn('Equivalent expressions', html)
+            self.assertIn('Ratios, rates, proportional relationships, and units', html)
 
-    def test_04_student_one_click_launch_wiring(self):
+    def test_04_custom_title_handling_preserves_user_input(self):
+        for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
+            self.assertIn('handleCreatorTitleInput', html)
+            self.assertIn('hasCustomTitle', html)
+
+    def test_05_student_one_click_launch_wiring(self):
         for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
             self.assertIn("targetHw.type === 'vocab'", html)
             self.assertIn("targetHw.type === 'qbank'", html)
             self.assertIn("window.qbEngine.activeStatusFilter = 'unsolved'", html)
             self.assertIn("window.qbEngine.startPractice()", html)
 
-    def test_05_vocab_and_audio_zero_tampering(self):
+    def test_06_vocab_and_audio_zero_tampering(self):
         for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
             self.assertIn('satWords', html)
             self.assertIn('satAudio', html)

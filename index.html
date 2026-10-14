@@ -706,7 +706,7 @@
       <div class="p-6 sm:p-8 rounded-3xl border border-slate-200 bg-white space-y-6 shadow-sm text-slate-800">
         
         <!-- STEP 1: General Assignment Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 border-b border-slate-100">
           <div class="space-y-1.5">
             <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
               <span>👥</span><span>Target Class Cohort</span>
@@ -718,9 +718,19 @@
 
           <div class="space-y-1.5">
             <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <span>🎯</span><span>Select Homework Type</span>
+            </label>
+            <select id="creator-hw-type-select" onchange="switchCreatorHwType(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-semibold">
+              <option value="vocab" selected>📚 SAT Vocabulary Unit Test</option>
+              <option value="qbank">📖 SAT Question Bank Practice</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
               <span>🏷️</span><span>Homework Title</span>
             </label>
-            <input type="text" id="creator-hw-title" placeholder="e.g. SAT Vocab: Lesson 1 Unit Test" value="SAT Vocab: Lesson 1 Unit Test" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
+            <input type="text" id="creator-hw-title" oninput="handleCreatorTitleInput(this.value)" placeholder="e.g. SAT Vocab: Lesson 1 Unit Test" value="SAT Vocab: Lesson 1 Unit Test" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:bg-white focus:border-blue-500 outline-none shadow-xs font-medium">
           </div>
 
           <div class="space-y-1.5">
@@ -750,44 +760,6 @@
               <option value="45">45 Minutes</option>
               <option value="60">60 Minutes</option>
             </select>
-          </div>
-        </div>
-
-        <!-- STEP 2: Choose Homework Type Toggle Cards -->
-        <div class="space-y-2">
-          <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <span>🎯</span><span>Select Homework Type</span>
-          </label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <!-- Type 1: SAT Vocab Card -->
-            <div id="creator-card-type-vocab" onclick="switchCreatorHwType('vocab')" class="p-4 rounded-2xl border-2 border-purple-500 bg-purple-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-purple-600">
-              <div class="h-10 w-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl shrink-0">
-                📚
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                  <h4 class="text-xs font-extrabold text-slate-900">SAT Vocabulary Unit Test</h4>
-                  <span id="creator-radio-vocab" class="w-4 h-4 rounded-full border-2 border-purple-600 bg-purple-600 flex items-center justify-center text-[9px] text-white font-bold">✓</span>
-                </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">Lesson-based flashcards, definition recognition, sentence blanks, and precision meaning.</p>
-                <div class="mt-2 text-[10px] text-purple-700 font-bold bg-purple-100/70 px-2 py-0.5 rounded-md inline-block">Passing Threshold: ≥80%</div>
-              </div>
-            </div>
-
-            <!-- Type 2: SAT Question Bank Card -->
-            <div id="creator-card-type-qbank" onclick="switchCreatorHwType('qbank')" class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-slate-300">
-              <div class="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-xl shrink-0">
-                📖
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                  <h4 class="text-xs font-extrabold text-slate-900">SAT Question Bank Practice</h4>
-                  <span id="creator-radio-qbank" class="w-4 h-4 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-[9px] text-white font-bold"></span>
-                </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">Authentic Bluebook questions covering R&W and Math. <strong class="text-sky-700">Pulls from each student's unsolved questions pool only.</strong></p>
-                <div class="mt-2 text-[10px] text-sky-700 font-bold bg-sky-100/70 px-2 py-0.5 rounded-md inline-block">Pass: Math ≥85% | R&W ≥75%</div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -880,23 +852,23 @@
             </div>
           </div>
 
-          <!-- Dynamic Question Types (Domains) -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <span>2. Select Question Types / Domains</span>
-                <span class="text-slate-400 font-normal text-[11px]">(Mark ticks on themes to test)</span>
+          <!-- Detailed Question Types (Domains & Skills - Matching Pic 5) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+              <label class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>2. Select Question Types & Skills</span>
+                <span class="text-slate-400 font-normal text-[11px]">(Mark ticks on specific skills to test)</span>
               </label>
               <div class="flex items-center gap-2 text-xs">
-                <button type="button" onclick="toggleAllCreatorDomains(true)" class="text-[11px] text-sky-600 hover:underline font-bold">Select All</button>
+                <button type="button" onclick="toggleAllCreatorSkills(true)" class="text-[11px] text-sky-600 hover:underline font-bold">Select All</button>
                 <span class="text-slate-300">|</span>
-                <button type="button" onclick="toggleAllCreatorDomains(false)" class="text-[11px] text-slate-500 hover:underline">Clear</button>
+                <button type="button" onclick="toggleAllCreatorSkills(false)" class="text-[11px] text-slate-500 hover:underline">Clear</button>
               </div>
             </div>
 
-            <!-- Domain Checkboxes Grid -->
-            <div id="creator-domains-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <!-- Dynamically populated checkboxes based on section -->
+            <!-- Detailed Skills List by Domain (Matching Pic 5) -->
+            <div id="creator-domains-container" class="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+              <!-- Dynamically populated skills hierarchy with domain headers and counts -->
             </div>
           </div>
 
@@ -6107,18 +6079,79 @@
     // =========================================================
     // STREAMLINED TEACHER HOMEWORK CREATOR STATE & CONTROLLERS
     // =========================================================
-    const CREATOR_DOMAIN_META = {
+    const CREATOR_SKILL_HIERARCHY = {
       rw: [
-        { id: "Craft and Structure", name: "Craft and Structure", desc: "Words in Context, Text Structure & Purpose, Connections", count: 471 },
-        { id: "Information and Ideas", name: "Information and Ideas", desc: "Command of Evidence, Inferences, Central Ideas", count: 555 },
-        { id: "Standard English Conventions", name: "Standard English Conventions", desc: "Boundaries, Form, Structure, and Sense", count: 421 },
-        { id: "Expression of Ideas", name: "Expression of Ideas", desc: "Rhetorical Synthesis, Transitions", count: 398 }
+        {
+          domain: "Craft and Structure",
+          skills: [
+            { name: "Words in Context", total: 261 },
+            { name: "Text Structure and Purpose", total: 149 },
+            { name: "Cross-Text Connections", total: 61 }
+          ]
+        },
+        {
+          domain: "Information and Ideas",
+          skills: [
+            { name: "Command of Evidence", total: 277 },
+            { name: "Inferences", total: 140 },
+            { name: "Central Ideas and Details", total: 138 }
+          ]
+        },
+        {
+          domain: "Standard English Conventions",
+          skills: [
+            { name: "Boundaries", total: 213 },
+            { name: "Form, Structure, and Sense", total: 208 }
+          ]
+        },
+        {
+          domain: "Expression of Ideas",
+          skills: [
+            { name: "Rhetorical Synthesis", total: 204 },
+            { name: "Transitions", total: 194 }
+          ]
+        }
       ],
       math: [
-        { id: "Algebra", name: "Algebra", desc: "Linear equations, Systems, Inequalities", count: 616 },
-        { id: "Advanced Math", name: "Advanced Math", desc: "Nonlinear functions, Quadratics, Exponentials", count: 540 },
-        { id: "Problem-Solving and Data Analysis", name: "Problem-Solving & Data Analysis", desc: "Ratios, Percentages, Probability, Distributions", count: 421 },
-        { id: "Geometry and Trigonometry", name: "Geometry & Trigonometry", desc: "Area, Volume, Circles, Angles, Triangles", count: 348 }
+        {
+          domain: "Algebra",
+          skills: [
+            { name: "Linear functions", total: 170 },
+            { name: "Linear equations in two variables", total: 130 },
+            { name: "Systems of two linear equations in two variables", total: 126 },
+            { name: "Linear equations in one variable", total: 112 },
+            { name: "Linear inequalities in one or two variables", total: 78 }
+          ]
+        },
+        {
+          domain: "Advanced Math",
+          skills: [
+            { name: "Nonlinear functions", total: 259 },
+            { name: "Nonlinear equations in one variable and systems of equations in two variables", total: 165 },
+            { name: "Equivalent expressions", total: 116 }
+          ]
+        },
+        {
+          domain: "Problem-Solving and Data Analysis",
+          skills: [
+            { name: "Ratios, rates, proportional relationships, and units", total: 93 },
+            { name: "Percentages", total: 84 },
+            { name: "One-variable data: Distributions and measures of center and spread", total: 84 },
+            { name: "Two-variable data: Models and scatterplots", total: 71 },
+            { name: "Probability and conditional probability", total: 49 },
+            { name: "Inference from sample statistics and margin of error", total: 28 },
+            { name: "Evaluating statistical claims: Observational studies and experiments", total: 12 }
+          ]
+        },
+        {
+          domain: "Geometry and Trigonometry",
+          skills: [
+            { name: "Area and volume", total: 110 },
+            { name: "Lines, angles, and triangles", total: 102 },
+            { name: "Right triangles and trigonometry", total: 69 },
+            { name: "Circles", total: 67 }
+          ]
+        }
       ]
     };
 
@@ -6127,13 +6160,18 @@
       vocabScope: 'lesson1',
       vocabCount: '20', // '10' | '20' | 'all'
       qbankSection: 'rw', // 'rw' | 'math' | 'all'
-      qbankDomains: new Set(["Craft and Structure", "Information and Ideas", "Standard English Conventions", "Expression of Ideas"]),
-      qbankCount: 20
+      qbankSkills: new Set(),
+      qbankCount: 20,
+      hasCustomTitle: false
     };
 
+    function handleCreatorTitleInput(val) {
+      creatorHwState.hasCustomTitle = true;
+    }
+
     function initCreatorDefaults() {
-      // Set default deadline to tomorrow 23:59
       setCreatorDeadlinePreset(1);
+      toggleAllCreatorSkills(true, false);
       renderCreatorDomains();
       updateCreatorAutoTitle();
     }
@@ -6142,25 +6180,18 @@
       creatorHwState.type = type;
       const isVocab = type === 'vocab';
 
-      const cardVocab = document.getElementById('creator-card-type-vocab');
-      const cardQBank = document.getElementById('creator-card-type-qbank');
-      const radioVocab = document.getElementById('creator-radio-vocab');
-      const radioQBank = document.getElementById('creator-radio-qbank');
+      const typeSelect = document.getElementById('creator-hw-type-select');
+      if (typeSelect && typeSelect.value !== type) {
+        typeSelect.value = type;
+      }
+
       const vocabSettings = document.getElementById('creator-vocab-settings');
       const qbankSettings = document.getElementById('creator-qbank-settings');
 
       if (isVocab) {
-        if (cardVocab) cardVocab.className = 'p-4 rounded-2xl border-2 border-purple-500 bg-purple-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-purple-600';
-        if (cardQBank) cardQBank.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-slate-300';
-        if (radioVocab) { radioVocab.className = 'w-4 h-4 rounded-full border-2 border-purple-600 bg-purple-600 flex items-center justify-center text-[9px] text-white font-bold'; radioVocab.innerText = '✓'; }
-        if (radioQBank) { radioQBank.className = 'w-4 h-4 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-[9px] text-white font-bold'; radioQBank.innerText = ''; }
         if (vocabSettings) vocabSettings.classList.remove('hidden');
         if (qbankSettings) qbankSettings.classList.add('hidden');
       } else {
-        if (cardVocab) cardVocab.className = 'p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-slate-300';
-        if (cardQBank) cardQBank.className = 'p-4 rounded-2xl border-2 border-sky-500 bg-sky-50/50 cursor-pointer transition-all shadow-xs flex items-start gap-3.5 select-none hover:border-sky-600';
-        if (radioVocab) { radioVocab.className = 'w-4 h-4 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-[9px] text-white font-bold'; radioVocab.innerText = ''; }
-        if (radioQBank) { radioQBank.className = 'w-4 h-4 rounded-full border-2 border-sky-600 bg-sky-600 flex items-center justify-center text-[9px] text-white font-bold'; radioQBank.innerText = '✓'; }
         if (vocabSettings) vocabSettings.classList.add('hidden');
         if (qbankSettings) qbankSettings.classList.remove('hidden');
       }
@@ -6181,15 +6212,8 @@
         }
       });
 
-      // Reset selected domains to all domains of that section by default
-      creatorHwState.qbankDomains.clear();
-      if (sec === 'rw' || sec === 'all') {
-        CREATOR_DOMAIN_META.rw.forEach(d => creatorHwState.qbankDomains.add(d.id));
-      }
-      if (sec === 'math' || sec === 'all') {
-        CREATOR_DOMAIN_META.math.forEach(d => creatorHwState.qbankDomains.add(d.id));
-      }
-
+      // Select all skills in this section by default
+      toggleAllCreatorSkills(true, false);
       renderCreatorDomains();
       updateCreatorAutoTitle();
     }
@@ -6198,54 +6222,115 @@
       const container = document.getElementById('creator-domains-container');
       if (!container) return;
 
-      let list = [];
-      if (creatorHwState.qbankSection === 'rw') {
-        list = CREATOR_DOMAIN_META.rw;
-      } else if (creatorHwState.qbankSection === 'math') {
-        list = CREATOR_DOMAIN_META.math;
+      const sec = creatorHwState.qbankSection;
+      let hierarchy = [];
+      if (sec === 'rw') {
+        hierarchy = CREATOR_SKILL_HIERARCHY.rw;
+      } else if (sec === 'math') {
+        hierarchy = CREATOR_SKILL_HIERARCHY.math;
       } else {
-        list = [...CREATOR_DOMAIN_META.rw, ...CREATOR_DOMAIN_META.math];
+        hierarchy = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
       }
 
-      container.innerHTML = list.map(item => {
-        const isChecked = creatorHwState.qbankDomains.has(item.id);
-        return `
-          <div onclick="toggleCreatorDomain('${item.id}')" class="p-3 rounded-xl border cursor-pointer select-none transition-all flex items-start gap-3 ${isChecked ? 'bg-sky-50/80 border-sky-400 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'}">
-            <input type="checkbox" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); toggleCreatorDomain('${item.id}')" class="mt-0.5 w-4 h-4 rounded text-sky-600 bg-white border-slate-300 cursor-pointer">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-900">${item.name}</span>
-                <span class="text-[10px] font-semibold text-slate-400">~${item.count} Qs</span>
+      container.innerHTML = hierarchy.map(domGroup => {
+        const domainName = domGroup.domain;
+        const domSkills = domGroup.skills;
+        const allDomSelected = domSkills.every(sk => creatorHwState.qbankSkills.has(sk.name));
+
+        const skillsHtml = domSkills.map(sk => {
+          const isChecked = creatorHwState.qbankSkills.has(sk.name);
+          return `
+            <label class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer select-none text-xs">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCreatorSkill('${sk.name.replace(/'/g, "\\'")}', this.checked)" class="w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer">
+                <span class="text-xs font-semibold text-slate-800 truncate">${sk.name}</span>
               </div>
-              <p class="text-[11px] text-slate-500 leading-tight mt-0.5">${item.desc}</p>
+              <div class="flex items-center gap-3 shrink-0 text-[11px] text-slate-500 font-mono">
+                <span class="w-16 h-1 rounded-full bg-slate-100 overflow-hidden hidden sm:inline-block">
+                  <span class="h-full bg-blue-500 block" style="width: 0%"></span>
+                </span>
+                <span class="w-14 text-right">0/${sk.total}</span>
+                <span class="text-slate-300">-</span>
+              </div>
+            </label>
+          `;
+        }).join('');
+
+        return `
+          <div class="space-y-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+              <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" ${allDomSelected ? 'checked' : ''} onchange="toggleCreatorDomainSkills('${domainName.replace(/'/g, "\\'")}', this.checked)" class="w-4 h-4 rounded text-blue-600 bg-white border-slate-300 focus:ring-0 cursor-pointer">
+                <span class="text-xs font-black text-slate-900">${domainName}</span>
+              </label>
+              <span class="text-[11px] font-semibold text-slate-400">
+                ${domSkills.length} skills
+              </span>
+            </div>
+            <div class="space-y-0.5 pt-0.5">
+              ${skillsHtml}
             </div>
           </div>
         `;
       }).join('');
     }
 
-    function toggleCreatorDomain(domainId) {
-      if (creatorHwState.qbankDomains.has(domainId)) {
-        creatorHwState.qbankDomains.delete(domainId);
+    function toggleCreatorSkill(skillName, isChecked) {
+      if (isChecked) {
+        creatorHwState.qbankSkills.add(skillName);
       } else {
-        creatorHwState.qbankDomains.add(domainId);
+        creatorHwState.qbankSkills.delete(skillName);
       }
       renderCreatorDomains();
       updateCreatorAutoTitle();
     }
 
-    function toggleAllCreatorDomains(selectAll) {
-      creatorHwState.qbankDomains.clear();
-      if (selectAll) {
-        if (creatorHwState.qbankSection === 'rw' || creatorHwState.qbankSection === 'all') {
-          CREATOR_DOMAIN_META.rw.forEach(d => creatorHwState.qbankDomains.add(d.id));
-        }
-        if (creatorHwState.qbankSection === 'math' || creatorHwState.qbankSection === 'all') {
-          CREATOR_DOMAIN_META.math.forEach(d => creatorHwState.qbankDomains.add(d.id));
-        }
+    function toggleCreatorDomainSkills(domainName, isChecked) {
+      const allGroups = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
+      const targetGroup = allGroups.find(g => g.domain === domainName);
+      if (targetGroup) {
+        targetGroup.skills.forEach(sk => {
+          if (isChecked) {
+            creatorHwState.qbankSkills.add(sk.name);
+          } else {
+            creatorHwState.qbankSkills.delete(sk.name);
+          }
+        });
       }
       renderCreatorDomains();
       updateCreatorAutoTitle();
+    }
+
+    function toggleAllCreatorSkills(selectAll, rerender = true) {
+      const sec = creatorHwState.qbankSection;
+      let hierarchy = [];
+      if (sec === 'rw') {
+        hierarchy = CREATOR_SKILL_HIERARCHY.rw;
+      } else if (sec === 'math') {
+        hierarchy = CREATOR_SKILL_HIERARCHY.math;
+      } else {
+        hierarchy = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
+      }
+
+      if (selectAll) {
+        hierarchy.forEach(dom => {
+          dom.skills.forEach(sk => creatorHwState.qbankSkills.add(sk.name));
+        });
+      } else {
+        hierarchy.forEach(dom => {
+          dom.skills.forEach(sk => creatorHwState.qbankSkills.delete(sk.name));
+        });
+      }
+
+      if (rerender) {
+        renderCreatorDomains();
+        updateCreatorAutoTitle();
+      }
+    }
+
+    // Alias for test compatibility
+    function toggleAllCreatorDomains(selectAll) {
+      toggleAllCreatorSkills(selectAll, true);
     }
 
     function setCreatorVocabCount(val) {
@@ -6308,7 +6393,6 @@
     function updateCreatorAutoTitle() {
       const titleInput = document.getElementById('creator-hw-title');
       const summaryPill = document.getElementById('creator-summary-pill');
-      const select = document.getElementById('creator-class-select');
       const scopeSelect = document.getElementById('creator-vocab-scope');
 
       if (creatorHwState.type === 'vocab') {
@@ -6318,7 +6402,7 @@
         const countText = creatorHwState.vocabCount === 'all' ? 'Full Scope' : `${creatorHwState.vocabCount} Questions`;
 
         const generatedTitle = `SAT Vocab: ${scopeName}`;
-        if (titleInput && (!titleInput.value || titleInput.value.startsWith('SAT Vocab:') || titleInput.value.startsWith('Digital SAT'))) {
+        if (!creatorHwState.hasCustomTitle && titleInput) {
           titleInput.value = generatedTitle;
         }
         if (summaryPill) {
@@ -6328,16 +6412,16 @@
       } else {
         const secLabel = creatorHwState.qbankSection === 'rw' ? 'Reading & Writing' : (creatorHwState.qbankSection === 'math' ? 'Math' : 'Mixed R&W + Math');
         const countText = `${creatorHwState.qbankCount} Unsolved Questions`;
-        const domainsList = Array.from(creatorHwState.qbankDomains);
-        const domainsDesc = domainsList.length === 0 ? 'No domains' : (domainsList.length <= 2 ? domainsList.join(', ') : `${domainsList.length} Domains`);
+        const skillsCount = creatorHwState.qbankSkills.size;
+        const skillsDesc = skillsCount === 0 ? 'No skills selected' : `${skillsCount} Question Types/Skills`;
 
         const generatedTitle = `Digital SAT ${secLabel} Practice Drill`;
-        if (titleInput && (!titleInput.value || titleInput.value.startsWith('SAT Vocab:') || titleInput.value.startsWith('Digital SAT'))) {
+        if (!creatorHwState.hasCustomTitle && titleInput) {
           titleInput.value = generatedTitle;
         }
         if (summaryPill) {
           summaryPill.className = 'text-sky-700 font-extrabold';
-          summaryPill.innerText = `📖 QBank • ${secLabel}: ${domainsDesc} (${countText})`;
+          summaryPill.innerText = `📖 QBank • ${secLabel}: ${skillsDesc} (${countText})`;
         }
       }
     }
@@ -6367,13 +6451,18 @@
           timer: timerVal
         };
       } else {
-        const domains = Array.from(creatorHwState.qbankDomains);
-        if (domains.length === 0) {
-          showToast("⚠️ Select Question Types", "Please select at least 1 question type / domain for this homework!", "error");
+        const skills = Array.from(creatorHwState.qbankSkills);
+        if (skills.length === 0) {
+          showToast("⚠️ Select Question Types", "Please select at least 1 question type / skill for this homework!", "error");
           return;
         }
+        const allGroups = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
+        const domains = Array.from(new Set(
+          allGroups.filter(g => g.skills.some(sk => creatorHwState.qbankSkills.has(sk.name))).map(g => g.domain)
+        ));
         config = {
           subject: creatorHwState.qbankSection,
+          skills: skills,
           domains: domains,
           question_count: creatorHwState.qbankCount,
           timer: timerVal,
@@ -6830,9 +6919,14 @@
             window.qbEngine.isCustomCount = false;
             window.qbEngine.isAllCount = false;
 
-            // Preselect skills from specified domains
-            if (targetHw.config?.domains && Array.isArray(targetHw.config.domains)) {
-              window.qbEngine.selectedSkills.clear();
+            // Preselect exact skills specified by the teacher
+            window.qbEngine.selectedSkills.clear();
+            if (targetHw.config?.skills && Array.isArray(targetHw.config.skills) && targetHw.config.skills.length > 0) {
+              targetHw.config.skills.forEach(skName => {
+                const norm = (typeof window.qbEngine.normalizeSkill === 'function') ? window.qbEngine.normalizeSkill(skName) : skName;
+                window.qbEngine.selectedSkills.add(norm);
+              });
+            } else if (targetHw.config?.domains && Array.isArray(targetHw.config.domains)) {
               const hierarchy = (subj === 'math' ? window.qbEngine.skillHierarchy.math : (subj === 'rw' ? window.qbEngine.skillHierarchy.rw : [...(window.qbEngine.skillHierarchy.rw || []), ...(window.qbEngine.skillHierarchy.math || [])])) || [];
               hierarchy.forEach(dom => {
                 if (targetHw.config.domains.includes(dom.domain)) {
