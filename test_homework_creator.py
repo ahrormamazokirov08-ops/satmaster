@@ -28,7 +28,7 @@ class TestHomeworkCreator(unittest.TestCase):
             self.assertIn('id="creator-vocab-settings"', html, f"Vocab settings missing in {name}")
             self.assertIn('id="creator-qbank-settings"', html, f"QBank settings missing in {name}")
             self.assertIn('id="creator-domains-container"', html, f"Domains container missing in {name}")
-            self.assertIn('id="btn-submit-homework"', html, f"Submit button missing in {name}")
+            self.assertIn('id="btn-add-done-homework"', html, f"Done button missing in {name}")
 
     def test_02_unsolved_questions_guarantee_banner_and_logic(self):
         for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
@@ -81,9 +81,11 @@ class TestHomeworkCreator(unittest.TestCase):
             self.assertIn('id="creator-staging-list"', html, f"Staging list missing in {name}")
             self.assertIn('id="staging-select-all"', html, f"Staging select-all missing in {name}")
             self.assertIn('id="btn-send-selected-staged"', html, f"Send selected button missing in {name}")
-            self.assertIn('id="btn-add-another-homework"', html, f"Add another button missing in {name}")
             self.assertIn('id="btn-add-done-homework"', html, f"Add done button missing in {name}")
             self.assertIn('id="btn-creator-back"', html, f"Back button missing in {name}")
+            # Ensure eliminated elements per user request are not present
+            self.assertNotIn('id="btn-hub-create-new"', html, f"Top hub header banner button should be removed in {name}")
+            self.assertNotIn('id="btn-add-another-homework"', html, f"Add another button should be removed in {name}")
 
     def test_08_active_homework_grid_and_deadline_persistence(self):
         for name, html in [("root index.html", self.root_html), ("public/index.html", self.public_html)]:
