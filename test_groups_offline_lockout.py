@@ -29,6 +29,15 @@ class TestGroupsOfflineLockout(unittest.TestCase):
             self.assertIn("Jasmine Patel", html, f"Jasmine Patel missing in {name}")
             self.assertIn("David Kim", html, f"David Kim missing in {name}")
             self.assertIn("Sarah Williams", html, f"Sarah Williams missing in {name}")
+            # Real registered Telegram students
+            self.assertIn("Suhrobbek (Robek)", html, f"Suhrobbek (Robek) missing in {name}")
+            self.assertIn("B_Suhrobbek", html, f"B_Suhrobbek missing in {name}")
+            self.assertIn("Foziljon", html, f"Foziljon missing in {name}")
+            self.assertIn("foziljon_sat", html, f"foziljon_sat missing in {name}")
+            self.assertIn("Saidkamolov Saidxon", html, f"Saidkamolov Saidxon missing in {name}")
+            self.assertIn("kanatavfx", html, f"kanatavfx missing in {name}")
+            self.assertIn("Cristiano Ronaldo", html, f"Cristiano Ronaldo missing in {name}")
+            self.assertIn("ahrorbek_9937", html, f"ahrorbek_9937 missing in {name}")
 
     def test_student_lockout_logic(self):
         """Permanent deletion and lockout functions must be present"""
@@ -37,6 +46,15 @@ class TestGroupsOfflineLockout(unittest.TestCase):
             self.assertIn("addDeletedStudentId", html, f"addDeletedStudentId missing in {name}")
             self.assertIn("isStudentDeleted", html, f"isStudentDeleted missing in {name}")
             self.assertIn("satmaster_deleted_students", html, f"satmaster_deleted_students storage key missing in {name}")
+            # Deletion audit log & registration tracking
+            self.assertIn("getDeletedStudentsLog", html, f"getDeletedStudentsLog missing in {name}")
+            self.assertIn("logStudentDeletion", html, f"logStudentDeletion missing in {name}")
+            self.assertIn("removeStudentFromDeletionRegistry", html, f"removeStudentFromDeletionRegistry missing in {name}")
+            self.assertIn("renderRemovedStudents", html, f"renderRemovedStudents missing in {name}")
+            self.assertIn("detail-removed-students-container", html, f"detail-removed-students-container missing in {name}")
+            self.assertIn("detail-removed-students-tbody", html, f"detail-removed-students-tbody missing in {name}")
+            self.assertIn("Refresh Page to Verify Again", html, f"Refresh button missing in {name}")
+            self.assertIn("@Ahrorbek_SAT_bot", html, f"Telegram bot registration handle missing in {name}")
 
     def test_offline_database_resilience(self):
         """fetchAndRenderGroups and fetchAndRenderGroupDetail must handle offline/404 without error box"""

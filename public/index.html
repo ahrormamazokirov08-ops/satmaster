@@ -226,11 +226,14 @@
       </div>
 
       <!-- Action Button Container (Revealed only on Failure / Unregistered) -->
-      <div id="splash-action-container" class="hidden pt-2 space-y-3">
-        <a href="https://t.me/Ahrorbek_SAT_bot" target="_blank" id="splash-btn-register" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-xl shadow-sky-500/25 transition-all hover:scale-[1.02] active:scale-95">
+      <div id="splash-action-container" class="hidden pt-2 space-y-2.5">
+        <a href="https://t.me/Ahrorbek_SAT_bot" target="_blank" id="splash-btn-register" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-xl shadow-sky-500/25 transition-all hover:scale-[1.02] active:scale-95">
           <span>✈️ Register via @Ahrorbek_SAT_bot</span>
           <span>→</span>
         </a>
+        <button type="button" onclick="window.location.reload()" class="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all">
+          <span>🔄</span><span>Refresh Page to Verify Again</span>
+        </button>
       </div>
 
     </div>
@@ -533,6 +536,39 @@
                 <!-- Dynamically populated via JS -->
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- REMOVED / INACTIVE STUDENTS AUDIT LOG -->
+        <div id="detail-removed-students-container" class="hidden space-y-3 pt-6 border-t border-slate-200">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
+              <span>🔒 Removed Students Registry (Locked Out)</span>
+            </h3>
+            <span id="detail-removed-count-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+              0 Removed
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Students listed below have been removed from this cohort. Their session links are invalidated and they are permanently locked out until they re-register via <strong class="text-sky-600">@Ahrorbek_SAT_bot</strong>.
+          </p>
+          <div class="overflow-hidden rounded-2xl border border-rose-200 bg-rose-50/20 shadow-xs">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-rose-100 bg-rose-100/50 text-rose-900 font-semibold uppercase text-[10px] tracking-wider">
+                    <th class="py-2.5 px-4 sm:px-6">Student</th>
+                    <th class="py-2.5 px-4 sm:px-6">Telegram</th>
+                    <th class="py-2.5 px-4 sm:px-6">Registered Date</th>
+                    <th class="py-2.5 px-4 sm:px-6">Removed Date</th>
+                    <th class="py-2.5 px-4 sm:px-6 text-right">Access Status</th>
+                  </tr>
+                </thead>
+                <tbody id="detail-removed-students-tbody" class="divide-y divide-rose-100/50 text-slate-700">
+                  <!-- Dynamically populated via JS -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -3747,18 +3783,18 @@
       const cleanSid = String(studentId).trim().toLowerCase();
       const cleanNumeric = cleanSid.replace(/^tg/i, '');
       const deletedIds = (typeof getDeletedStudentIds === 'function') ? getDeletedStudentIds() : [];
-      if (deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''))) {
-        console.warn('[SATMaster] Student ID is permanently deleted/locked out:', studentId);
-        return {
-          valid: false,
-          isExplicitlyDenied: true,
-          reason: 'account_deleted',
-          error: 'Your student account has been removed by the instructor. Please register again.'
-        };
-      }
 
-      // Fast check: if offline, verify against local cohorts
+      // Fast check: if offline, verify against local cohorts and deletion list
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''))) {
+          console.warn('[SATMaster] Student ID is permanently deleted/locked out (offline check):', studentId);
+          return {
+            valid: false,
+            isExplicitlyDenied: true,
+            reason: 'account_deleted',
+            error: 'Your student account has been removed by the instructor. Please register again.'
+          };
+        }
         if (typeof getLocalGroups === 'function') {
           const localGrps = getLocalGroups();
           for (const g of localGrps) {
@@ -3807,17 +3843,27 @@
 
           if (!resp.ok) {
             lastError = new Error(`Server status HTTP ${resp.status}`);
-            if (resp.status === 404 && typeof getLocalGroups === 'function') {
-              const localGrps = getLocalGroups();
-              for (const g of localGrps) {
-                if (Array.isArray(g.students)) {
-                  const found = g.students.find(s => 
-                    String(s.id || '').toLowerCase() === cleanSid || 
-                    String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
-                    String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
-                  );
-                  if (found) {
-                    return { valid: true, isExplicitlyDenied: false, student: found };
+            if (resp.status === 404) {
+              if (deletedIds.includes(cleanSid) || (cleanNumeric && deletedIds.includes(cleanNumeric)) || deletedIds.includes(cleanSid.replace(/^@/, ''))) {
+                return {
+                  valid: false,
+                  isExplicitlyDenied: true,
+                  reason: 'account_deleted',
+                  error: 'Your student account has been removed by the instructor. Please register again via @Ahrorbek_SAT_bot.'
+                };
+              }
+              if (typeof getLocalGroups === 'function') {
+                const localGrps = getLocalGroups();
+                for (const g of localGrps) {
+                  if (Array.isArray(g.students)) {
+                    const found = g.students.find(s => 
+                      String(s.id || '').toLowerCase() === cleanSid || 
+                      String(s.telegram_id || '').toLowerCase() === cleanNumeric ||
+                      String(s.telegram_username || '').replace(/^@/, '').toLowerCase() === cleanSid.replace(/^@/, '')
+                    );
+                    if (found) {
+                      return { valid: true, isExplicitlyDenied: false, student: found };
+                    }
                   }
                 }
               }
@@ -3827,11 +3873,20 @@
 
           const data = await resp.json();
           if (data && data.valid === true) {
+            // Re-registered or confirmed active student! Clear from deletion registry if previously logged
+            if (typeof removeStudentFromDeletionRegistry === 'function') {
+              removeStudentFromDeletionRegistry(studentId, data.student?.telegram_id);
+            }
             return { valid: true, isExplicitlyDenied: false, student: data.student };
           }
-          // Only an explicit server confirmation (status 200 && data.valid === false && data.reason === 'not_found_or_deleted')
+          // Explicit server confirmation of deletion or missing record
           if (data && data.valid === false && (data.reason === 'not_found_or_deleted' || data.reason === 'account_deleted')) {
-            return { valid: false, isExplicitlyDenied: true, reason: data.reason };
+            return {
+              valid: false,
+              isExplicitlyDenied: true,
+              reason: data.reason,
+              error: 'You do not have an active student registration in the database, or your account was removed by the teacher. Please register via @Ahrorbek_SAT_bot to access your class.'
+            };
           }
           return {
             valid: data ? data.valid === true : false,
@@ -3841,7 +3896,6 @@
           };
         } catch (err) {
           lastError = err;
-        }
       }
 
       console.warn('[SATMaster] verifyStudentAccount exhausted retries:', lastError);
@@ -4591,15 +4645,96 @@
         code: 'SAT-M26',
         schedule: 'Mon, Wed, Fri 18:00',
         description: 'SAT Cohort',
-        student_count: 2,
+        student_count: 5,
         created_at: '2026-09-01T10:00:00Z',
         students: [
+          {
+            id: 'std_suhrobbek',
+            telegram_id: 7148077470,
+            display_name: 'Suhrobbek (Robek)',
+            telegram_username: 'B_Suhrobbek',
+            created_at: '2026-10-08T20:10:40Z',
+            registered_at: '2026-10-08T20:10:40Z',
+            history: [
+              {
+                test_title: 'Digital SAT Full Practice Test #1',
+                total_score: 1480,
+                rw_score: 740,
+                math_score: 740,
+                status: 'Passed',
+                completed_at: '2026-10-09T18:30:00Z'
+              },
+              {
+                test_title: 'SAT Vocabulary Mastery Quiz',
+                total_score: 1420,
+                rw_score: 710,
+                math_score: 710,
+                status: 'Passed',
+                completed_at: '2026-10-11T14:15:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_foziljon',
+            telegram_id: 1185684252,
+            display_name: 'Foziljon',
+            telegram_username: 'foziljon_sat',
+            created_at: '2026-10-08T19:58:24Z',
+            registered_at: '2026-10-08T19:58:24Z',
+            history: [
+              {
+                test_title: 'Digital SAT Diagnostic Test',
+                total_score: 1390,
+                rw_score: 680,
+                math_score: 710,
+                status: 'Passed',
+                completed_at: '2026-10-09T14:15:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_saidxon',
+            telegram_id: 5209814338,
+            display_name: 'Saidkamolov Saidxon',
+            telegram_username: 'kanatavfx',
+            created_at: '2026-10-02T11:54:51Z',
+            registered_at: '2026-10-02T11:54:51Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 1',
+                total_score: 1440,
+                rw_score: 710,
+                math_score: 730,
+                status: 'Passed',
+                completed_at: '2026-10-05T16:45:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_ronaldo',
+            telegram_id: 6789834037,
+            display_name: 'Cristiano Ronaldo',
+            telegram_username: 'ahrorbek_9937',
+            created_at: '2026-09-30T15:41:51Z',
+            registered_at: '2026-09-30T15:41:51Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 2',
+                total_score: 1510,
+                rw_score: 750,
+                math_score: 760,
+                status: 'Passed',
+                completed_at: '2026-10-06T19:20:00Z'
+              }
+            ]
+          },
           {
             id: 'std_elena_r',
             telegram_id: 501002,
             display_name: 'Elena Rostova',
             telegram_username: 'elena_r',
             created_at: '2026-09-01T10:00:00Z',
+            registered_at: '2026-09-01T10:00:00Z',
             history: [
               {
                 test_title: 'Digital SAT Practice Test 1',
@@ -4608,23 +4743,6 @@
                 math_score: 710,
                 status: 'Passed',
                 completed_at: '2026-10-05T14:30:00Z'
-              }
-            ]
-          },
-          {
-            id: 'std_alex_c',
-            telegram_id: 501004,
-            display_name: 'Alex Chen',
-            telegram_username: 'alexchen_sat',
-            created_at: '2026-09-05T11:00:00Z',
-            history: [
-              {
-                test_title: 'Digital SAT Practice Test 1',
-                total_score: 1380,
-                rw_score: 670,
-                math_score: 710,
-                status: 'Passed',
-                completed_at: '2026-10-06T16:00:00Z'
               }
             ]
           }
@@ -4645,6 +4763,7 @@
             display_name: 'Frank Miller',
             telegram_username: 'fmiller',
             created_at: '2026-09-02T12:00:00Z',
+            registered_at: '2026-09-02T12:00:00Z',
             history: [
               {
                 test_title: 'Digital SAT Practice Test 2',
@@ -4662,6 +4781,7 @@
             display_name: 'Jasmine Patel',
             telegram_username: 'jasmine_p',
             created_at: '2026-09-06T14:00:00Z',
+            registered_at: '2026-09-06T14:00:00Z',
             history: [
               {
                 test_title: 'Digital SAT Practice Test 1',
@@ -4681,7 +4801,7 @@
         code: 'DSAT-INT',
         schedule: 'Sat, Sun 10:00',
         description: 'SAT Cohort',
-        student_count: 2,
+        student_count: 3,
         created_at: '2026-09-03T09:30:00Z',
         students: [
           {
@@ -4690,6 +4810,7 @@
             display_name: 'David Kim',
             telegram_username: 'david_k',
             created_at: '2026-09-03T09:30:00Z',
+            registered_at: '2026-09-03T09:30:00Z',
             history: [
               {
                 test_title: 'Digital SAT Practice Test 3',
@@ -4707,6 +4828,7 @@
             display_name: 'Sarah Williams',
             telegram_username: 'sarah_w',
             created_at: '2026-09-07T15:30:00Z',
+            registered_at: '2026-09-07T15:30:00Z',
             history: [
               {
                 test_title: 'Digital SAT Practice Test 2',
@@ -4715,6 +4837,24 @@
                 math_score: 710,
                 status: 'Passed',
                 completed_at: '2026-10-10T13:00:00Z'
+              }
+            ]
+          },
+          {
+            id: 'std_alex_c',
+            telegram_id: 501004,
+            display_name: 'Alex Chen',
+            telegram_username: 'alexchen_sat',
+            created_at: '2026-09-05T11:00:00Z',
+            registered_at: '2026-09-05T11:00:00Z',
+            history: [
+              {
+                test_title: 'Digital SAT Practice Test 1',
+                total_score: 1380,
+                rw_score: 670,
+                math_score: 710,
+                status: 'Passed',
+                completed_at: '2026-10-06T16:00:00Z'
               }
             ]
           }
@@ -4750,6 +4890,54 @@
       const sClean = sId.replace(/^tg/i, '');
       const sUser = username ? String(username).replace(/^@/, '').trim().toLowerCase() : '';
       return deleted.some(d => (sId && d === sId) || (sClean && d === sClean) || (sUser && d === sUser));
+    }
+
+    function getDeletedStudentsLog() {
+      try {
+        const stored = localStorage.getItem('satmaster_deleted_students_log');
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveDeletedStudentsLog(log) {
+      try {
+        localStorage.setItem('satmaster_deleted_students_log', JSON.stringify(log));
+      } catch (e) {}
+    }
+
+    function logStudentDeletion(studentInfo) {
+      if (!studentInfo || !studentInfo.id) return;
+      const log = getDeletedStudentsLog();
+      const sId = String(studentInfo.id);
+      const tId = studentInfo.telegram_id ? String(studentInfo.telegram_id) : '';
+      const existingIdx = log.findIndex(l => String(l.id) === sId || (tId && String(l.telegram_id) === tId));
+      const record = {
+        id: sId,
+        name: studentInfo.display_name || studentInfo.name || 'Student',
+        telegram_id: studentInfo.telegram_id || null,
+        telegram_username: studentInfo.telegram_username ? String(studentInfo.telegram_username).replace(/^@/, '') : '',
+        group_id: studentInfo.group_id || activeGroupId || '',
+        registered_at: studentInfo.registered_at || studentInfo.created_at || new Date().toISOString(),
+        deleted_at: new Date().toISOString(),
+        status: 'Terminated / Locked Out'
+      };
+      if (existingIdx >= 0) {
+        log[existingIdx] = record;
+      } else {
+        log.unshift(record);
+      }
+      saveDeletedStudentsLog(log);
+    }
+
+    function removeStudentFromDeletionRegistry(studentId, telegramId) {
+      const sid = String(studentId || '').trim().toLowerCase();
+      const tid = String(telegramId || '').trim().toLowerCase();
+      const list = getDeletedStudentIds().filter(d => d !== sid && d !== tid && d !== sid.replace(/^tg/i, ''));
+      try { localStorage.setItem('satmaster_deleted_students', JSON.stringify(list)); } catch(e) {}
+      const log = getDeletedStudentsLog().filter(l => String(l.id).toLowerCase() !== sid && String(l.telegram_id).toLowerCase() !== tid);
+      saveDeletedStudentsLog(log);
     }
 
     function getLocalGroups() {
@@ -5328,6 +5516,61 @@
       fetchAndRenderGroups(false);
     }
 
+    function renderRemovedStudents(groupId) {
+      const container = document.getElementById('detail-removed-students-container');
+      const tbody = document.getElementById('detail-removed-students-tbody');
+      const badge = document.getElementById('detail-removed-count-badge');
+      if (!container || !tbody) return;
+
+      const log = typeof getDeletedStudentsLog === 'function' ? getDeletedStudentsLog() : [];
+      const records = log.filter(r => !groupId || !r.group_id || r.group_id === groupId || (activeGroupId && r.group_id === activeGroupId));
+
+      if (badge) {
+        badge.innerText = `${records.length} ${records.length === 1 ? 'Removed' : 'Removed'}`;
+      }
+
+      if (records.length === 0) {
+        container.classList.add('hidden');
+        tbody.innerHTML = '';
+        return;
+      }
+
+      container.classList.remove('hidden');
+      tbody.innerHTML = records.map(r => `
+        <tr class="hover:bg-rose-50/50 transition-all">
+          <td class="py-2.5 px-4 sm:px-6">
+            <div class="flex items-center gap-2">
+              <div class="h-7 w-7 rounded-lg bg-rose-200 text-rose-800 font-bold flex items-center justify-center text-[10px]">
+                ${typeof getInitials === 'function' ? getInitials(r.name) : 'ST'}
+              </div>
+              <div>
+                <span class="font-bold text-slate-800 block text-xs line-through decoration-rose-400">${escapeHtml(r.name)}</span>
+                <span class="text-[10px] text-slate-400 font-mono">TG ID: ${r.telegram_id || 'N/A'}</span>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-4 sm:px-6">
+            ${r.telegram_username ? `
+              <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-white text-slate-600 border border-slate-200">
+                @${escapeHtml(r.telegram_username)}
+              </span>
+            ` : `<span class="text-[10px] text-slate-400 italic">No @handle</span>`}
+          </td>
+          <td class="py-2.5 px-4 sm:px-6 text-slate-500 font-mono text-[10px]">
+            ${typeof formatTimestampWithTime === 'function' ? formatTimestampWithTime(r.registered_at) : formatTimestamp(r.registered_at)}
+          </td>
+          <td class="py-2.5 px-4 sm:px-6 text-rose-600 font-mono text-[10px] font-medium">
+            ${typeof formatTimestampWithTime === 'function' ? formatTimestampWithTime(r.deleted_at) : formatTimestamp(r.deleted_at)}
+          </td>
+          <td class="py-2.5 px-4 sm:px-6 text-right">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 shadow-xs inline-flex items-center gap-1">
+              <span>🔒</span><span>Access Terminated</span>
+            </span>
+          </td>
+        </tr>
+      `).join('');
+    }
+
     function refreshGroupDetail() {
       if (activeGroupId) {
         fetchAndRenderGroupDetail(activeGroupId);
@@ -5335,6 +5578,7 @@
     }
 
     function fetchAndRenderGroupDetail(groupId) {
+      renderRemovedStudents(groupId);
       const loading = document.getElementById('detail-roster-loading');
       const errorBox = document.getElementById('detail-roster-error');
       const emptyState = document.getElementById('detail-roster-empty');
@@ -5599,19 +5843,38 @@
         btn.innerText = 'Deleting...';
       }
 
-      // 1. Immediately register student ID in permanent lockout list
-      addDeletedStudentId(sid);
-
-      // 2. Also register their telegram username and telegram_id to guarantee permanent lockout
+      // 1. Find target student object to record registration timestamp and info
+      let targetStudentObj = null;
       (cachedGroups || []).forEach(g => {
         if (Array.isArray(g.students)) {
           const s = g.students.find(stu => stu.id === sid);
           if (s) {
+            targetStudentObj = s;
             if (s.telegram_id) addDeletedStudentId(s.telegram_id);
             if (s.telegram_username) addDeletedStudentId(s.telegram_username);
           }
         }
       });
+
+      // 2. Immediately register student ID in permanent lockout list
+      addDeletedStudentId(sid);
+
+      // 3. Log student deletion with registered date and deleted date
+      if (typeof logStudentDeletion === 'function') {
+        logStudentDeletion({
+          id: sid,
+          name: sname || (targetStudentObj ? (targetStudentObj.display_name || targetStudentObj.name) : 'Student'),
+          telegram_id: targetStudentObj ? targetStudentObj.telegram_id : null,
+          telegram_username: targetStudentObj ? targetStudentObj.telegram_username : '',
+          group_id: activeGroupId || '',
+          registered_at: targetStudentObj ? (targetStudentObj.created_at || targetStudentObj.registered_at) : null
+        });
+      }
+
+      // 4. Update removed students table immediately
+      if (typeof renderRemovedStudents === 'function') {
+        renderRemovedStudents(activeGroupId);
+      }
 
       // 3. Remove student from cachedGroups and save to localStorage
       (cachedGroups || []).forEach(g => {
