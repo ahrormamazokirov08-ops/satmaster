@@ -270,8 +270,8 @@
         <span>📖</span><span>Question Bank</span>
         <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded-full">Draft</span>
       </button>
-      <button onclick="switchTab('student')" id="nav-student" class="px-3.5 py-1.5 rounded-lg transition-all text-emerald-700 hover:text-emerald-900 font-bold">
-        📝 Student Portal
+      <button onclick="switchTab('student')" id="nav-student" class="px-3.5 py-1.5 rounded-lg transition-all text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1.5">
+        <span>📝</span><span>Homework</span>
       </button>
     </nav>
 
@@ -1961,68 +1961,73 @@
     <!-- ========================================== -->
     <!-- TAB 5: STUDENT HOMEWORK PORTAL & SAT TEST RUNNER -->
     <!-- ========================================== -->
-    <section id="tab-student" class="hidden space-y-8 max-w-5xl mx-auto">
+    <section id="tab-student" class="hidden space-y-6 max-w-6xl mx-auto">
       
       <!-- STATE 1: STUDENT ENTRY / PORTAL HUB -->
       <div id="student-portal-hub" class="space-y-6">
         
-        <!-- Header -->
-        <div class="text-center max-w-xl mx-auto space-y-2">
-          <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-1 rounded-full text-xs font-bold inline-block">
-            🎓 Digital SAT Homework Portal
-          </span>
-          <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Access Your Assigned Homework</h1>
-          <p class="text-xs sm:text-sm text-slate-500">Enter your homework PIN code or pick an active assignment assigned to your class.</p>
+        <!-- Header & Cohort Info Bar -->
+        <div class="p-6 rounded-3xl border border-slate-200 bg-white shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                <span>📝</span><span>Assigned Homework</span>
+              </span>
+              <span class="text-xs text-slate-400">•</span>
+              <span class="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                <span>Cohort:</span>
+                <span id="student-portal-cohort-badge" class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">SAT Masters 2026</span>
+              </span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Active Class Assignments</h1>
+            <p class="text-xs text-slate-500">Pick any assigned homework below to launch with exact teacher drill settings.</p>
+          </div>
+
+          <!-- Quick Actions / Cohort filter & Manual PIN toggle -->
+          <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <div class="text-xs">
+              <select id="student-class-select" onchange="renderAvailableHomeworkForClass()" class="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 outline-none focus:border-emerald-500">
+                <option value="SAT Masters 2026">SAT Masters 2026</option>
+              </select>
+            </div>
+            <button type="button" onclick="toggleStudentPinDrawer()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all flex items-center gap-1.5 shadow-xs">
+              <span>🔑</span><span>Manual PIN</span>
+            </button>
+          </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-          
-          <!-- Left: PIN Entry Box -->
-          <div class="md:col-span-5 p-6 sm:p-7 rounded-3xl border border-slate-200 bg-white space-y-5 shadow-sm text-slate-800">
-            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <span>🔑</span><span>Enter Homework PIN</span>
+        <!-- Collapsible Manual PIN Drawer -->
+        <div id="student-pin-drawer" class="hidden p-6 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm text-slate-800">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h3 class="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <span>🔑</span><span>Enter Homework PIN Manually</span>
             </h3>
+            <button type="button" onclick="toggleStudentPinDrawer()" class="text-slate-400 hover:text-slate-600 text-xs">✕ Close</button>
+          </div>
 
-            <div class="space-y-3.5 text-xs">
-              <div>
-                <label class="text-slate-700 font-semibold block mb-1">Your Full Name</label>
-                <input type="text" id="student-name-input" placeholder="e.g. Alex Chen" class="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 rounded-xl p-3 text-xs text-slate-900 outline-none shadow-xs">
-              </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
+            <div>
+              <label class="text-slate-700 font-semibold block mb-1">Your Full Name</label>
+              <input type="text" id="student-name-input" placeholder="e.g. Alex Chen" class="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 rounded-xl p-2.5 text-xs text-slate-900 outline-none shadow-xs">
+            </div>
 
-              <div>
-                <label class="text-slate-700 font-semibold block mb-1">Your Class Cohort</label>
-                <select id="student-class-select" onchange="renderAvailableHomeworkForClass()" class="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 rounded-xl p-3 text-xs text-slate-900 outline-none shadow-xs">
-                  <!-- Dynamic class options -->
-                </select>
-              </div>
+            <div>
+              <label class="text-slate-700 font-semibold block mb-1">Class / Homework PIN Code</label>
+              <input type="text" id="student-pin-input" placeholder="e.g. MATH-46" class="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 rounded-xl p-2.5 text-xs text-slate-900 font-mono uppercase font-black tracking-wider outline-none shadow-xs">
+            </div>
 
-              <div>
-                <label class="text-slate-700 font-semibold block mb-1">Class / Homework PIN Code</label>
-                <input type="text" id="student-pin-input" placeholder="e.g. MATH-01" class="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 rounded-xl p-3 text-xs text-slate-900 font-mono uppercase font-black tracking-wider outline-none shadow-xs">
-              </div>
-
-              <button type="button" onclick="handleStartStudentQuiz()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold text-xs text-white shadow-xl shadow-emerald-600/25 active:scale-95 transition-all flex items-center justify-center gap-2">
-                <span>Begin Homework Drill</span>
+            <div class="flex items-end">
+              <button type="button" onclick="handleStartStudentQuiz()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold text-xs text-white shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span>Begin Drill</span>
                 <span>→</span>
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- Right: Available Homework Drills for Class -->
-          <div class="md:col-span-7 p-6 sm:p-7 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm text-slate-800">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span>📚</span><span>Active Class Assignments</span>
-              </h3>
-              <span class="text-[11px] text-slate-500">1-click launch</span>
-            </div>
-
-            <!-- List of available homework cards -->
-            <div id="student-active-hw-list" class="space-y-3">
-              <!-- Dynamically populated homework cards -->
-            </div>
-          </div>
-
+        <!-- Full-Width Responsive Homework Cards Grid matching Teacher view -->
+        <div id="student-active-hw-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Dynamically populated homework cards -->
         </div>
 
       </div>
@@ -4378,15 +4383,15 @@
         const mobStudent = document.getElementById('mob-nav-student');
 
         if (currentUserRole === 'student') {
-          // Students only get access to the SAT Vocabulary Suite (homework tab is hidden)
+          // Students get access to Study Workbook (SAT Vocab), Question Bank, and Homework
           teacherTabs.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.add('hidden');
           });
-          if (studentNavBtn) studentNavBtn.classList.add('hidden');
+          if (studentNavBtn) studentNavBtn.classList.remove('hidden');
           if (mobGroups) mobGroups.classList.add('hidden');
           if (mobDashboard) mobDashboard.classList.add('hidden');
-          if (mobStudent) mobStudent.classList.add('hidden');
+          if (mobStudent) mobStudent.classList.remove('hidden');
           if (mobVocab) mobVocab.classList.remove('hidden');
 
           // Students can take unit tests with full width panel
@@ -4545,7 +4550,7 @@
           role: 'student',
           uid: 'TG109283',
           name: 'Alex Chen',
-          className: 'SAT Elite Cohort A',
+          className: 'SAT Masters 2026',
           source: 'demo'
         };
       }
@@ -6679,9 +6684,60 @@
 
     const DEFAULT_ASSIGNMENTS = [
       {
+        id: 'assign-vocab-lesson-1',
+        code: 'MATH-46',
+        className: 'SAT Masters 2026',
+        title: 'SAT Vocab: Lesson 1 (20 Words)',
+        type: 'vocab',
+        config: {
+          scopeId: 'lesson-1',
+          scopeName: 'Lesson 1: Foundational SAT Roots',
+          question_count: 20,
+          timer: 15
+        },
+        deadline: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+        timeLimitMinutes: 15,
+        questionIds: [],
+        createdAt: '2026-10-14T10:00:00.000Z'
+      },
+      {
+        id: 'assign-vocab-lesson-4',
+        code: 'HW-95',
+        className: 'SAT Masters 2026',
+        title: 'SAT Vocab: Lesson 4 (20 Words)',
+        type: 'vocab',
+        config: {
+          scopeId: 'lesson-4',
+          scopeName: 'Lesson 4: Advanced Context & Tone',
+          question_count: 20,
+          timer: 15
+        },
+        deadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
+        timeLimitMinutes: 15,
+        questionIds: [],
+        createdAt: '2026-10-14T12:00:00.000Z'
+      },
+      {
+        id: 'assign-qb-01',
+        code: 'QB-24',
+        className: 'SAT Masters 2026',
+        title: 'SAT Question Bank: Information and Ideas Drill',
+        type: 'qbank',
+        config: {
+          subject: 'rw',
+          question_count: 20,
+          timer: 20,
+          domains: ['Information and Ideas']
+        },
+        deadline: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+        timeLimitMinutes: 20,
+        questionIds: [],
+        createdAt: '2026-10-14T14:00:00.000Z'
+      },
+      {
         id: 'assign-math-01',
         code: 'MATH-01',
-        className: 'Group A',
+        className: 'SAT Masters 2026',
         title: 'SAT Math: Algebra, Quadratics & Trigonometry Drill',
         description: 'Practice set focused on linear equations, vertex form, trigonometric complementary identities, and grid-in algebraic responses.',
         section: 'math',
@@ -6692,7 +6748,7 @@
       {
         id: 'assign-rw-01',
         code: 'READ-01',
-        className: 'Group A',
+        className: 'SAT Masters 2026',
         title: 'SAT Reading & Writing: Words in Context & Transitions',
         description: 'Targeted homework for sentence boundaries, modifier placement, context-dependent vocabulary, and transition logic.',
         section: 'reading-writing',
@@ -6703,7 +6759,7 @@
       {
         id: 'assign-mixed-01',
         code: 'SAT-MIX',
-        className: 'Group A',
+        className: 'SAT Masters 2026',
         title: 'Comprehensive Digital SAT Diagnostic Review',
         description: 'Comprehensive timed mixed drill covering reading analysis, writing conventions, and advanced math.',
         section: 'mixed',
@@ -6718,7 +6774,21 @@
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Auto-merge active assignments if missing
+            const existingCodes = new Set(parsed.map(p => (p.code || '').toUpperCase()));
+            let updated = false;
+            DEFAULT_ASSIGNMENTS.forEach(def => {
+              if (def.code && !existingCodes.has(def.code.toUpperCase())) {
+                parsed.push(def);
+                updated = true;
+              }
+            });
+            if (updated) {
+              localStorage.setItem('satmaster_assignments', JSON.stringify(parsed));
+            }
+            return parsed;
+          }
         } catch(e) {}
       }
       localStorage.setItem('satmaster_assignments', JSON.stringify(DEFAULT_ASSIGNMENTS));
@@ -7875,66 +7945,200 @@
     // IN-APP DIGITAL SAT STUDENT TEST RUNNER & AUTO-GRADING
     // =========================================================
 
+    function toggleStudentPinDrawer() {
+      const drawer = document.getElementById('student-pin-drawer');
+      if (drawer) drawer.classList.toggle('hidden');
+    }
+
+    function getCompletedHomeworkList() {
+      try {
+        const raw = localStorage.getItem('satmaster_completed_homework');
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function getHomeworkSubmission(hwId, studentIdOrName) {
+      if (!hwId) return null;
+      const list = getCompletedHomeworkList();
+      const target = String(hwId).trim().toUpperCase();
+      const normStudent = studentIdOrName ? String(studentIdOrName).trim().toLowerCase() : '';
+      return list.find(it => {
+        const matchHw = (it.hwId && String(it.hwId).trim().toUpperCase() === target) ||
+                        (it.hwCode && String(it.hwCode).trim().toUpperCase() === target);
+        if (!matchHw) return false;
+        if (!normStudent) return true;
+        const sId = it.studentId ? String(it.studentId).trim().toLowerCase() : '';
+        const sName = it.studentName ? String(it.studentName).trim().toLowerCase() : '';
+        return sId === normStudent || sName === normStudent;
+      }) || null;
+    }
+
+    function markHomeworkCompleted(hwId, resultData) {
+      if (!hwId) return;
+      const list = getCompletedHomeworkList();
+      const studentName = (typeof currentSession !== 'undefined' && currentSession?.name) || document.getElementById('student-name-input')?.value.trim() || 'Student User';
+      const studentId = (typeof currentSession !== 'undefined' && currentSession?.uid) || 'STU_CURRENT';
+      const studentClass = (typeof currentSession !== 'undefined' && currentSession?.className) || 'SAT Masters 2026';
+
+      const target = String(hwId).trim().toUpperCase();
+      const existingIdx = list.findIndex(it => {
+        const matchHw = (it.hwId && String(it.hwId).trim().toUpperCase() === target) ||
+                        (it.hwCode && String(it.hwCode).trim().toUpperCase() === target);
+        return matchHw && (it.studentId === studentId || it.studentName === studentName);
+      });
+
+      const record = {
+        hwId: hwId,
+        hwCode: resultData.hwCode || (window.activeHomeworkAssignment && window.activeHomeworkAssignment.code) || '',
+        studentId: studentId,
+        studentName: studentName,
+        studentClass: studentClass,
+        score: resultData.score,
+        total: resultData.total,
+        scorePct: resultData.scorePct,
+        type: resultData.type,
+        completedAt: new Date().toISOString()
+      };
+
+      if (existingIdx >= 0) {
+        list[existingIdx] = record;
+      } else {
+        list.unshift(record);
+      }
+      localStorage.setItem('satmaster_completed_homework', JSON.stringify(list));
+      renderAvailableHomeworkForClass();
+    }
+
     function renderAvailableHomeworkForClass() {
       const select = document.getElementById('student-class-select');
-      const selectedClass = select && select.value ? select.value.trim().toLowerCase() : '';
+      let selectedClass = select && select.value ? select.value.trim().toLowerCase() : '';
+      if (!selectedClass && typeof currentSession !== 'undefined' && currentSession?.className) {
+        selectedClass = currentSession.className.trim().toLowerCase();
+        if (select) select.value = currentSession.className;
+      }
+
+      const cohortBadge = document.getElementById('student-portal-cohort-badge');
+      if (cohortBadge) {
+        cohortBadge.innerText = (select && select.value) || (typeof currentSession !== 'undefined' && currentSession?.className) || 'SAT Masters 2026';
+      }
+
       const container = document.getElementById('student-active-hw-list');
       if (!container) return;
 
       const assignments = getAssignments();
+      const studentName = (typeof currentSession !== 'undefined' && currentSession?.name) || document.getElementById('student-name-input')?.value.trim() || 'Student User';
+      const studentId = (typeof currentSession !== 'undefined' && currentSession?.uid) || 'STU_CURRENT';
 
-      if (assignments.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No active homework drills currently assigned. Check back later or ask your teacher!</div>`;
+      // Filter assignments for selected class or 'All Students'
+      const filteredAssignments = assignments.filter(hw => {
+        if (!selectedClass) return true;
+        const hwClass = (hw.className || '').trim().toLowerCase();
+        return !hwClass || hwClass === 'all students' || hwClass === selectedClass;
+      });
+
+      if (filteredAssignments.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full p-10 text-center rounded-3xl border border-slate-200 bg-white space-y-3 shadow-xs">
+            <div class="text-3xl">🎉</div>
+            <h3 class="text-sm font-bold text-slate-800">No Homework Assigned</h3>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">You're all caught up! When your teacher assigns drills for your class, they'll appear right here.</p>
+          </div>
+        `;
         return;
       }
 
-      container.innerHTML = assignments.map(hw => {
+      container.innerHTML = filteredAssignments.map(hw => {
         const isVocab = hw.type === 'vocab';
         const isQBank = hw.type === 'qbank';
-        const timerText = hw.timeLimitMinutes > 0 ? `${hw.timeLimitMinutes} Mins` : (hw.config?.timer > 0 ? `${hw.config.timer} Mins` : 'Untimed');
-        const qCount = isVocab ? (hw.config?.question_count || 20) : (isQBank ? (hw.config?.question_count || 20) : (hw.questionIds || []).length);
         
         let typeBadge = '';
-        let passBadge = '';
-        let subtitle = hw.description || 'Digital SAT practice drill';
-
         if (isVocab) {
-          typeBadge = '<span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">📚 Vocab Unit Test</span>';
-          passBadge = '<span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">Pass: ≥80%</span>';
-          subtitle = hw.config?.scopeName || hw.title;
+          typeBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-100 text-purple-700">📚 SAT Vocab</span>';
         } else if (isQBank) {
-          const isMath = hw.config?.subject === 'math';
-          typeBadge = isMath 
-            ? '<span class="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">📐 Math Question Bank</span>'
-            : '<span class="text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded border border-pink-200">📖 R&W Question Bank</span>';
-          passBadge = isMath
-            ? '<span class="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded">Pass: ≥85%</span>'
-            : '<span class="text-[10px] font-bold text-pink-600 bg-pink-50 px-2 py-0.5 rounded">Pass: ≥75%</span>';
-          const doms = (hw.config?.domains || []).slice(0, 2).join(', ');
-          subtitle = doms ? `${doms} (Fresh Unsolved Questions)` : 'Fresh Unsolved Question Bank Drill';
+          typeBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-sky-100 text-sky-700">📖 SAT QBank</span>';
         } else {
-          typeBadge = `<span class="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">PIN: ${hw.code}</span>`;
+          typeBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-700">📝 SAT Practice</span>';
         }
 
-        const deadlineText = hw.deadline ? `Due: ${new Date(hw.deadline).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '';
+        const qCount = isVocab 
+          ? (hw.config?.question_count || 20) 
+          : (isQBank ? (hw.config?.question_count || 20) : (hw.questionIds || []).length);
 
-        return `
-          <div class="p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs text-slate-800">
-            <div class="space-y-1.5 flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                ${typeBadge}
-                ${passBadge}
-                <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">${timerText}</span>
-                <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">${qCount} Questions</span>
-                ${deadlineText ? `<span class="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">⏱️ ${deadlineText}</span>` : ''}
+        const timerText = hw.timeLimitMinutes > 0 ? `${hw.timeLimitMinutes} Mins` : (hw.config?.timer > 0 ? `${hw.config.timer} Mins` : 'Untimed');
+        const deadlineStatus = typeof getDeadlineStatus === 'function' ? getDeadlineStatus(hw.deadline) : { text: 'Active', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' };
+        const formattedDeadline = typeof formatDeadlineDisplay === 'function' ? formatDeadlineDisplay(hw.deadline) : (hw.deadline ? new Date(hw.deadline).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Flexible');
+
+        const submission = getHomeworkSubmission(hw.id, studentId) || getHomeworkSubmission(hw.code, studentId) || getHomeworkSubmission(hw.id, studentName) || getHomeworkSubmission(hw.code, studentName);
+        const isCompleted = Boolean(submission);
+
+        let actionButtonHtml = '';
+        if (isCompleted) {
+          actionButtonHtml = `
+            <div class="space-y-2 pt-1 w-full">
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm">✅</span>
+                  <span>Done • Completed</span>
+                </div>
+                <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${submission.scorePct}%)</span>
               </div>
-              <h4 class="text-sm font-bold text-slate-900 truncate">${hw.title}</h4>
-              <p class="text-xs text-slate-500 line-clamp-1">${subtitle}</p>
+              <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
+                <span>🔄 Retake / Practice Again</span>
+              </button>
             </div>
-            <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 shrink-0 active:scale-95 transition-all flex items-center gap-1.5">
-              <span>Let's Do It</span>
+          `;
+        } else {
+          actionButtonHtml = `
+            <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95">
+              <span>🚀 Solve Homework</span>
               <span>→</span>
             </button>
+          `;
+        }
+
+        return `
+          <div class="p-5 rounded-3xl border border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 shadow-xs text-slate-800 ${isCompleted ? 'bg-slate-50/50 border-emerald-200' : ''}">
+            <!-- Top: Type Badge & Active Status -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                ${typeBadge}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${deadlineStatus.badgeClass} flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}"></span>
+                  <span>${deadlineStatus.text}</span>
+                </span>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2">${escapeHtml(hw.title)}</h3>
+                <p class="text-[11px] text-slate-500 font-medium mt-1">👥 ${escapeHtml(hw.className || 'All Students')}</p>
+              </div>
+            </div>
+
+            <!-- Middle: Key Metrics -->
+            <div class="space-y-1.5 py-3 border-y border-slate-100 text-xs">
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Drill Size:</span>
+                <span class="font-bold text-slate-800">${qCount} Questions</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Timer:</span>
+                <span class="font-bold text-slate-800">${timerText}</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Student PIN:</span>
+                <span class="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">${hw.code || 'ACTIVE'}</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Deadline:</span>
+                <span class="font-semibold text-slate-700">${formattedDeadline}</span>
+              </div>
+            </div>
+
+            <!-- Bottom: Action Buttons -->
+            <div class="pt-1">
+              ${actionButtonHtml}
+            </div>
           </div>
         `;
       }).join('');
@@ -8432,6 +8636,17 @@
       const subs = getSubmissions();
       subs.unshift(newSubmission);
       saveSubmissions(subs);
+
+      // Track homework completion for student portal cards
+      if (typeof markHomeworkCompleted === 'function' && test.assignment?.id) {
+        markHomeworkCompleted(test.assignment.id, {
+          score: correctCount,
+          total: totalCount,
+          scorePct: scorePct,
+          type: test.assignment.type || 'drill',
+          hwCode: test.assignment.code
+        });
+      }
 
       // Post submission report to /api/report (Telegram dispatch)
       if (typeof fetch === 'function') {
@@ -10650,6 +10865,19 @@
 
       // Save report
       saveVocabReport(report);
+
+      // Track homework completion if launched from homework tab
+      if (window.activeHomeworkAssignment && window.activeHomeworkAssignment.type === 'vocab') {
+        if (typeof markHomeworkCompleted === 'function') {
+          markHomeworkCompleted(window.activeHomeworkAssignment.id, {
+            score: correctCount,
+            total: totalQ,
+            scorePct: scorePct,
+            type: 'vocab',
+            hwCode: window.activeHomeworkAssignment.code
+          });
+        }
+      }
 
       // Save learned words to satmaster_vocab_mastered
       try {
@@ -13906,6 +14134,20 @@
       }
     } catch (e) {}
 
+    // Track homework completion if launched from homework tab
+    if (this.activeHomeworkId || (window.activeHomeworkAssignment && window.activeHomeworkAssignment.type === 'qbank')) {
+      const hwId = this.activeHomeworkId || window.activeHomeworkAssignment.id;
+      if (typeof markHomeworkCompleted === 'function') {
+        markHomeworkCompleted(hwId, {
+          score: correctCount,
+          total: total,
+          scorePct: accuracyPct,
+          type: 'qbank',
+          hwCode: window.activeHomeworkAssignment?.code
+        });
+      }
+    }
+
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
   },
@@ -14141,7 +14383,7 @@ if (typeof window !== 'undefined') {
     </button>
     <button type="button" onclick="switchTab('student')" id="mob-nav-student" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all text-emerald-600">
       <span class="text-base">📝</span>
-      <span>Portal</span>
+      <span>Homework</span>
     </button>
   </nav>
 </body>
