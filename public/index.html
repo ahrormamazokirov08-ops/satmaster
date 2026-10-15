@@ -8314,8 +8314,17 @@
       if (targetHw.type === 'qbank') {
         window.activeHomeworkAssignment = targetHw;
         const hwTitle = targetHw.title || 'Digital SAT Practice Drill';
-        showLoading('Loading Question Bank Drill...', `Setting up ${hwTitle} with teacher settings for ${studentName}...`, 600, async function() {
-          const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
+        const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
+        const qCount = targetHw.config?.question_count || 10;
+
+        showLoading('Starting Homework Drill...', `Preparing ${hwTitle} (${qCount} questions) for ${studentName}...`, 350, async function() {
+          // Immediately ensure setup view and hub view stay hidden so student directly enters test
+          const hubView = document.getElementById('qbank-hub-view');
+          const detailView = document.getElementById('qb-detail-view');
+          const setupView = document.getElementById('qb-setup-view');
+          if (hubView) hubView.classList.add('hidden');
+          if (detailView) detailView.classList.add('hidden');
+          if (setupView) setupView.classList.add('hidden');
 
           switchTab('qbank');
 
@@ -8333,14 +8342,11 @@
               await window.qbEngine.loadSolvedQuestions();
             }
 
-            // Switch directly into the subject detail setup view
-            window.qbEngine.selectSubjectView(subj);
-
-            // STRICT GUARANTEE: Always select from unsolved questions pool only!
+            // Set subject & activeStatusFilter
+            window.qbEngine.activeSubject = subj;
             window.qbEngine.activeStatusFilter = 'unsolved';
 
             // Pre-set question count assigned by teacher
-            const qCount = targetHw.config?.question_count || 10;
             window.qbEngine.setCount(qCount);
             if (qCount !== 10 && qCount !== 20 && qCount !== 30 && qCount !== 40 && qCount !== 50) {
               window.qbEngine.setCustomCountDirect(qCount);
@@ -8362,20 +8368,16 @@
               });
             }
 
-            // Render prominent homework active banner inside qb-detail-view
+            // Render prominent homework active banner (ready for results or exit)
             renderQbHomeworkActiveBanner(targetHw);
 
-            // Refresh UI checkboxes and question counter
-            window.qbEngine.renderSkillList();
-            window.qbEngine.updateMatchingCount();
+            // Ensure setup and hub views remain hidden
+            if (setupView) setupView.classList.add('hidden');
+            if (hubView) hubView.classList.add('hidden');
+            if (detailView) detailView.classList.add('hidden');
 
-            // Smooth scroll to top of setup view
-            const setupView = document.getElementById('qb-setup-view');
-            if (setupView) {
-              setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-
-            if (targetHw.autoStart && typeof window.qbEngine.startPractice === 'function') {
+            // DIRECTLY START PRACTICE TEST: Immediately starts on Question 1 in the simulator!
+            if (typeof window.qbEngine.startPractice === 'function') {
               window.qbEngine.startPractice();
             }
           }
@@ -12948,7 +12950,7 @@
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
     if (testContainer) testContainer.classList.add('hidden');
-    if (setupView) setupView.classList.remove('hidden');
+    if (setupView && !window.activeHomeworkAssignment) setupView.classList.remove('hidden');
 
     const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
       ? (window.activeHomeworkAssignment.config.subject === 'all' ? 'combined' : window.activeHomeworkAssignment.config.subject) 
@@ -12966,7 +12968,7 @@
       }
     }
 
-    if (setupView) {
+    if (setupView && !window.activeHomeworkAssignment) {
       setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   },
@@ -12993,7 +12995,7 @@
     const hubView = document.getElementById('qbank-hub-view');
     const solverView = document.getElementById('qbank-solver-view');
 
-    if (setupView) setupView.classList.remove('hidden');
+    if (setupView && !window.activeHomeworkAssignment) setupView.classList.remove('hidden');
     if (testContainer) testContainer.classList.add('hidden');
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
@@ -14658,6 +14660,18 @@
 
     // Persist all answered questions from the session immediately
     this.saveAllAnsweredQuestionsFromSession();
+
+    if (window.activeHomeworkAssignment) {
+      window.activeHomeworkAssignment = null;
+      this.activeHomeworkId = null;
+      sessionStorage.removeItem('qb_active_session');
+      const testContainer = document.getElementById('qb-test-container');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (typeof switchTab === 'function') {
+        switchTab('student');
+      }
+      return;
+    }
 
     const testContainer = document.getElementById('qb-test-container');
     const setupView = document.getElementById('qb-setup-view');
