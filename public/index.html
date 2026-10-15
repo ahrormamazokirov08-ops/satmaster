@@ -8061,6 +8061,10 @@
         return matchHw && (it.studentId === studentId || it.studentName === studentName);
       });
 
+      const isPassed = (resultData.passed !== undefined)
+        ? Boolean(resultData.passed)
+        : (resultData.scorePct >= (resultData.type === 'vocab' ? 80 : 70));
+
       const record = {
         hwId: hwId,
         hwCode: resultData.hwCode || (window.activeHomeworkAssignment && window.activeHomeworkAssignment.code) || '',
@@ -8070,6 +8074,7 @@
         score: resultData.score,
         total: resultData.total,
         scorePct: resultData.scorePct,
+        passed: isPassed,
         type: resultData.type,
         completedAt: new Date().toISOString()
       };
@@ -8162,6 +8167,18 @@
         const submission = getHomeworkSubmission(hw.id, studentId) || getHomeworkSubmission(hw.code, studentId) || getHomeworkSubmission(hw.id, studentName) || getHomeworkSubmission(hw.code, studentName);
         const isCompleted = Boolean(submission);
 
+        const isVocab = hw.type === 'vocab';
+        const isQBank = hw.type === 'qbank';
+        const subj = (hw.config && hw.config.subject) || 'rw';
+        const isMath = (subj === 'math');
+        const isRw = (subj === 'rw');
+        const passThreshold = isVocab ? 80 : (isMath ? 80 : (isRw ? 70 : 75));
+
+        const scorePct = isCompleted 
+          ? ((submission.scorePct !== undefined) ? submission.scorePct : (submission.total > 0 ? Math.round((submission.score / submission.total) * 100) : 0))
+          : 0;
+        const isPassed = isCompleted && ((submission.passed !== undefined) ? Boolean(submission.passed) : (scorePct >= passThreshold));
+
         const hwKeyId = hw.id || hw.code;
         const attemptKey = `hw_att_${studentId}_${hwKeyId}`;
         const attemptsUsed = parseInt(localStorage.getItem(attemptKey) || (isCompleted ? '1' : '0'), 10);
@@ -8169,39 +8186,100 @@
         const attemptsLeft = Math.max(0, maxAttempts - attemptsUsed);
 
         let actionButtonHtml = '';
+        let cardBgClass = 'bg-white hover:border-emerald-300';
+        let cardStatusBadge = '';
+
         if (isCompleted) {
-          if (attemptsLeft <= 0) {
-            actionButtonHtml = `
-              <div class="space-y-2 pt-1 w-full">
-                <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-sm">✅</span>
-                    <span>Done • Completed</span>
-                  </div>
-                  <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${submission.scorePct}%)</span>
-                </div>
-                <button type="button" disabled class="w-full py-2 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
-                  <span>🔒 Max Attempts Reached (3/3)</span>
-                </button>
-              </div>
+          if (isPassed) {
+            // Passed State (Green pattern)
+            cardBgClass = 'bg-slate-50/50 border-emerald-200 hover:border-emerald-300';
+            cardStatusBadge = `
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Passed</span>
+              </span>
             `;
+            if (attemptsLeft <= 0) {
+              actionButtonHtml = `
+                <div class="space-y-2 pt-1 w-full">
+                  <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-sm">✅</span>
+                      <span>Passed • Done • Completed</span>
+                    </div>
+                    <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
+                  </div>
+                  <button type="button" disabled class="w-full py-2 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                    <span>🔒 Completed (${submission.score}/${submission.total})</span>
+                  </button>
+                </div>
+              `;
+            } else {
+              actionButtonHtml = `
+                <div class="space-y-2 pt-1 w-full">
+                  <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-sm">✅</span>
+                      <span>Passed • Done • Completed</span>
+                    </div>
+                    <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
+                  </div>
+                  <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
+                    <span>🔄 Practice Again (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
+                  </button>
+                </div>
+              `;
+            }
           } else {
-            actionButtonHtml = `
-              <div class="space-y-2 pt-1 w-full">
-                <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-sm">✅</span>
-                    <span>Done • Completed</span>
-                  </div>
-                  <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${submission.scorePct}%)</span>
-                </div>
-                <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
-                  <span>🔄 Retake Task (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
-                </button>
-              </div>
+            // Failed State (Red pattern with X and Failed)
+            cardBgClass = 'bg-rose-50/20 border-rose-200 hover:border-rose-300';
+            cardStatusBadge = `
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <span>Failed • Needs Retake</span>
+              </span>
             `;
+            if (attemptsLeft <= 0) {
+              actionButtonHtml = `
+                <div class="space-y-2 pt-1 w-full">
+                  <div class="flex items-center justify-between p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold shadow-xs">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-sm">❌</span>
+                      <span>Failed (Passing: ${passThreshold}%)</span>
+                    </div>
+                    <span class="font-black font-mono text-rose-900 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
+                  </div>
+                  <button type="button" disabled class="w-full py-2 px-3 rounded-xl bg-rose-50 text-rose-400 font-bold text-[11px] border border-rose-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                    <span>🔒 Failed • Max Attempts Reached (3/3)</span>
+                  </button>
+                </div>
+              `;
+            } else {
+              actionButtonHtml = `
+                <div class="space-y-2 pt-1 w-full">
+                  <div class="flex items-center justify-between p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold shadow-xs">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-sm">❌</span>
+                      <span>Failed (Passing: ${passThreshold}%)</span>
+                    </div>
+                    <span class="font-black font-mono text-rose-900 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
+                  </div>
+                  <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95">
+                    <span>🔄 Retake Task (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              `;
+            }
           }
         } else {
+          // Not completed yet
+          cardStatusBadge = `
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${deadlineStatus.badgeClass} flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>${deadlineStatus.text}</span>
+            </span>
+          `;
           if (attemptsLeft <= 0) {
             actionButtonHtml = `
               <button type="button" disabled class="w-full py-2.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
@@ -8219,15 +8297,12 @@
         }
 
         return `
-          <div class="p-5 rounded-3xl border border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 shadow-xs text-slate-800 ${isCompleted ? 'bg-slate-50/50 border-emerald-200' : ''}">
+          <div class="p-5 rounded-3xl border ${cardBgClass} hover:shadow-md transition-all flex flex-col justify-between space-y-4 shadow-xs text-slate-800">
             <!-- Top: Type Badge & Active Status -->
             <div class="space-y-2">
               <div class="flex items-center justify-between gap-2">
                 ${typeBadge}
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${deadlineStatus.badgeClass} flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}"></span>
-                  <span>${deadlineStatus.text}</span>
-                </span>
+                ${cardStatusBadge}
               </div>
               <div>
                 <h3 class="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2">${escapeHtml(hw.title)}</h3>
@@ -8240,6 +8315,10 @@
               <div class="flex items-center justify-between text-slate-600">
                 <span class="text-slate-400">Drill Size:</span>
                 <span class="font-bold text-slate-800">${qCount} Questions</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Passing Standard:</span>
+                <span class="font-bold text-slate-800">${passThreshold}% minimum</span>
               </div>
               <div class="flex items-center justify-between text-slate-600">
                 <span class="text-slate-400">Chances:</span>

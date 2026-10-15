@@ -75,5 +75,28 @@ class TestHomeworkImprovements(unittest.TestCase):
         print("✅ Strict isolation verified: PASS")
 
 
+    def test_05_pass_fail_visual_pattern(self):
+        """Verify red ❌ Failed card pattern for failing homework and green ✅ Passed for passing homework."""
+        print("\n--- Test 5: Pass/Fail Visual Pattern in Student Homework Portal ---")
+        for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
+            # Check passing threshold logic
+            self.assertIn("const passThreshold = isVocab ? 80 : (isMath ? 80 : (isRw ? 70 : 75));", html, f"{name}: Thresholds must be defined correctly")
+            self.assertIn("const isPassed = isCompleted && ((submission.passed !== undefined) ? Boolean(submission.passed) : (scorePct >= passThreshold));", html, f"{name}: isPassed check must compare scorePct with passThreshold")
+            
+            # Check Passed visual pattern (Green, ✅, Passed • Done • Completed)
+            self.assertIn("Passed • Done • Completed", html, f"{name}: Must display 'Passed • Done • Completed' for passing homework")
+            self.assertIn("bg-emerald-50 border border-emerald-200 text-emerald-800", html, f"{name}: Passed card pill styling")
+            self.assertIn("Practice Again", html, f"{name}: Passed card should offer practice retake")
+            
+            # Check Failed visual pattern (Red, ❌, Failed (Passing: X%))
+            self.assertIn("Failed • Needs Retake", html, f"{name}: Top badge must state 'Failed • Needs Retake'")
+            self.assertIn("Failed (Passing:", html, f"{name}: Must display '❌ Failed (Passing: ...)' in status pill")
+            self.assertIn("bg-rose-50 border border-rose-300 text-rose-800", html, f"{name}: Failed card pill styling")
+            self.assertIn("bg-gradient-to-r from-rose-600 to-rose-700", html, f"{name}: Prominent retake button styling")
+            self.assertIn("Passing Standard:", html, f"{name}: Metric row must display passing standard")
+        print("✅ Pass/Fail visual patterns verified: PASS")
+
+
 if __name__ == '__main__':
     unittest.main()
+
