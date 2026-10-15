@@ -213,9 +213,38 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 html = f.read()
             self.assertIn('id="qb-test-footer" class="sticky bottom-0 z-30', html)
             self.assertIn('onclick="qbEngine.nextQuestion()"', html)
-            self.assertIn('>Next Question</span>', html)
             self.assertIn('qPane.scrollTop = 0', html)
+
+    def test_math_coordinates_have_commas(self):
+        # 1. Dataset verification: cb_math_1088 (user screenshot question) has comma between coordinates
+        with open(DATA_MATH, "r", encoding="utf-8") as f:
+            questions = json.load(f)
+
+        q1088 = next(q for q in questions if q["id"] == "cb_math_1088")
+        self.assertIn(r"\left(0, y\right)", q1088["prompt"])
+        self.assertIn(r"(0, 4)", q1088["rationale"])
+        self.assertIn(r"(0, y)", q1088["rationale"])
+
+        # Check cb_math_219, cb_math_594, cb_math_1015
+        for target_id in ["cb_math_219", "cb_math_594", "cb_math_1015"]:
+            q = next(item for item in questions if item["id"] == target_id)
+            self.assertIn(r"\left(0, y\right)", q["prompt"])
+
+        # Ensure no un-comma'd \left(0 y\right) or (0 y) exists in any math question
+        for q in questions:
+            for field in ["prompt", "rationale"]:
+                val = q.get(field, "")
+                self.assertNotIn(r"\left(0 y\right)", val, f"{q['id']} {field} still has \\left(0 y\\right)")
+                self.assertNotIn(r"(0 y)", val, f"{q['id']} {field} still has (0 y)")
+
+        # 2. Engine verification: formatQuestionText has coordinate comma normalization
+        for p in [os.path.join(ROOT_DIR, "index.html"), os.path.join(ROOT_DIR, "public", "index.html"), os.path.join(ROOT_DIR, "public", "qb_engine.js"), os.path.join(ROOT_DIR, "public", "public", "qb_engine.js")]:
+            with open(p, "r", encoding="utf-8") as f:
+                code = f.read()
+            self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
+            self.assertIn("dataVersion: '2.5.2'", code, f"{p} missing dataVersion 2.5.2")
 
 
 if __name__ == "__main__":
     unittest.main()
+

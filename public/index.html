@@ -14147,7 +14147,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.5.1',
+  dataVersion: '2.5.2',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -16068,6 +16068,25 @@
 
     // Protect currency amounts like $$165$ from being misinterpreted as display math
     formatted = formatted.replace(/\$\$(\d+(?:,\d+)*(?:\.\d+)?)\$/g, '<span class="no-math">$$$1</span>');
+
+    // Normalize coordinate points without commas (e.g. (0 y) -> (0, y), (8 2) -> (8, 2), \left(x y\right) -> \left(x, y\right))
+    // Protect SVGs from coordinate replacements
+    formatted = formatted.split(/(<svg[\s\S]*?<\/svg>)/g).map(part => {
+      if (part.startsWith('<svg')) return part;
+      // 1. Number first: (0 y), (0 4), (0 -8), \left(8 2\right), (-6 65), etc.
+      part = part.replace(/(\\left\s*\(\s*|\(\s*)(-(?:\\frac\{[^{}]+\}\{[^{}]+\}|\d+(?:\.\d+)?)|(?:\\frac\{[^{}]+\}\{[^{}]+\}|\d+(?:\.\d+)?))[\s\xa0]+(-(?:\\frac\{[^{}]+\}\{[^{}]+\}|\d+(?:\.\d+)?)|(?:\\frac\{[^{}]+\}\{[^{}]+\}|\d+(?:\.\d+)?)|[a-zA-Z](?:_\{?[a-zA-Z0-9]+\}?)?)(\s*\\right\s*\)|\s*\))/g, (m, l, p1, p2, r) => {
+        const left = l.includes('\\left') ? '\\left(' : '(';
+        const right = r.includes('\\right') ? '\\right)' : ')';
+        return `${left}${p1.trim()}, ${p2.trim()}${right}`;
+      });
+      // 2. Variable first: (x y), (a b), (h k), ({x}_1 {y}_1), (a 0), (k 13), etc. (excluding negative numbers to preserve factors like (x - 3))
+      part = part.replace(/(\\left\s*\(\s*|\(\s*)(-?[a-zA-Z](?:_\{?[a-zA-Z0-9]+\}?)?)[\s\xa0]+([a-zA-Z](?:_\{?[a-zA-Z0-9]+\}?)?|\\frac\{[^{}]+\}\{[^{}]+\}|\d+(?:\.\d+)?)(\s*\\right\s*\)|\s*\))/g, (m, l, p1, p2, r) => {
+        const left = l.includes('\\left') ? '\\left(' : '(';
+        const right = r.includes('\\right') ? '\\right)' : ')';
+        return `${left}${p1.trim()}, ${p2.trim()}${right}`;
+      });
+      return part;
+    }).join('');
 
     return formatted;
   }
