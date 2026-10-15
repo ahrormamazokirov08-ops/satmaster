@@ -678,7 +678,7 @@ class RelationalDB:
     def get_students_by_group_or_all(self, group_id=None, group_name=None):
         """Fetch students for a specific group, or all enrolled students if group is 'All Students' or empty."""
         grp_check = str(group_name or group_id or "").strip().lower()
-        if not grp_check or grp_check in ("all", "all students", "everyone", "all classes"):
+        if not grp_check or "all" in grp_check or "everyone" in grp_check:
             all_stu_sql = self._query("""
                 SELECT 
                     id,
@@ -1095,6 +1095,24 @@ class RelationalDB:
         """Create a new homework assignment targeting a group or specific student."""
         self.invalidate_cache()
         hw_id = (config.get("id") if isinstance(config, dict) and config.get("id") else None) or f"hw_{int(time.time() * 1000)}"
+
+        # Ensure config has className and groupId if known
+        if isinstance(config, dict):
+            if "group_id" not in config and group_id:
+                config["group_id"] = str(group_id)
+            if "groupId" not in config and group_id:
+                config["groupId"] = str(group_id)
+            if "className" not in config and group_id:
+                if str(group_id).lower() in ("all", "all students", "everyone", "all classes"):
+                    config["className"] = "All Students"
+                else:
+                    grp = self.get_group(group_id)
+                    if grp:
+                        config["className"] = grp["name"]
+                        config["group_name"] = grp["name"]
+                    else:
+                        config["className"] = str(group_id)
+
         cfg_str = json.dumps(config) if isinstance(config, (dict, list)) else (config or "{}")
         created_at = datetime.utcnow().isoformat()
         stu_id = str(student_id).strip() if (student_id and str(student_id).strip() != 'all') else None
@@ -1119,9 +1137,12 @@ class RelationalDB:
                     try: row["config"] = json.loads(row["config"])
                     except Exception: pass
                 if row and isinstance(row.get("config"), dict):
-                    for k in ("code", "className", "timeLimitMinutes", "questionIds", "timer", "question_count"):
+                    for k in ("code", "className", "groupId", "group_name", "timeLimitMinutes", "questionIds", "timer", "question_count"):
                         if k in row["config"] and k not in row:
                             row[k] = row["config"][k]
+                if row and not row.get("className"):
+                    grp = self.get_group(row.get("group_id"))
+                    row["className"] = grp["name"] if grp else (row.get("group_id") or "All Students")
                 return row
         else:
             sql = """
@@ -1142,9 +1163,12 @@ class RelationalDB:
                 "created_at": created_at
             }
             if isinstance(res.get("config"), dict):
-                for k in ("code", "className", "timeLimitMinutes", "questionIds", "timer", "question_count"):
+                for k in ("code", "className", "groupId", "group_name", "timeLimitMinutes", "questionIds", "timer", "question_count"):
                     if k in res["config"] and k not in res:
                         res[k] = res["config"][k]
+            if not res.get("className"):
+                grp = self.get_group(res.get("group_id"))
+                res["className"] = grp["name"] if grp else (res.get("group_id") or "All Students")
             return res
 
     def get_homework_assignments(self, group_id=None, student_id=None):
@@ -1153,8 +1177,13 @@ class RelationalDB:
         params = []
 
         if group_id:
-            clauses.append("CAST(group_id AS TEXT) = %s")
-            params.append(str(group_id).strip())
+            grp = self.get_group(group_id)
+            if grp:
+                clauses.append("(CAST(group_id AS TEXT) = %s OR CAST(group_id AS TEXT) = %s OR LOWER(group_id) = LOWER(%s) OR group_id = 'all' OR group_id = 'All Students')")
+                params.extend([str(grp["id"]), grp["name"], grp["name"]])
+            else:
+                clauses.append("(CAST(group_id AS TEXT) = %s OR LOWER(group_id) = LOWER(%s) OR group_id = 'all' OR group_id = 'All Students')")
+                params.extend([str(group_id).strip(), str(group_id).strip()])
 
         if student_id:
             clauses.append("(student_id IS NULL OR student_id = '' OR student_id = 'all' OR CAST(student_id AS TEXT) = %s)")
@@ -1178,9 +1207,27 @@ class RelationalDB:
                 except Exception: pass
 
             if isinstance(a.get("config"), dict):
-                for k in ("code", "className", "timeLimitMinutes", "questionIds", "timer", "question_count"):
+                for k in ("code", "className", "groupId", "group_name", "timeLimitMinutes", "questionIds", "timer", "question_count"):
                     if k in a["config"] and k not in a:
                         a[k] = a["config"][k]
+
+            # Populate group name and className if missing
+            if not a.get("className") or not a.get("group_name"):
+                gid = str(a.get("group_id") or "")
+                if not gid or gid.lower() in ("all", "all students", "everyone", "all classes"):
+                    a["className"] = "All Students"
+                    a["group_name"] = "All Students"
+                    a["groupId"] = "all"
+                else:
+                    grp = self.get_group(gid)
+                    if grp and grp.get("name"):
+                        a["className"] = grp["name"]
+                        a["group_name"] = grp["name"]
+                        a["groupId"] = str(grp["id"])
+                    else:
+                        a["className"] = gid
+                        a["group_name"] = gid
+                        a["groupId"] = gid
 
             # Attach student submission if student_id was provided
             if student_id:

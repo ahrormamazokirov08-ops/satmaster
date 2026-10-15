@@ -1990,8 +1990,8 @@
             <p class="text-xs text-slate-500">Pick any assigned homework below to launch with exact teacher drill settings.</p>
           </div>
 
-          <!-- Quick Actions / Cohort filter & Manual PIN toggle -->
-          <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <!-- Quick Actions / Cohort filter & Manual PIN toggle (Hidden for cleaner student experience) -->
+          <div class="hidden items-center gap-2 self-start sm:self-auto flex-wrap">
             <div class="text-xs">
               <select id="student-class-select" onchange="renderAvailableHomeworkForClass()" class="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 outline-none focus:border-emerald-500">
                 <option value="SAT Masters 2026">SAT Masters 2026</option>
@@ -8259,7 +8259,8 @@
     // STUDENT HOMEWORK REMINDER & BADGE SYSTEM
     // =========================================================
     function getStudentActiveUncompletedHomework() {
-      const studentClass = (typeof currentSession !== 'undefined' && (currentSession?.className || currentSession?.group_name)) || 'SAT Masters 2026';
+      const studentClass = (typeof currentSession !== 'undefined' && (currentSession?.className || currentSession?.group_name)) || '';
+      const studentGroupId = (typeof currentSession !== 'undefined' && currentSession?.group_id) || '';
       const studentId = (typeof currentSession !== 'undefined' && (currentSession?.id || currentSession?.uid || currentSession?.name)) || 'Student User';
       const studentName = (typeof currentSession !== 'undefined' && currentSession?.name) || studentId;
 
@@ -8267,11 +8268,25 @@
       const now = Date.now();
 
       return assignments.filter(hw => {
-        // Must match student cohort or be all-students
-        const hwClass = (hw.className || hw.groupId || '').toLowerCase().trim();
-        const myClass = studentClass.toLowerCase().trim();
-        const matchesClass = !hwClass || hwClass === 'all' || hwClass === 'all students' || hwClass === myClass;
-        if (!matchesClass) return false;
+        // Robust cohort matching
+        const hwClass = (hw.className || hw.group_name || '').toLowerCase().trim();
+        const hwGroupId = (hw.groupId || hw.group_id || '').toLowerCase().trim();
+        const isAll = !hwClass || hwClass.includes('all') || hwGroupId === 'all' || hwGroupId.includes('all');
+        
+        let matchesCohort = isAll;
+        if (!matchesCohort && studentClass) {
+          const sc = studentClass.toLowerCase().trim();
+          matchesCohort = (hwClass === sc || hwGroupId === sc || hwClass.includes(sc));
+        }
+        if (!matchesCohort && studentGroupId) {
+          const sg = String(studentGroupId).toLowerCase().trim();
+          matchesCohort = (hwGroupId === sg || hwClass === sg);
+        }
+        // If visitor is not bound to a specific class, include all assignments so they see active drills
+        if (!matchesCohort && !studentClass && !studentGroupId) {
+          matchesCohort = true;
+        }
+        if (!matchesCohort) return false;
 
         // Check deadline: only active non-expired homework counts
         if (hw.deadline) {
@@ -8302,8 +8317,12 @@
       const badgeMob = document.getElementById('mob-hw-badge-count');
       if (!badgeDesk && !badgeMob) return;
 
-      const isStudent = (currentUserRole === 'student') || (typeof currentSession !== 'undefined' && currentSession?.role === 'student');
-      if (!isStudent) {
+      // Teachers & Admins see teacher controls; students & visitors see the red homework badge
+      const isTeacherOrAdmin = (typeof isCurrentUserTeacher === 'function' && isCurrentUserTeacher()) ||
+                               (typeof isCurrentUserAdmin === 'function' && isCurrentUserAdmin()) ||
+                               (currentUserRole === 'teacher' || currentUserRole === 'admin') ||
+                               (typeof currentSession !== 'undefined' && (currentSession?.role === 'teacher' || currentSession?.role === 'admin'));
+      if (isTeacherOrAdmin) {
         if (badgeDesk) badgeDesk.classList.add('hidden');
         if (badgeMob) badgeMob.classList.add('hidden');
         return;
@@ -8368,14 +8387,12 @@
     function renderAvailableHomeworkForClass() {
       const select = document.getElementById('student-class-select');
       let selectedClass = select && select.value ? select.value.trim().toLowerCase() : '';
-      if (!selectedClass && typeof currentSession !== 'undefined' && currentSession?.className) {
-        selectedClass = currentSession.className.trim().toLowerCase();
-        if (select) select.value = currentSession.className;
-      }
+      const studentClass = (typeof currentSession !== 'undefined' && (currentSession?.className || currentSession?.group_name)) || '';
+      const studentGroupId = (typeof currentSession !== 'undefined' && currentSession?.group_id) || '';
 
       const cohortBadge = document.getElementById('student-portal-cohort-badge');
       if (cohortBadge) {
-        cohortBadge.innerText = (select && select.value) || (typeof currentSession !== 'undefined' && currentSession?.className) || 'SAT Masters 2026';
+        cohortBadge.innerText = studentClass || (select && select.value) || 'SAT Masters 2026';
       }
 
       const container = document.getElementById('student-active-hw-list');
@@ -8387,9 +8404,26 @@
 
       // Filter assignments for selected class or 'All Students'
       const filteredAssignments = assignments.filter(hw => {
-        if (!selectedClass) return true;
-        const hwClass = (hw.className || '').trim().toLowerCase();
-        return !hwClass || hwClass === 'all students' || hwClass === selectedClass;
+        const hwClass = (hw.className || hw.group_name || '').toLowerCase().trim();
+        const hwGroupId = (hw.groupId || hw.group_id || '').toLowerCase().trim();
+        const isAll = !hwClass || hwClass.includes('all') || hwGroupId === 'all' || hwGroupId.includes('all');
+        if (isAll) return true;
+
+        if (studentClass) {
+          const sc = studentClass.toLowerCase().trim();
+          if (hwClass === sc || hwGroupId === sc || hwClass.includes(sc)) return true;
+        }
+        if (studentGroupId) {
+          const sg = String(studentGroupId).toLowerCase().trim();
+          if (hwGroupId === sg || hwClass === sg) return true;
+        }
+        if (selectedClass) {
+          if (hwClass === selectedClass || hwGroupId === selectedClass || hwClass.includes(selectedClass)) return true;
+        }
+        if (!studentClass && !studentGroupId) {
+          return true;
+        }
+        return false;
       });
 
       if (filteredAssignments.length === 0) {

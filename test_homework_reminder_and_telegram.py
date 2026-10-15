@@ -74,5 +74,28 @@ class TestHomeworkReminderAndTelegram(unittest.TestCase):
         overlap = sat_tg_ids.intersection(ivy_tg_ids)
         self.assertEqual(len(overlap), 0, f"Group students must be isolated without overlap, found: {overlap}")
 
+    def test_07_manual_pin_and_class_select_hidden_in_student_header(self):
+        """Verify the manual PIN and cohort dropdown wrapper is hidden in the student homework view."""
+        for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
+            self.assertIn('<div class="hidden items-center gap-2 self-start sm:self-auto flex-wrap">', html,
+                          f"{name}: Manual PIN and class select wrapper must be hidden")
+
+    def test_08_homework_cohort_resolution(self):
+        """Verify homework assignments created and retrieved have className and groupId resolved."""
+        created = db.create_homework_assignment(
+            title="Cohort Resolution Test",
+            hw_type="vocab",
+            group_id="SAT Masters 2026",
+            config={"timeLimitMinutes": 15, "question_count": 20}
+        )
+        self.assertIsNotNone(created)
+        self.assertEqual(created.get("className"), "SAT Masters 2026")
+        
+        assignments = db.get_homework_assignments(group_id="SAT Masters 2026")
+        self.assertTrue(any(a["id"] == created["id"] for a in assignments))
+        matched = next(a for a in assignments if a["id"] == created["id"])
+        self.assertEqual(matched.get("className"), "SAT Masters 2026")
+        self.assertEqual(matched.get("group_name"), "SAT Masters 2026")
+
 if __name__ == '__main__':
     unittest.main()
