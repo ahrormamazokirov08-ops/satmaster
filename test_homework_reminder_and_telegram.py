@@ -52,12 +52,27 @@ class TestHomeworkReminderAndTelegram(unittest.TestCase):
         self.assertIsInstance(students_specific, list)
 
     def test_05_telegram_notification_dispatch_in_backends(self):
-        """Verify Telegram notifications are sent in api/index.py and telegram_bot.py."""
+        """Verify Telegram notifications are sent in api/index.py and telegram_bot.py with question count and link."""
         for name, code in [('api/index.py', self.api_code), ('telegram_bot.py', self.bot_code)]:
-            self.assertIn("NEW HOMEWORK ASSIGNED", code, f"{name}: Notification title must exist")
+            self.assertIn("NEW HOMEWORK ON THE WEBSITE", code, f"{name}: Notification title must exist")
             self.assertIn("You have new homework on the website", code, f"{name}: Reminder prompt must exist")
+            self.assertIn("Questions:</b> {q_count_text}", code, f"{name}: Question count must be rendered")
+            self.assertIn("Direct Link:</b> https://satmaster-w58j.vercel.app", code, f"{name}: Direct link must be rendered")
             self.assertIn("🚀 Open Homework on Website", code, f"{name}: Action button must exist")
             self.assertIn("get_students_by_group_or_all", code, f"{name}: Must look up enrolled students")
+
+    def test_06_group_isolation_in_notification(self):
+        """Verify students are strictly filtered by cohort so other groups do not receive messages."""
+        sat_students = db.get_students_by_group_or_all(group_name="SAT Masters 2026")
+        self.assertGreaterEqual(len(sat_students), 1)
+        sat_tg_ids = {s["telegram_id"] for s in sat_students if s.get("telegram_id")}
+        
+        ivy_students = db.get_students_by_group_or_all(group_name="Ivy League Prep")
+        ivy_tg_ids = {s["telegram_id"] for s in ivy_students if s.get("telegram_id")}
+
+        # Ensure no overlap between different groups
+        overlap = sat_tg_ids.intersection(ivy_tg_ids)
+        self.assertEqual(len(overlap), 0, f"Group students must be isolated without overlap, found: {overlap}")
 
 if __name__ == '__main__':
     unittest.main()

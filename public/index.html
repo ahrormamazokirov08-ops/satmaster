@@ -5298,7 +5298,7 @@
         if (!groups.length) {
           creatorSelect.innerHTML = `<option value="">No classes available - Please create a group first</option>`;
         } else {
-          creatorSelect.innerHTML = groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+          creatorSelect.innerHTML = `<option value="all">🌟 All Students (All Classes)</option>` + groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
         }
       }
       if (studentSelect) {
@@ -7299,6 +7299,8 @@
             title: title,
             type: hwType,
             group_id: groupId || selectedClassName,
+            group_name: selectedClassName,
+            className: selectedClassName,
             config: config,
             deadline: deadline,
             created_by: teacherId
@@ -7595,6 +7597,7 @@
             title: newAssignment.title,
             type: newAssignment.type,
             group_id: newAssignment.groupId,
+            group_name: newAssignment.className,
             className: newAssignment.className,
             code: newAssignment.code,
             config: hwConfig,

@@ -585,35 +585,100 @@ class RelationalDB:
     # STUDENTS API METHODS
     # --------------------------------------------------------------------------
 
-    def get_group_students(self, group_id):
-        """Return all students isolated to this specific group."""
-        grp_sql = self._query("SELECT id, name FROM groups WHERE CAST(id AS TEXT) = %s OR LOWER(name) = LOWER(%s)")
-        stu_sql = self._query("""
-            SELECT 
-                id,
-                group_id,
-                telegram_id,
-                telegram_username,
-                display_name,
-                created_at
-            FROM students
-            WHERE CAST(group_id AS TEXT) = %s
-            ORDER BY created_at ASC
-        """)
-        with self.cursor() as cur:
-            cur.execute(grp_sql, (str(group_id), str(group_id)))
-            grp = cur.fetchone()
-            if not grp:
-                return None
+    def get_group_students(self, group_id, group_name=None):
+        """Return all students isolated to this specific group by ID or group name."""
+        identifiers = []
+        if group_id:
+            identifiers.append(str(group_id).strip())
+        if group_name and str(group_name).strip() not in identifiers:
+            identifiers.append(str(group_name).strip())
 
-            actual_id = str(grp["id"])
-            cur.execute(stu_sql, (actual_id,))
-            rows = cur.fetchall()
-            return _format_rows(rows)
+        if not identifiers:
+            return []
 
-    def get_students_by_group_or_all(self, group_id=None):
+        found_group_ids = set()
+        found_group_names = set()
+
+        for ident in identifiers:
+            grp_sql = self._query("SELECT id, name FROM groups WHERE CAST(id AS TEXT) = %s OR LOWER(name) = LOWER(%s)")
+            with self.cursor() as cur:
+                cur.execute(grp_sql, (ident, ident))
+                for g in cur.fetchall():
+                    gd = dict(g)
+                    found_group_ids.add(str(gd["id"]))
+                    if gd.get("name"):
+                        found_group_names.add(str(gd["name"]).strip().lower())
+
+        for ident in identifiers:
+            found_group_ids.add(ident)
+            found_group_names.add(ident.lower())
+
+        matched_students = []
+        seen_keys = set()
+
+        # Query students matching any of the group IDs
+        for gid in found_group_ids:
+            stu_sql = self._query("""
+                SELECT id, group_id, telegram_id, telegram_username, display_name, created_at
+                FROM students
+                WHERE CAST(group_id AS TEXT) = %s
+                ORDER BY created_at ASC
+            """)
+            with self.cursor() as cur:
+                cur.execute(stu_sql, (gid,))
+                for s in (_format_rows(cur.fetchall()) or []):
+                    key = s.get("telegram_id") or s.get("id")
+                    if key not in seen_keys:
+                        matched_students.append(s)
+                        seen_keys.add(key)
+
+        # Query students matching any group names in group_id
+        for gname in found_group_names:
+            stu_sql_name = self._query("""
+                SELECT id, group_id, telegram_id, telegram_username, display_name, created_at
+                FROM students
+                WHERE LOWER(CAST(group_id AS TEXT)) = LOWER(%s)
+                ORDER BY created_at ASC
+            """)
+            with self.cursor() as cur:
+                cur.execute(stu_sql_name, (gname,))
+                for s in (_format_rows(cur.fetchall()) or []):
+                    key = s.get("telegram_id") or s.get("id")
+                    if key not in seen_keys:
+                        matched_students.append(s)
+                        seen_keys.add(key)
+
+        # Merge from students_db.json if available
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        json_path = os.path.join(base_dir, "students_db.json")
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as jf:
+                    data = json.load(jf)
+                    json_students = data.get("students", {})
+                    all_targets = set(found_group_ids) | set(found_group_names) | {i.lower() for i in identifiers}
+                    for uid, js in json_students.items():
+                        s_class = (js.get("class") or "").strip().lower()
+                        s_tg = js.get("telegram_id")
+                        if s_class and (s_class in all_targets) and s_tg not in seen_keys:
+                            matched_students.append({
+                                "id": js.get("student_id") or f"TG{uid}",
+                                "group_id": js.get("class"),
+                                "telegram_id": s_tg,
+                                "telegram_username": js.get("username"),
+                                "display_name": js.get("name"),
+                                "created_at": js.get("registered_at")
+                            })
+                            seen_keys.add(s_tg)
+            except Exception:
+                pass
+
+        return matched_students
+
+    def get_students_by_group_or_all(self, group_id=None, group_name=None):
         """Fetch students for a specific group, or all enrolled students if group is 'All Students' or empty."""
-        if not group_id or str(group_id).strip().lower() in ("all", "all students", "everyone"):
+        grp_check = str(group_name or group_id or "").strip().lower()
+        if not grp_check or grp_check in ("all", "all students", "everyone", "all classes"):
             all_stu_sql = self._query("""
                 SELECT 
                     id,
@@ -628,8 +693,32 @@ class RelationalDB:
             with self.cursor() as cur:
                 cur.execute(all_stu_sql)
                 rows = cur.fetchall()
-                return _format_rows(rows)
-        return self.get_group_students(group_id) or []
+                students = _format_rows(rows) or []
+
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            json_path = os.path.join(base_dir, "students_db.json")
+            if os.path.exists(json_path):
+                try:
+                    with open(json_path, "r", encoding="utf-8") as jf:
+                        data = json.load(jf)
+                        json_students = data.get("students", {})
+                        seen_keys = {s.get("telegram_id") or s.get("id") for s in students}
+                        for uid, js in json_students.items():
+                            s_tg = js.get("telegram_id")
+                            if s_tg and s_tg not in seen_keys:
+                                students.append({
+                                    "id": js.get("student_id") or f"TG{uid}",
+                                    "group_id": js.get("class"),
+                                    "telegram_id": s_tg,
+                                    "telegram_username": js.get("username"),
+                                    "display_name": js.get("name"),
+                                    "created_at": js.get("registered_at")
+                                })
+                                seen_keys.add(s_tg)
+                except Exception:
+                    pass
+            return students
+        return self.get_group_students(group_id=group_id, group_name=group_name) or []
 
     def get_student(self, student_id):
         """Fetch a single student by UUID or telegram_id (with optional TG/STU prefix)."""

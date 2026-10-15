@@ -614,7 +614,8 @@ class handler(BaseHTTPRequestHandler):
         if clean_path in ("/api/homework", "/api/assignments"):
             title = body.get("title") or "Digital SAT Homework"
             hw_type = body.get("type") or "vocab"
-            group_id = body.get("group_id") or body.get("className") or "All Students"
+            group_id = body.get("group_id")
+            group_name = body.get("group_name") or body.get("className")
             student_id = body.get("student_id")
             deadline = body.get("deadline")
             created_by = body.get("created_by") or "teacher"
@@ -629,25 +630,47 @@ class handler(BaseHTTPRequestHandler):
                 assignment = rdb.create_homework_assignment(
                     title=title,
                     hw_type=hw_type,
-                    group_id=group_id,
+                    group_id=group_id or group_name or "All Students",
                     student_id=student_id,
                     config=cfg,
                     deadline=deadline,
                     created_by=created_by
                 )
 
-                # Send Telegram notification to cohort students and admin
+                # Send Telegram notification to target students through the bot
                 bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ"
-                admin_chat_id = os.environ.get("ADMIN_CHAT_ID") or "7957347033"
 
                 if bot_token:
                     try:
-                        students = rdb.get_students_by_group_or_all(group_id)
+                        # Strictly retrieve target students: single student, specific group cohort, or all
+                        if student_id:
+                            single_stu = rdb.get_student(student_id)
+                            students = [single_stu] if single_stu else []
+                        else:
+                            students = rdb.get_students_by_group_or_all(group_id=group_id, group_name=group_name)
+
                         type_label = (
-                            "📚 SAT Vocabulary" if hw_type == "vocab"
-                            else ("📖 Digital SAT Question Bank" if hw_type == "qbank" else "📝 Digital SAT Practice")
+                            "📚 SAT Vocabulary Practice" if hw_type == "vocab"
+                            else ("📖 Digital SAT Question Bank" if hw_type == "qbank" else "📝 Digital SAT Practice Drill")
                         )
-                        dl_text = "Flexible"
+
+                        # Question count
+                        raw_count = (
+                            cfg.get("question_count")
+                            or cfg.get("qCount")
+                            or body.get("question_count")
+                            or (len(cfg.get("questionIds", [])) if cfg.get("questionIds") else None)
+                            or (len(body.get("questionIds", [])) if body.get("questionIds") else None)
+                            or (20 if hw_type == "vocab" else (cfg.get("count") or 10))
+                        )
+                        q_count_text = f"{raw_count} questions" if raw_count else "10 questions"
+
+                        # Time limit
+                        timer_val = cfg.get("timer") or cfg.get("timeLimitMinutes") or body.get("timeLimitMinutes")
+                        timer_text = f"{timer_val} mins" if timer_val else "Flexible / No limit"
+
+                        # Deadline
+                        dl_text = "Flexible / No deadline"
                         if deadline:
                             dl_str = str(deadline)
                             if "T" in dl_str:
@@ -659,26 +682,26 @@ class handler(BaseHTTPRequestHandler):
                             else:
                                 dl_text = dl_str
 
-                        group_label = body.get("className") or str(group_id)
+                        group_label = group_name or body.get("className") or str(group_id or "Assigned Class")
+                        if str(group_label).strip().lower() in ("all", "all students", "everyone", "all classes"):
+                            group_label = "All Students"
 
                         notify_text = (
-                            "🔔 <b>NEW HOMEWORK ASSIGNED!</b>\n"
+                            "🔔 <b>NEW HOMEWORK ON THE WEBSITE!</b>\n"
                             "━━━━━━━━━━━━━━━━━━━━━━\n"
+                            "You have new homework on the website. Please move on to it and solve it!\n\n"
                             f"📝 <b>Task:</b> {title}\n"
                             f"📚 <b>Type:</b> {type_label}\n"
                             f"🏫 <b>Class:</b> {group_label}\n"
+                            f"🔢 <b>Questions:</b> {q_count_text}\n"
+                            f"⏳ <b>Time Limit:</b> {timer_text}\n"
                             f"📅 <b>Deadline:</b> {dl_text}\n"
                             "━━━━━━━━━━━━━━━━━━━━━━\n"
-                            "You have new homework on the website. Please move on to it and solve it!"
+                            "🔗 <b>Direct Link:</b> https://satmaster-w58j.vercel.app\n"
+                            "<i>Tap the button below to launch your homework on the website:</i>"
                         )
 
                         target_chat_ids = set()
-                        if admin_chat_id:
-                            try:
-                                target_chat_ids.add(int(admin_chat_id))
-                            except Exception:
-                                pass
-
                         for stu in (students or []):
                             tg_id = stu.get("telegram_id")
                             if tg_id:
@@ -686,6 +709,8 @@ class handler(BaseHTTPRequestHandler):
                                     target_chat_ids.add(int(tg_id))
                                 except Exception:
                                     pass
+
+                        print(f"[Telegram Notify] Sending new homework alert to {len(target_chat_ids)} student(s): {target_chat_ids}")
 
                         for cid in target_chat_ids:
                             try:
