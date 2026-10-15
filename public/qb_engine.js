@@ -433,9 +433,9 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  async loadSolvedQuestions() {
+  async loadSolvedQuestions(blocking = false) {
     const studentId = this.getCurrentStudentId();
-    // 1. Load locally cached solved IDs first
+    // 1. Load locally cached solved IDs first (synchronous & instant: < 1ms)
     try {
       const localCached = localStorage.getItem(`qb_solved_${studentId}`) || localStorage.getItem(`satmaster_solved_q_${studentId}`);
       if (localCached) {
@@ -457,32 +457,41 @@ window.qbEngine = {
       }
     } catch (e) {}
 
-    // 2. Fetch from backend if registered / not guest
-    if (studentId && studentId !== 'guest') {
-      try {
-        await this.syncPendingAttempts(studentId);
-
-        const res = await fetch(`/api/qbank/user-history?uid=${encodeURIComponent(studentId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.solved_ids)) {
-            data.solved_ids.forEach(qid => this.solvedQuestionIds.add(qid));
-            localStorage.setItem(`qb_solved_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
-            localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
-          }
-          if (data && data.stats) {
-            this.statsPerSkill = data.stats;
-            localStorage.setItem(`qb_stats_${studentId}`, JSON.stringify(data.stats));
-          }
-        }
-      } catch (err) {
-        console.warn("[qbEngine] Offline or error fetching solved questions:", err);
-      }
-    }
-
     this.syncStatusUI();
     this.renderSkillList();
     this.updateMatchingCount();
+
+    // 2. Fetch from backend if registered / not guest (background sync unless blocking requested)
+    const syncBackendPromise = (async () => {
+      if (studentId && studentId !== 'guest') {
+        try {
+          await this.syncPendingAttempts(studentId);
+
+          const res = await fetch(`/api/qbank/user-history?uid=${encodeURIComponent(studentId)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.solved_ids)) {
+              data.solved_ids.forEach(qid => this.solvedQuestionIds.add(qid));
+              localStorage.setItem(`qb_solved_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+              localStorage.setItem(`satmaster_solved_q_${studentId}`, JSON.stringify(Array.from(this.solvedQuestionIds)));
+            }
+            if (data && data.stats) {
+              this.statsPerSkill = data.stats;
+              localStorage.setItem(`qb_stats_${studentId}`, JSON.stringify(data.stats));
+            }
+            this.syncStatusUI();
+            this.renderSkillList();
+            this.updateMatchingCount();
+          }
+        } catch (err) {
+          console.warn("[qbEngine] Offline or error fetching solved questions:", err);
+        }
+      }
+    })();
+
+    if (blocking) {
+      await syncBackendPromise;
+    }
   },
 
   async recordQuestionSolved(questionId, isCorrect = false, selectedAnswer = null, metadata = {}) {
@@ -746,10 +755,10 @@ window.qbEngine = {
       this.isInitialized = true;
       this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
-      await this.loadQuestions();
-      await this.loadSolvedQuestions();
+      await this.loadQuestions(false, defaultSubj);
+      this.loadSolvedQuestions(false);
     } else {
-      await this.loadSolvedQuestions();
+      this.loadSolvedQuestions(false);
     }
 
     if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
@@ -759,63 +768,131 @@ window.qbEngine = {
     }
   },
 
-  dataVersion: '2.5.0',
-  currentDataVersion: null,
+  preload() {
+    try {
+      if (!this.questionsData.rw || !this.questionsData.math) {
+        this.loadQuestions(false);
+      }
+    } catch (e) {}
+  },
 
-  async loadQuestions(force = false) {
-    if (!force && this.questionsData.rw && this.questionsData.math && this.currentDataVersion === this.dataVersion) {
+  dataVersion: '2.5.1',
+  currentDataVersion: null,
+  _loadingPromise: null,
+
+  async loadQuestions(force = false, targetSubj = null) {
+    const hasMath = Array.isArray(this.questionsData.math) && this.questionsData.math.length > 0;
+    const hasRw = Array.isArray(this.questionsData.rw) && this.questionsData.rw.length > 0;
+
+    if (!force && this.currentDataVersion === this.dataVersion) {
+      if (targetSubj === 'math' && hasMath) {
+        this.updateMatchingCount();
+        return;
+      }
+      if (targetSubj === 'rw' && hasRw) {
+        this.updateMatchingCount();
+        return;
+      }
+      if (hasMath && hasRw) {
+        this.updateMatchingCount();
+        return;
+      }
+    }
+
+    if (this._loadingPromise) {
+      await this._loadingPromise;
       this.updateMatchingCount();
       return;
     }
 
-    this.isLoading = true;
-    const countEl = document.getElementById('qb-matching-count');
-    if (countEl) countEl.innerText = "⏳ Loading College Board question datasets...";
+    this._loadingPromise = (async () => {
+      this.isLoading = true;
+      const countEl = document.getElementById('qb-matching-count');
+      if (countEl) countEl.innerText = "⏳ Loading College Board question datasets...";
 
-    try {
-      const fetchWithFallback = async (relPath) => {
-        const v = `v=${this.dataVersion}_${Date.now()}`;
-        const qp = relPath.includes('?') ? '&' : '?';
-        const candidates = [
-          relPath + qp + v,
-          '/' + relPath + qp + v,
-          './' + relPath + qp + v,
-          'public/' + relPath + qp + v,
-          '/public/' + relPath + qp + v,
-          relPath,
-          '/' + relPath,
-          './' + relPath,
-          '../' + relPath,
-          'public/' + relPath,
-          '/public/' + relPath
-        ];
-        for (const path of candidates) {
-          try {
-            const res = await fetch(path, { cache: 'no-store' });
-            if (res.ok) return await res.json();
-          } catch (e) {}
+      try {
+        const fetchWithFallback = async (relPath) => {
+          const v = `v=${this.dataVersion}`;
+          const qp = relPath.includes('?') ? '&' : '?';
+          const candidates = [
+            '/' + relPath + qp + v,
+            relPath + qp + v,
+            'public/' + relPath + qp + v,
+            '/' + relPath,
+            relPath,
+            'public/' + relPath
+          ];
+          for (const path of candidates) {
+            try {
+              const res = await fetch(path);
+              if (res.ok) return await res.json();
+            } catch (e) {}
+          }
+          throw new Error(`Failed to load ${relPath}`);
+        };
+
+        // If targetSubj is specified and only one subject is needed right now, load it first!
+        if (targetSubj === 'math' && !hasMath) {
+          const mathQuestions = await fetchWithFallback('data/questions/math.json');
+          this.questionsData.math = mathQuestions || [];
+          this.currentDataVersion = this.dataVersion;
+          this.isLoading = false;
+          this.renderSkillList();
+          this.updateMatchingCount();
+          // Load RW in background
+          if (!hasRw) {
+            fetchWithFallback('data/questions/reading_writing.json').then(rw => {
+              this.questionsData.rw = rw || [];
+              this.renderSkillList();
+              this.updateMatchingCount();
+            }).catch(err => console.warn('[qbEngine] Background RW preload error:', err));
+          }
+          return;
         }
-        throw new Error(`Failed to load ${relPath}`);
-      };
 
-      const [rwQuestions, mathQuestions] = await Promise.all([
-        fetchWithFallback('data/questions/reading_writing.json'),
-        fetchWithFallback('data/questions/math.json')
-      ]);
+        if (targetSubj === 'rw' && !hasRw) {
+          const rwQuestions = await fetchWithFallback('data/questions/reading_writing.json');
+          this.questionsData.rw = rwQuestions || [];
+          this.currentDataVersion = this.dataVersion;
+          this.isLoading = false;
+          this.renderSkillList();
+          this.updateMatchingCount();
+          // Load Math in background
+          if (!hasMath) {
+            fetchWithFallback('data/questions/math.json').then(m => {
+              this.questionsData.math = m || [];
+              this.renderSkillList();
+              this.updateMatchingCount();
+            }).catch(err => console.warn('[qbEngine] Background Math preload error:', err));
+          }
+          return;
+        }
 
-      this.questionsData.rw = rwQuestions || [];
-      this.questionsData.math = mathQuestions || [];
-      this.currentDataVersion = this.dataVersion;
-      this.isLoading = false;
-      this.renderSkillList();
-      this.updateMatchingCount();
-    } catch (err) {
-      console.error("[qbEngine] Error loading questions:", err);
-      this.isLoading = false;
-      if (countEl) {
-        countEl.innerHTML = `<span class="text-rose-400">⚠️ Unable to load question dataset files: ${err.message}</span>`;
+        // Otherwise load both
+        const [rwQuestions, mathQuestions] = await Promise.all([
+          hasRw ? Promise.resolve(this.questionsData.rw) : fetchWithFallback('data/questions/reading_writing.json'),
+          hasMath ? Promise.resolve(this.questionsData.math) : fetchWithFallback('data/questions/math.json')
+        ]);
+
+        this.questionsData.rw = rwQuestions || [];
+        this.questionsData.math = mathQuestions || [];
+        this.currentDataVersion = this.dataVersion;
+        this.isLoading = false;
+        this.renderSkillList();
+        this.updateMatchingCount();
+      } catch (err) {
+        console.error("[qbEngine] Error loading questions:", err);
+        this.isLoading = false;
+        if (countEl) {
+          countEl.innerHTML = `<span class="text-rose-400">⚠️ Unable to load question dataset files: ${err.message}</span>`;
+        }
+      } finally {
+        this.isLoading = false;
+        this._loadingPromise = null;
       }
-    }
+    })();
+
+    await this._loadingPromise;
   },
 
   setSubject(subj) {
