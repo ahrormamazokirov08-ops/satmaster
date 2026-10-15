@@ -1423,7 +1423,7 @@
                 👁️
               </button>
             </div>
-            <button type="button" id="qb-btn-calculator" disabled title="Coming Soon" class="opacity-40 cursor-not-allowed flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500">
+            <button type="button" id="qb-btn-calculator" onclick="toggleDesmosCalculator()" title="Open Desmos Graphing Calculator" class="flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer">
               <span>🧮</span><span class="hidden sm:inline">Calculator</span>
             </button>
           </div>
@@ -2055,6 +2055,11 @@
           </div>
 
           <div class="flex items-center gap-3 self-end sm:self-auto">
+            <!-- Desmos Calculator Button -->
+            <button type="button" id="runner-btn-calculator" onclick="toggleDesmosCalculator()" title="Open Desmos Graphing Calculator" class="flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer">
+              <span>🧮</span><span class="hidden sm:inline">Calculator</span>
+            </button>
+
             <!-- Timer Pill -->
             <div id="runner-timer-pill" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-sky-700 font-mono font-bold text-xs shadow-inner">
               <span>⏱️</span>
@@ -3446,6 +3451,37 @@
           Save Feedback Note
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- OFFICIAL DIGITAL SAT DESMOS GRAPHING CALCULATOR PANEL     -->
+  <!-- ========================================================= -->
+  <div id="desmos-calculator-panel" class="hidden fixed z-[9999] shadow-2xl rounded-2xl border border-slate-700/80 bg-slate-900 flex flex-col resize overflow-hidden select-none min-w-[340px] min-h-[380px] max-w-[96vw] max-h-[92vh]" style="width: 600px; height: 530px; right: 24px; top: 75px;">
+    <!-- Draggable Top Header -->
+    <div id="desmos-drag-header" class="px-4 py-2.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between cursor-move shrink-0">
+      <div class="flex items-center gap-2 text-white">
+        <span class="text-base">🧮</span>
+        <div class="flex flex-col">
+          <span class="text-xs font-bold tracking-wide">Graphing Calculator</span>
+          <span class="text-[9px] text-slate-400 font-medium">Official Digital SAT • Desmos College Board</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button type="button" onclick="resetDesmosCalculator()" title="Clear / Reset Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1">
+          <span>🔄</span><span class="text-[10px] hidden sm:inline">Clear</span>
+        </button>
+        <button type="button" onclick="toggleDesmosCalculator(false)" title="Minimize / Hide Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition-colors w-7 h-7 flex items-center justify-center">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- Calculator Body Container -->
+    <div class="relative flex-1 w-full bg-white overflow-hidden min-h-0">
+      <!-- Shield overlay active only during dragging to prevent iframe mouse event absorption -->
+      <div id="desmos-drag-shield" class="hidden absolute inset-0 z-10 bg-transparent"></div>
+      <iframe id="desmos-iframe" src="https://www.desmos.com/testing/collegeboard/graphing" title="College Board Digital SAT Desmos Calculator" class="w-full h-full border-0 block" allow="clipboard-read; clipboard-write"></iframe>
     </div>
   </div>
 
@@ -6150,6 +6186,9 @@
     // Initialize hash routing and homework sync on window load
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(handleHashRouting, 100);
+      if (typeof initDesmosDraggable === 'function') {
+        initDesmosDraggable();
+      }
       if (typeof fetchAndSyncHomework === 'function') {
         fetchAndSyncHomework();
         setInterval(fetchAndSyncHomework, 10000);
@@ -9166,6 +9205,7 @@
 
     function confirmExitStudentTest() {
       if (confirm("Are you sure you want to exit? Your current test progress will be lost.")) {
+        if (typeof toggleDesmosCalculator === 'function') toggleDesmosCalculator(false);
         if (currentRunnerTest.timerInterval) clearInterval(currentRunnerTest.timerInterval);
         clearActiveTestProgress();
         document.getElementById('student-runner-container')?.classList.add('hidden');
@@ -9180,6 +9220,31 @@
 
       const q = test.questions[test.currentIdx];
       const hw = test.assignment;
+
+      // Calculator button visibility per SAT rules: Math sections only!
+      const runnerCalcBtn = document.getElementById('runner-btn-calculator');
+      const isMathDrill = Boolean(
+        (hw && hw.section && hw.section.toLowerCase().includes('math')) ||
+        q.subject === 'Math' ||
+        (q.id && q.id.startsWith('cb_math'))
+      );
+      if (runnerCalcBtn) {
+        if (isMathDrill) {
+          runnerCalcBtn.classList.remove('hidden');
+          runnerCalcBtn.disabled = false;
+          if (typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen) {
+            runnerCalcBtn.className = "flex items-center gap-1.5 bg-blue-600 text-white border border-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm cursor-pointer transition-colors";
+          } else {
+            runnerCalcBtn.className = "flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer";
+          }
+        } else {
+          runnerCalcBtn.classList.add('hidden');
+          runnerCalcBtn.disabled = true;
+          if (typeof toggleDesmosCalculator === 'function' && typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen) {
+            toggleDesmosCalculator(false);
+          }
+        }
+      }
 
       // 1. Headers & Badges
       const hwTitleEl = document.getElementById('runner-hw-title');
@@ -9562,11 +9627,140 @@
     }
 
     function closeRunnerResultsModal() {
+      if (typeof toggleDesmosCalculator === 'function') toggleDesmosCalculator(false);
       document.getElementById('modal-runner-results')?.classList.add('hidden');
       document.getElementById('student-runner-container')?.classList.add('hidden');
       document.getElementById('student-portal-hub')?.classList.remove('hidden');
       renderAvailableHomeworkForClass();
       showToast("🏆 Homework Completed", "Your results have been recorded in the class gradebook!", "success");
+    }
+
+    // =========================================================
+    // OFFICIAL DIGITAL SAT DESMOS GRAPHING CALCULATOR CONTROLLER
+    // =========================================================
+    let desmosCalcState = {
+      isOpen: false,
+      isDragging: false,
+      hasPositioned: false
+    };
+
+    function toggleDesmosCalculator(forceOpen) {
+      const panel = document.getElementById('desmos-calculator-panel');
+      if (!panel) return;
+
+      const shouldOpen = forceOpen !== undefined ? forceOpen : panel.classList.contains('hidden');
+
+      if (shouldOpen) {
+        panel.classList.remove('hidden');
+        desmosCalcState.isOpen = true;
+        updateCalculatorButtonStates(true);
+        if (!desmosCalcState.hasPositioned) {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const panelWidth = Math.min(600, w - 32);
+          panel.style.width = panelWidth + 'px';
+          if (w > 768) {
+            panel.style.left = Math.max(16, w - panelWidth - 32) + 'px';
+            panel.style.top = Math.max(70, Math.min(85, h - 550)) + 'px';
+          } else {
+            panel.style.left = '16px';
+            panel.style.top = '65px';
+            panel.style.height = '70vh';
+          }
+          desmosCalcState.hasPositioned = true;
+        }
+      } else {
+        panel.classList.add('hidden');
+        desmosCalcState.isOpen = false;
+        updateCalculatorButtonStates(false);
+      }
+    }
+
+    function updateCalculatorButtonStates(isOpen) {
+      const qbBtn = document.getElementById('qb-btn-calculator');
+      const runnerBtn = document.getElementById('runner-btn-calculator');
+      [qbBtn, runnerBtn].forEach(btn => {
+        if (!btn || btn.disabled) return;
+        if (isOpen) {
+          btn.className = "flex items-center gap-1.5 bg-blue-600 text-white border border-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm cursor-pointer transition-colors";
+        } else {
+          btn.className = "flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer";
+        }
+      });
+    }
+
+    function resetDesmosCalculator() {
+      const iframe = document.getElementById('desmos-iframe');
+      if (iframe) {
+        iframe.src = "https://www.desmos.com/testing/collegeboard/graphing";
+      }
+      showToast("🔄 Calculator Reset", "Desmos session reloaded to fresh state.", "info");
+    }
+
+    function initDesmosDraggable() {
+      const panel = document.getElementById('desmos-calculator-panel');
+      const header = document.getElementById('desmos-drag-header');
+      const shield = document.getElementById('desmos-drag-shield');
+      if (!panel || !header) return;
+
+      let isDragging = false;
+      let startX, startY, startLeft, startTop;
+
+      const onStart = (e) => {
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        if (shield) shield.classList.remove('hidden');
+
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        startX = clientX;
+        startY = clientY;
+
+        const rect = panel.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        panel.style.position = 'fixed';
+        panel.style.margin = '0';
+        panel.style.right = 'auto';
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+      };
+
+      const onMove = (e) => {
+        if (!isDragging) return;
+        if (e.cancelable) e.preventDefault();
+
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        const maxLeft = Math.max(10, window.innerWidth - panel.offsetWidth - 10);
+        const maxTop = Math.max(10, window.innerHeight - 80);
+
+        const newLeft = Math.max(10, Math.min(maxLeft, startLeft + dx));
+        const newTop = Math.max(10, Math.min(maxTop, startTop + dy));
+
+        panel.style.left = newLeft + 'px';
+        panel.style.top = newTop + 'px';
+      };
+
+      const onEnd = () => {
+        isDragging = false;
+        if (shield) shield.classList.add('hidden');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+      };
+
+      header.addEventListener('mousedown', onStart);
+      header.addEventListener('touchstart', onStart, { passive: true });
     }
 
     function initAssignmentsAndGradebook() {
@@ -14343,6 +14537,28 @@
       }
     }
 
+    // Calculator button visibility per SAT exam rules: Math only!
+    const calcBtn = document.getElementById('qb-btn-calculator');
+    const isMathQuestion = Boolean(q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
+    if (calcBtn) {
+      if (isMathQuestion) {
+        calcBtn.disabled = false;
+        calcBtn.title = "Open Desmos Graphing Calculator";
+        if (typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen) {
+          calcBtn.className = "flex items-center gap-1.5 bg-blue-600 text-white border border-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm cursor-pointer transition-colors";
+        } else {
+          calcBtn.className = "flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer";
+        }
+      } else {
+        calcBtn.disabled = true;
+        calcBtn.title = "Calculators are only available in the Math section";
+        calcBtn.className = "opacity-40 cursor-not-allowed flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500";
+        if (typeof toggleDesmosCalculator === 'function' && typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen) {
+          toggleDesmosCalculator(false);
+        }
+      }
+    }
+
     // Passage pane handling
     const passagePane = document.getElementById('qb-passage-pane');
     const passageContent = document.getElementById('qb-passage-content');
@@ -15389,6 +15605,9 @@
   },
 
   returnToSetup() {
+    if (typeof toggleDesmosCalculator === 'function') {
+      toggleDesmosCalculator(false);
+    }
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
