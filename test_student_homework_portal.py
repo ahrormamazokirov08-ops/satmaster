@@ -60,7 +60,7 @@ class TestStudentHomeworkPortal(unittest.TestCase):
             self.assertIn('function getCompletedHomeworkList(', html, f"{name}: getCompletedHomeworkList function must exist")
             self.assertIn('function getHomeworkSubmission(', html, f"{name}: getHomeworkSubmission function must exist")
             self.assertIn('Done • Completed', html, f"{name}: Done • Completed status text must exist")
-            self.assertIn('🚀 Solve Homework', html, f"{name}: Solve Homework button text must exist")
+            self.assertIn('🚀 Complete the Task', html, f"{name}: Button text must be 'Complete the Task'")
             self.assertIn('Drill Size:', html, f"{name}: Drill Size metric must exist in card")
             self.assertIn('Student PIN:', html, f"{name}: Student PIN metric must exist in card")
             self.assertIn('handleStartStudentQuiz', html, f"{name}: handleStartStudentQuiz must launch drills with teacher settings")
@@ -78,6 +78,16 @@ class TestStudentHomeworkPortal(unittest.TestCase):
             self.assertIn('confirmDeleteActiveHomework', html, f"{name}: confirmDeleteActiveHomework function must exist")
             self.assertIn('pendingDeleteHomeworkId', html, f"{name}: pendingDeleteHomeworkId must track target homework")
         print("✅ Delete Homework confirmation modal verified: PASS")
+
+    def test_vocab_homework_settings_and_timer_integration(self):
+        print("\n--- Test 6: Vocab Homework Settings, Countdown Timer & Telegram Dispatch ---")
+        for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
+            self.assertIn('handleStartVocabUnitTest(null, targetHw)', html, f"{name}: handleStartVocabUnitTest must receive targetHw")
+            self.assertIn('vocabTestState.timeLimitMinutes', html, f"{name}: vocabTestState must track timeLimitMinutes")
+            self.assertIn('vocabTestState.remainingSeconds', html, f"{name}: vocabTestState must track remainingSeconds")
+            self.assertIn('dispatchTelegramReportIfConfigured', html, f"{name}: dispatchTelegramReportIfConfigured must be called")
+            self.assertIn('/api/homework/submit', html, f"{name}: /api/homework/submit must be called in markHomeworkCompleted")
+        print("✅ Vocab homework settings, countdown timer & Telegram dispatch verified: PASS")
 
 if __name__ == '__main__':
     unittest.main()

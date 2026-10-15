@@ -8021,6 +8021,23 @@
       }
       localStorage.setItem('satmaster_completed_homework', JSON.stringify(list));
       renderAvailableHomeworkForClass();
+
+      // Synchronize homework completion record with backend API
+      if (typeof fetch === 'function') {
+        fetch('/api/homework/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            homework_id: hwId,
+            student_id: studentId,
+            student_name: studentName,
+            score_pct: resultData.scorePct,
+            correct_count: resultData.score,
+            total_questions: resultData.total,
+            time_spent_seconds: resultData.timeSpentSeconds || 0
+          })
+        }).catch(err => console.warn("Homework backend submission sync notice:", err));
+      }
     }
 
     function renderAvailableHomeworkForClass() {
@@ -8104,7 +8121,7 @@
         } else {
           actionButtonHtml = `
             <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95">
-              <span>🚀 Solve Homework</span>
+              <span>🚀 Complete the Task</span>
               <span>→</span>
             </button>
           `;
@@ -8189,9 +8206,18 @@
       // Check for VOCAB type homework
       if (targetHw.type === 'vocab') {
         window.activeHomeworkAssignment = targetHw;
-        showLoading('Loading Vocab Test...', `Preparing ${targetHw.config?.scopeName || 'Vocab Test'} for ${studentName}...`, 600, function() {
+        const hwTitle = targetHw.title || targetHw.config?.scopeName || 'Vocab Drill';
+        showLoading('Loading Vocab Task...', `Setting up ${hwTitle} with teacher settings for ${studentName}...`, 500, function() {
           switchTab('vocab');
-          switchVocabView('test');
+          switchVocabView('reports');
+
+          const nameInput = document.getElementById('test-student-name');
+          if (nameInput) nameInput.value = studentName;
+          const displayStudentName = document.getElementById('test-display-student-name');
+          if (displayStudentName) displayStudentName.innerText = studentName;
+          const displayStudentClass = document.getElementById('test-display-student-class');
+          if (displayStudentClass) displayStudentClass.innerText = `(${targetHw.className || 'Assigned Class'})`;
+
           const scopeSelect = document.getElementById('test-scope-select');
           if (scopeSelect && targetHw.config?.scopeId) {
             scopeSelect.value = targetHw.config.scopeId;
@@ -8201,7 +8227,7 @@
             countSelect.value = String(targetHw.config.question_count);
           }
           if (typeof handleStartVocabUnitTest === 'function') {
-            handleStartVocabUnitTest();
+            handleStartVocabUnitTest(null, targetHw);
           }
         });
         return;
@@ -9365,6 +9391,12 @@
         if (pillRep) pillRep.className = activeClass + ' flex items-center gap-1.5';
 
         renderVocabReportsView();
+      } else if (view === 'test') {
+        if (viewExp) viewExp.classList.add('hidden');
+        if (viewLib) viewLib.classList.add('hidden');
+        if (viewRep) viewRep.classList.add('hidden');
+        document.getElementById('vocab-panel-test')?.classList.remove('hidden');
+        return;
       }
 
       const isAdmin = isCurrentUserAdmin();
@@ -10498,26 +10530,32 @@
       showToast("📖 Practice Mode", "Study and test yourself on these words before your next attempt!", "info");
     }
 
-    function handleStartVocabUnitTest(e) {
-      if (e) e.preventDefault();
-      if (currentUserRole === 'teacher' || currentUserRole === 'admin') {
+    function handleStartVocabUnitTest(e, hwAssignment = null) {
+      if (e && e.preventDefault) e.preventDefault();
+
+      const activeHw = hwAssignment || window.activeHomeworkAssignment;
+
+      // Teachers are locked out of normal unit tests, but can test assigned homework drills
+      if (!activeHw && (currentUserRole === 'teacher' || currentUserRole === 'admin')) {
         showToast("🔒 Teacher Notice", "Teachers do not take unit exams. Unit tests are reserved for students.", "info");
         return;
       }
       const studentNameInput = document.getElementById('test-student-name');
       const studentName = studentNameInput ? studentNameInput.value.trim() || 'Student User' : 'Student User';
 
-      // Check daily attempt limit
-      const attemptCheck = checkStudentDailyAttempts(studentName);
-      if (!attemptCheck.allowed) {
-        showToast("⛔ Daily Limit Reached", `${studentName} has already taken 3 unit tests today. Consecutive testing without studying is locked. Please study your words in Practice Mode and return tomorrow!`, "error");
-        return;
+      // Daily attempt limit check is only for free practice, NOT assigned teacher homework
+      if (!activeHw) {
+        const attemptCheck = checkStudentDailyAttempts(studentName);
+        if (!attemptCheck.allowed) {
+          showToast("⛔ Daily Limit Reached", `${studentName} has already taken 3 unit tests today. Consecutive testing without studying is locked. Please study your words in Practice Mode and return tomorrow!`, "error");
+          return;
+        }
       }
 
       const scopeSelect = document.getElementById('test-scope-select');
-      const scopeId = scopeSelect ? scopeSelect.value : 'bundle_1_2';
+      const scopeId = (activeHw && activeHw.config?.scopeId) || (scopeSelect ? scopeSelect.value : 'bundle_1_2');
       const qCountSelect = document.getElementById('test-question-count');
-      const qCountVal = qCountSelect ? qCountSelect.value : '20';
+      const qCountVal = (activeHw && activeHw.config?.question_count) ? String(activeHw.config.question_count) : (qCountSelect ? qCountSelect.value : '20');
 
       const pool = getWordsForTestScope(scopeId);
       if (!pool || pool.length === 0) {
@@ -10527,8 +10565,8 @@
 
       let qCount = pool.length;
       if (qCountVal !== 'all') {
-        const parsed = parseInt(qCountVal);
-        if (!isNaN(parsed)) {
+        const parsed = parseInt(qCountVal, 10);
+        if (!isNaN(parsed) && parsed > 0) {
           qCount = Math.min(parsed, pool.length);
         }
       }
@@ -10606,6 +10644,8 @@
         }
       });
 
+      const timeLimitMin = (activeHw?.timeLimitMinutes) || (activeHw?.config?.timer) || 0;
+
       vocabTestState = {
         active: true,
         studentName: studentName,
@@ -10615,6 +10655,9 @@
         userAnswers: new Array(questions.length).fill(null),
         currentIdx: 0,
         timerSeconds: 0,
+        timeLimitMinutes: timeLimitMin,
+        timeLimitSeconds: timeLimitMin > 0 ? timeLimitMin * 60 : 0,
+        remainingSeconds: timeLimitMin > 0 ? timeLimitMin * 60 : 0,
         timerInterval: null,
         startTimestamp: Date.now()
       };
@@ -10626,14 +10669,16 @@
 
       // Set header
       const headerScope = document.getElementById('test-header-scope');
-      if (headerScope) headerScope.innerText = vocabTestState.scopeName;
+      if (headerScope) {
+        headerScope.innerText = `${vocabTestState.scopeName}${timeLimitMin > 0 ? ` • ⏱️ ${timeLimitMin}m Timer` : ''}`;
+      }
 
       // Start timer
       startTestTimer();
 
       // Render Question 1
       renderVocabTestQuestion();
-      showToast("🚀 Unit Test Started", `Testing ${questions.length} questions across 3 exercises. Good luck!`, "info");
+      showToast("🚀 Vocabulary Task Ready", `Loaded ${questions.length} questions for ${vocabTestState.scopeName}. Good luck!`, "info");
     }
 
     function startTestTimer() {
@@ -10648,7 +10693,21 @@
         } else {
           vocabTestState.timerSeconds++;
         }
-        updateTestTimerDisplay();
+
+        if (vocabTestState.timeLimitMinutes > 0) {
+          vocabTestState.remainingSeconds = Math.max(0, vocabTestState.timeLimitSeconds - vocabTestState.timerSeconds);
+          updateTestTimerDisplay();
+          if (vocabTestState.remainingSeconds <= 0) {
+            clearInterval(vocabTestState.timerInterval);
+            vocabTestState.timerInterval = null;
+            showToast("⏰ Time's Up!", "Your time limit for this homework has expired. Submitting test...", "info");
+            submitVocabUnitTest();
+            return;
+          }
+        } else {
+          updateTestTimerDisplay();
+        }
+
         if (vocabTestState.timerSeconds % 5 === 0) {
           saveVocabTestProgress();
         }
@@ -10658,9 +10717,24 @@
     function updateTestTimerDisplay() {
       const el = document.getElementById('test-live-timer');
       if (!el) return;
-      const mins = Math.floor(vocabTestState.timerSeconds / 60);
-      const secs = vocabTestState.timerSeconds % 60;
-      el.innerText = `⏱️ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      if (vocabTestState.timeLimitMinutes > 0) {
+        const rem = Math.max(0, vocabTestState.remainingSeconds !== undefined ? vocabTestState.remainingSeconds : (vocabTestState.timeLimitSeconds - (vocabTestState.timerSeconds || 0)));
+        const mins = Math.floor(rem / 60);
+        const secs = rem % 60;
+        el.innerText = `⏱️ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        if (rem <= 60) {
+          el.className = "px-3 py-1 rounded-xl bg-rose-50 text-xs font-mono font-bold text-rose-600 border border-rose-200 shadow-xs animate-pulse";
+        } else if (rem <= 180) {
+          el.className = "px-3 py-1 rounded-xl bg-amber-50 text-xs font-mono font-bold text-amber-700 border border-amber-200 shadow-xs";
+        } else {
+          el.className = "px-3 py-1 rounded-xl bg-purple-50 text-xs font-mono font-bold text-purple-700 border border-purple-200 shadow-xs";
+        }
+      } else {
+        const mins = Math.floor(vocabTestState.timerSeconds / 60);
+        const secs = vocabTestState.timerSeconds % 60;
+        el.innerText = `⏱️ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        el.className = "px-3 py-1 rounded-xl bg-white text-xs font-mono font-bold text-emerald-700 border border-slate-200 shadow-xs";
+      }
     }
 
     function renderVocabTestQuestion() {
@@ -10886,14 +10960,19 @@
       saveVocabReport(report);
 
       // Track homework completion if launched from homework tab
-      if (window.activeHomeworkAssignment && window.activeHomeworkAssignment.type === 'vocab') {
+      const currentHw = window.activeHomeworkAssignment;
+      if (currentHw && currentHw.type === 'vocab') {
+        report.homeworkId = currentHw.id;
+        report.homeworkTitle = currentHw.title;
+        report.homeworkCode = currentHw.code;
         if (typeof markHomeworkCompleted === 'function') {
-          markHomeworkCompleted(window.activeHomeworkAssignment.id, {
+          markHomeworkCompleted(currentHw.id, {
             score: correctCount,
             total: totalQ,
             scorePct: scorePct,
             type: 'vocab',
-            hwCode: window.activeHomeworkAssignment.code
+            hwCode: currentHw.code,
+            timeSpentSeconds: vocabTestState.timerSeconds
           });
         }
       }
@@ -10930,8 +11009,10 @@
       text += `👤 Student: ${report.studentName}\n`;
       if (report.studentId) text += `🆔 ID: #${report.studentId}\n`;
       if (report.studentClass) text += `🏫 Class: ${report.studentClass}\n`;
+      if (report.homeworkTitle) text += `📝 Homework: ${report.homeworkTitle} (PIN: ${report.homeworkCode || 'ACTIVE'})\n`;
       text += `📚 Scope: ${report.scopeName}\n`;
       text += `❓ Questions: ${report.totalQuestions} Questions Tested\n`;
+      text += `⏱️ Duration: ${report.timeFormatted}\n`;
       text += `\n`;
       text += `🏆 SCORE: ${report.correctCount}/${report.totalQuestions} (${report.scorePct}%) — ${statusEmoji}\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -10949,6 +11030,7 @@
       text += `👤 Student: ${report.studentName}\n`;
       if (report.studentId) text += `🆔 ID: #${report.studentId}\n`;
       if (report.studentClass) text += `🏫 Class: ${report.studentClass}\n`;
+      if (report.homeworkTitle) text += `📝 Homework: ${report.homeworkTitle} (PIN: ${report.homeworkCode || 'ACTIVE'})\n`;
       text += `📚 Scope: ${report.scopeName}\n`;
       text += `❓ Questions: ${report.totalQuestions} Questions Tested\n`;
       text += `\n`;
