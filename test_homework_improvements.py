@@ -98,7 +98,7 @@ class TestHomeworkImprovements(unittest.TestCase):
 
 
     def test_06_homework_launch_loading_modal(self):
-        """Verify homework loading launchpad with circular animation, study icons, and 1.5s transition."""
+        """Verify homework loading launchpad with circular animation, study icons, and fast snappy transition."""
         print("\n--- Test 6: Homework Launchpad Circular Loading Modal ---")
         for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
             self.assertIn('id="loading-overlay"', html, f"{name}: #loading-overlay element must exist")
@@ -108,9 +108,9 @@ class TestHomeworkImprovements(unittest.TestCase):
             self.assertIn('border-t-blue-600 animate-spin', html, f"{name}: Must include animated circular spinner")
             self.assertIn('animate-ping', html, f"{name}: Must include animated radar circle")
             self.assertIn('animate-pulse', html, f"{name}: Must include animated pulsing circle")
-            # Verify 1500ms duration used in handleStartStudentQuiz
-            self.assertIn("1500,", html, f"{name}: handleStartStudentQuiz must use 1500ms transition duration")
-        print("✅ Homework launchpad circular loading modal verified: PASS")
+            # Verify 650ms duration used in handleStartStudentQuiz for fast loading
+            self.assertIn("650,", html, f"{name}: handleStartStudentQuiz must use fast 650ms transition duration")
+        print("✅ Fast homework launchpad circular loading modal verified: PASS")
 
 
 if __name__ == '__main__':

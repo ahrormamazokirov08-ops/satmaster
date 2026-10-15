@@ -6159,10 +6159,11 @@
         overlay.style.display = 'flex';
       }
 
-      const finalDuration = durationMs || 1500; // 1 to 2 seconds (default 1.5s)
+      const targetMinDuration = typeof durationMs === 'number' ? durationMs : 650;
       const startTime = Date.now();
 
-      setTimeout(async () => {
+      // Launch onComplete immediately in parallel with the visual spinner for maximum speed!
+      (async () => {
         try {
           if (typeof onComplete === 'function') {
             await onComplete();
@@ -6172,7 +6173,7 @@
         }
 
         const elapsed = Date.now() - startTime;
-        const remainingDelay = Math.max(0, finalDuration - elapsed);
+        const remainingDelay = Math.max(0, targetMinDuration - elapsed);
 
         setTimeout(() => {
           if (overlay) {
@@ -6181,10 +6182,10 @@
               overlay.classList.add('hidden');
               overlay.style.display = 'none';
               overlay.classList.remove('opacity-0', 'pointer-events-none');
-            }, 300);
+            }, 200);
           }
         }, remainingDelay);
-      }, finalDuration);
+      })();
     }
 
     // Modal Control Functions
@@ -8520,7 +8521,7 @@
         showLoading(
           'Please wait on the process...',
           `Setting up ${hwTitle} with teacher settings for ${studentName}...`,
-          1500,
+          650,
           function() {
             switchTab('vocab');
             switchVocabView('reports');
@@ -8560,7 +8561,7 @@
         showLoading(
           'Please wait on the process...',
           `Setting up ${hwTitle} (${qCount} questions) with teacher settings...`,
-          1500,
+          650,
           async function() {
             // Immediately ensure setup view and hub view stay hidden so student directly enters test
             const hubView = document.getElementById('qbank-hub-view');
@@ -8642,7 +8643,7 @@
       showLoading(
         'Please wait on the process...',
         `Preparing Digital SAT drill for ${studentName}...`,
-        1500,
+        650,
         function() {
         currentRunnerTest = {
           assignment: targetHw,
