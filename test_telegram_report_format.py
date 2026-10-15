@@ -167,15 +167,16 @@ class TestTelegramReportFormat(unittest.TestCase):
         self.assertIn("Go bro", text)
         self.assertIn("SAT_Alpha_1", text)
         self.assertIn("Lessons 1 – 2 (First 40 Words)", text)
-        self.assertIn("10 Questions Tested", text)
-        self.assertIn("SCORE: 2/10 (20%) — ❌ FAILED", text)
+        self.assertIn("Result: FAILED ❌ (20%)", text)
+        self.assertIn("Time Spent: 0m 10s", text)
         self.assertNotIn("NEEDS REVIEW", text)
 
         # Ensure bloated fields are NOT in the clean summary
         self.assertNotIn("CATEGORIZED LESSON BREAKDOWN", text)
         self.assertNotIn("WORDS LEARNED", text)
         self.assertNotIn("WORDS NEEDING REVIEW", text)
-        self.assertNotIn("Time Taken:", text)
+        self.assertNotIn("Questions Tested", text)
+        self.assertNotIn("ID: #", text)
 
     def test_02_summary_text_passed_status(self):
         """Summary text for >=80% score must show ✅ PASSED."""
@@ -183,9 +184,10 @@ class TestTelegramReportFormat(unittest.TestCase):
 
         self.assertIn("Alice Wonder", text)
         self.assertIn("SAT_Elite_2026", text)
-        self.assertIn("20 Questions Tested", text)
-        self.assertIn("SCORE: 18/20 (90%) — ✅ PASSED", text)
+        self.assertIn("Result: PASSED ✅ (90%)", text)
+        self.assertIn("Time Spent: 1m 45s", text)
         self.assertNotIn("FAILED", text)
+        self.assertNotIn("Questions Tested", text)
 
     def test_03_details_text_comprehensive_breakdown(self):
         """Details text must include timing, lesson breakdown, words learned, and words missed."""
@@ -276,7 +278,8 @@ class TestTelegramReportFormat(unittest.TestCase):
         self.assertEqual(collapsed_msg["message_id"], 4321)
         self.assertNotIn("WORDS LEARNED", collapsed_msg["text"])
         self.assertNotIn("Time Taken:", collapsed_msg["text"])
-        self.assertIn("10 Questions Tested", collapsed_msg["text"])
+        self.assertIn("Lessons 1 – 2", collapsed_msg["text"])
+        self.assertIn("Result: FAILED ❌ (20%)", collapsed_msg["text"])
         self.assertEqual(
             collapsed_msg["reply_markup"]["inline_keyboard"][0][0]["callback_data"],
             "vrep_more:vrep_test_001"
@@ -319,6 +322,32 @@ class TestTelegramReportFormat(unittest.TestCase):
         self.assertIn("speakWord", html)
         self.assertIn("const satWords =", html)
         self.assertIn("434 Words", html)
+
+    def test_09_qbank_telegram_summary_format(self):
+        """QBank summary text must strictly include student, class, task, result with %, and time spent."""
+        sample_qbank_report = {
+            "id": "qbrep_1792060999999",
+            "type": "qbank",
+            "studentName": "John Doe",
+            "studentClass": "Morning Batch A",
+            "homeworkTitle": "Digital SAT Reading & Writing Practice Drill",
+            "scorePct": 90,
+            "timeFormatted": "0m 27s"
+        }
+        text = format_vocab_summary_text(sample_qbank_report)
+        self.assertIn("DIGITAL SAT QUESTION BANK REPORT", text)
+        self.assertIn("👤 Student: John Doe", text)
+        self.assertIn("🏫 Class: Morning Batch A", text)
+        self.assertIn("📝 Task: Digital SAT Reading & Writing Practice Drill", text)
+        self.assertIn("📊 Result: PASSED ✅ (90%)", text)
+        self.assertIn("⏱️ Time Spent: 0m 27s", text)
+
+        # Ensure no clutter / bloated fields
+        self.assertNotIn("ID: #", text)
+        self.assertNotIn("PIN:", text)
+        self.assertNotIn("Attempt:", text)
+        self.assertNotIn("Passing Standard:", text)
+        self.assertNotIn("College Board format", text)
 
 
 if __name__ == "__main__":
