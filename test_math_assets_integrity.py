@@ -189,6 +189,33 @@ class TestMathAssetsIntegrity(unittest.TestCase):
         self.assertTrue(mock_is_answer_correct(sample_spr_whole, "403.0"))
         self.assertFalse(mock_is_answer_correct(sample_spr_whole, "400"))
 
+    def test_math_passages_merged_and_sticky_footer(self):
+        # 1. Dataset verification: All Math questions have empty passage (equations are in prompt)
+        with open(DATA_MATH, "r", encoding="utf-8") as f:
+            questions = json.load(f)
+
+        math_with_passage = [q["id"] for q in questions if q.get("passage") and q.get("passage").strip()]
+        self.assertEqual(len(math_with_passage), 0, f"Math questions must have empty passages: {math_with_passage[:5]}")
+
+        # cb_math_688 verification (User Image 3 question)
+        q688 = next(q for q in questions if q["id"] == "cb_math_688")
+        self.assertEqual(q688.get("passage", ""), "")
+        self.assertIn("S(n) = 38{,}000 a^n", q688["prompt"])
+        self.assertEqual(q688["options"]["C"], "1.04")
+        self.assertEqual(q688["options"]["D"], "1.4")
+
+        # 2. UI verification: sticky footers and explanation card direct Next button
+        index_path = os.path.join(ROOT_DIR, "index.html")
+        pub_index_path = os.path.join(ROOT_DIR, "public", "index.html")
+
+        for p in [index_path, pub_index_path]:
+            with open(p, "r", encoding="utf-8") as f:
+                html = f.read()
+            self.assertIn('id="qb-test-footer" class="sticky bottom-0 z-30', html)
+            self.assertIn('onclick="qbEngine.nextQuestion()"', html)
+            self.assertIn('>Next Question</span>', html)
+            self.assertIn('qPane.scrollTop = 0', html)
+
 
 if __name__ == "__main__":
     unittest.main()

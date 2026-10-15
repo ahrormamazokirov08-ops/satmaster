@@ -1535,6 +1535,12 @@
                     <div id="qb-explanation-content" class="text-slate-700 font-normal leading-relaxed whitespace-pre-line space-y-2">
                       <!-- Populated dynamically and KaTeX rendered -->
                     </div>
+                    <!-- Direct Action: Next question button inside explanation card -->
+                    <div class="pt-3 border-t border-slate-200 flex justify-end">
+                      <button type="button" onclick="qbEngine.nextQuestion()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-extrabold shadow-md shadow-blue-600/20 transition-all flex items-center gap-2 cursor-pointer">
+                        <span>Next Question</span><span>→</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1549,7 +1555,7 @@
         </main>
 
         <!-- BOTTOM BLUEBOOK NAVIGATION & CONTROLS -->
-        <footer id="qb-test-footer" class="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-sm flex items-center justify-between gap-3 text-slate-800">
+        <footer id="qb-test-footer" class="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3.5 shadow-lg flex items-center justify-between gap-3 text-slate-800 mt-3">
           <!-- Back button -->
           <button type="button" id="qb-btn-prev" onclick="qbEngine.prevQuestion()" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:pointer-events-none text-slate-700 text-xs sm:text-sm font-bold border border-slate-300 transition-all flex items-center gap-2 shadow-xs">
             <span>←</span><span>Back</span>
@@ -2184,7 +2190,7 @@
         </div>
 
         <!-- Bottom Navigation & Question Palette Bar -->
-        <div class="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 text-slate-800">
+        <div class="sticky bottom-0 z-30 p-4 sm:p-5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-slate-800 mt-4">
           
           <div class="flex items-center gap-2">
             <button type="button" id="btn-runner-flag" onclick="toggleCurrentQuestionFlag()" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-colors shadow-xs">
@@ -9330,8 +9336,13 @@
       const runnerCalcCol = document.getElementById('runner-calculator-col');
       const runnerQuestionCol = document.getElementById('runner-question-col');
 
-      const hasPassage = Boolean(q.passage && q.passage.trim());
+      // Reset scroll position on question change
+      if (runnerQuestionCol) runnerQuestionCol.scrollTop = 0;
+      if (passageCol) passageCol.scrollTop = 0;
+      window.scrollTo({ top: 0, behavior: 'instant' });
+
       const isRunnerMath = Boolean(q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
+      const hasPassage = Boolean(!isRunnerMath && q.passage && q.passage.trim());
       const isDockedCalcRunner = Boolean(typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen && !desmosCalcState.isPoppedOut && isRunnerMath);
 
       if (hasPassage && !isDockedCalcRunner) {
@@ -14658,15 +14669,16 @@
     let q = session.questions[idx];
     if (!q) return;
 
-    // Self-healing synchronization with fresh questionsData (syncs tables and graphs if session was cached)
+    // Self-healing synchronization with fresh questionsData (syncs tables, graphs, clean prompts, and options)
     if (q && q.id && this.questionsData) {
       const isMath = (q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
       const pool = isMath ? this.questionsData.math : this.questionsData.rw;
       if (pool && Array.isArray(pool)) {
         const freshQ = pool.find(item => item.id === q.id);
-        if (freshQ && freshQ.passage && freshQ.passage !== q.passage) {
+        if (freshQ && (freshQ.passage !== q.passage || freshQ.prompt !== q.prompt)) {
           q.passage = freshQ.passage;
           q.prompt = freshQ.prompt;
+          if (freshQ.options) q.options = freshQ.options;
           session.questions[idx] = q;
           try {
             sessionStorage.setItem('qb_active_session', JSON.stringify(session));
@@ -14674,6 +14686,13 @@
         }
       }
     }
+
+    // Always reset scroll positions to top when loading any question
+    const qPane = document.getElementById('qb-question-pane');
+    if (qPane) qPane.scrollTop = 0;
+    const pPane = document.getElementById('qb-passage-pane');
+    if (pPane) pPane.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
     // Header updates
     const headerSubj = document.getElementById('qb-header-subject');
@@ -14731,7 +14750,7 @@
     const splitContainer = document.getElementById('qb-split-container');
     const calcPane = document.getElementById('qb-calculator-pane');
 
-    const hasPassage = Boolean(q.passage && q.passage.trim().length > 0);
+    const hasPassage = Boolean(!isMathQuestion && q.passage && q.passage.trim().length > 0);
     const isDockedCalc = Boolean(typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen && !desmosCalcState.isPoppedOut && isMathQuestion);
 
     if (passagePane) {
