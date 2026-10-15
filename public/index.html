@@ -8167,8 +8167,6 @@
         const submission = getHomeworkSubmission(hw.id, studentId) || getHomeworkSubmission(hw.code, studentId) || getHomeworkSubmission(hw.id, studentName) || getHomeworkSubmission(hw.code, studentName);
         const isCompleted = Boolean(submission);
 
-        const isVocab = hw.type === 'vocab';
-        const isQBank = hw.type === 'qbank';
         const subj = (hw.config && hw.config.subject) || 'rw';
         const isMath = (subj === 'math');
         const isRw = (subj === 'rw');
