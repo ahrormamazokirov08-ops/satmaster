@@ -3105,6 +3105,35 @@
     </div>
   </div>
 
+  <!-- DELETE HOMEWORK CONFIRMATION MODAL -->
+  <div id="modal-delete-homework-confirm" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="max-w-md w-full p-6 rounded-2xl border border-slate-200 bg-white space-y-4 text-left shadow-2xl text-slate-800">
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100">
+        <div class="h-10 w-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-lg">
+          🗑️
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">Do you actually want to delete this homework?</h3>
+          <span class="text-xs text-slate-500">This action cannot be undone.</span>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Homework Title</span>
+        <p id="delete-homework-target-title" class="text-sm font-bold text-slate-800 break-words"></p>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="closeDeleteHomeworkModal()" id="btn-cancel-delete-homework" class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all border border-slate-200">
+          No, cancel
+        </button>
+        <button type="button" onclick="confirmDeleteActiveHomework()" id="btn-confirm-delete-homework" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/20">
+          Yes, delete it
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 3. DELETE STUDENT CONFIRMATION MODAL -->
   <div id="modal-delete-student-confirm" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="max-w-md w-full p-6 rounded-2xl border border-slate-200 bg-white space-y-4 text-left shadow-2xl text-slate-800">
@@ -4032,7 +4061,7 @@
 
       // Close open modals
       closeSessionInfoModal();
-      ['modal-student-history', 'modal-create-group', 'modal-delete-group-confirm', 'modal-delete-student-confirm'].forEach(id => {
+      ['modal-student-history', 'modal-create-group', 'modal-delete-group-confirm', 'modal-delete-student-confirm', 'modal-delete-homework-confirm'].forEach(id => {
         document.getElementById(id)?.classList.add('hidden');
       });
 
@@ -7618,9 +7647,37 @@
       showToast("📢 Notification Sent", `Shared "${title}" with PIN ${code}. Invite copied to clipboard!`, "success");
     }
 
+    let pendingDeleteHomeworkId = null;
+
     function handleDeleteActiveHomework(hwId) {
+      pendingDeleteHomeworkId = hwId;
+      const assignments = getAssignments();
+      const hw = assignments.find(a => String(a.id) === String(hwId) || String(a.code) === String(hwId));
+      const titleEl = document.getElementById('delete-homework-target-title');
+      if (titleEl) {
+        titleEl.textContent = hw ? (hw.title || hw.name || hw.code || 'Untitled Homework') : 'Selected Homework';
+      }
+      const modal = document.getElementById('modal-delete-homework-confirm');
+      if (modal) {
+        modal.classList.remove('hidden');
+      }
+    }
+
+    function closeDeleteHomeworkModal() {
+      pendingDeleteHomeworkId = null;
+      const modal = document.getElementById('modal-delete-homework-confirm');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function confirmDeleteActiveHomework() {
+      if (!pendingDeleteHomeworkId) return;
+      const hwId = pendingDeleteHomeworkId;
+      closeDeleteHomeworkModal();
+
       let assignments = getAssignments();
-      assignments = assignments.filter(hw => hw.id !== hwId && hw.code !== hwId);
+      assignments = assignments.filter(hw => String(hw.id) !== String(hwId) && String(hw.code) !== String(hwId));
       saveAssignments(assignments);
       renderActiveHomeworkGrid();
       renderAvailableHomeworkForClass();
@@ -7635,6 +7692,7 @@
         }).catch(err => console.warn("Backend delete sync warning:", err));
       }
     }
+    window.executeDeleteHomework = confirmDeleteActiveHomework;
 
     // =========================================================
     // SUBMISSIONS GRADEBOOK & TROUBLE SPOTS ANALYTICS

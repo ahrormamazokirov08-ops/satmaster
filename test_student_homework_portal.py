@@ -66,5 +66,18 @@ class TestStudentHomeworkPortal(unittest.TestCase):
             self.assertIn('handleStartStudentQuiz', html, f"{name}: handleStartStudentQuiz must launch drills with teacher settings")
         print("✅ Square cards and completion tracking verified: PASS")
 
+    def test_delete_homework_confirmation_modal(self):
+        print("\n--- Test 5: Delete Homework Confirmation Modal ---")
+        for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
+            self.assertIn('id="modal-delete-homework-confirm"', html, f"{name}: Modal #modal-delete-homework-confirm must exist")
+            self.assertIn('Do you actually want to delete this homework?', html, f"{name}: Confirmation question must be displayed in modal")
+            self.assertIn('id="delete-homework-target-title"', html, f"{name}: #delete-homework-target-title element must display the homework title")
+            self.assertIn('No, cancel', html, f"{name}: 'No, cancel' button must be present")
+            self.assertIn('Yes, delete it', html, f"{name}: 'Yes, delete it' button must be present")
+            self.assertIn('closeDeleteHomeworkModal', html, f"{name}: closeDeleteHomeworkModal function must exist")
+            self.assertIn('confirmDeleteActiveHomework', html, f"{name}: confirmDeleteActiveHomework function must exist")
+            self.assertIn('pendingDeleteHomeworkId', html, f"{name}: pendingDeleteHomeworkId must track target homework")
+        print("✅ Delete Homework confirmation modal verified: PASS")
+
 if __name__ == '__main__':
     unittest.main()
