@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 import urllib.parse
 import urllib.request
+import urllib.error
 from http.server import BaseHTTPRequestHandler
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -730,7 +731,12 @@ class handler(BaseHTTPRequestHandler):
                                     data=json.dumps(payload).encode("utf-8"),
                                     headers={"Content-Type": "application/json"}
                                 )
-                                urllib.request.urlopen(req, timeout=4)
+                                with urllib.request.urlopen(req, timeout=5) as t_resp:
+                                    res_raw = t_resp.read().decode("utf-8")
+                                    print(f"[Telegram Notify Success for {cid}]: {res_raw[:100]}")
+                            except urllib.error.HTTPError as h_err:
+                                err_details = h_err.read().decode("utf-8") if hasattr(h_err, "read") else str(h_err)
+                                print(f"[Telegram Notify HTTPError {h_err.code} for {cid}]: {err_details}")
                             except Exception as send_err:
                                 print(f"[Telegram Notify Error for {cid}]: {send_err}")
                     except Exception as notify_err:

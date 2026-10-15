@@ -994,8 +994,11 @@
             </div>
 
             <div class="flex items-center gap-2.5 flex-wrap">
-              <button type="button" onclick="handleAddToQueue(false)" id="btn-add-done-homework" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-1.5">
-                <span>✓</span><span>Done (Save to Queue)</span>
+              <button type="button" onclick="handleAddToQueue(false)" id="btn-add-done-homework" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 border border-slate-200">
+                <span>📥</span><span>Save as Draft</span>
+              </button>
+              <button type="button" onclick="handleDirectPublishHomework()" id="btn-direct-assign-homework" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5">
+                <span>🚀</span><span>Assign & Notify Class Now</span>
               </button>
             </div>
           </div>
@@ -7481,6 +7484,87 @@
       } else {
         updateCreatorAutoTitle();
         closeCreateHomeworkForm();
+      }
+    }
+
+    async function handleDirectPublishHomework() {
+      const select = document.getElementById('creator-class-select');
+      const groupId = select ? select.value : '';
+      const selectedClassName = (select && select.options && select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex].text : (groupId || 'Group A');
+
+      const title = document.getElementById('creator-hw-title')?.value.trim() || 'SAT Practice Drill';
+      const deadline = document.getElementById('creator-hw-deadline')?.value || null;
+      const timerVal = parseInt(document.getElementById('creator-hw-timer')?.value || '15', 10);
+
+      let config = {};
+      const hwType = creatorHwState.type;
+
+      if (hwType === 'vocab') {
+        const scopeSelect = document.getElementById('creator-vocab-scope');
+        const scopeId = scopeSelect ? scopeSelect.value : 'lesson1';
+        const scopeName = (typeof getScopeDisplayName === 'function') ? getScopeDisplayName(scopeId) : scopeId;
+        const qCount = creatorHwState.vocabCount === 'all' ? 20 : parseInt(creatorHwState.vocabCount, 10);
+        config = {
+          scopeId: scopeId,
+          scopeName: scopeName,
+          question_count: qCount,
+          timer: timerVal
+        };
+      } else {
+        const skills = Array.from(creatorHwState.qbankSkills);
+        if (skills.length === 0) {
+          showToast("⚠️ Select Question Types", "Please select at least 1 question type / skill for this homework!", "error");
+          return;
+        }
+        const allGroups = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
+        const domains = Array.from(new Set(
+          allGroups.filter(g => g.skills.some(sk => creatorHwState.qbankSkills.has(sk.name))).map(g => g.domain)
+        ));
+        config = {
+          subject: creatorHwState.qbankSection,
+          skills: skills,
+          domains: domains,
+          question_count: creatorHwState.qbankCount,
+          timer: timerVal,
+          filter: 'unsolved'
+        };
+      }
+
+      const publishBtn = document.getElementById('btn-direct-assign-homework');
+      if (publishBtn) {
+        publishBtn.disabled = true;
+        publishBtn.innerHTML = `<span>⏳ Assigning & Notifying...</span>`;
+      }
+
+      try {
+        const stagedItem = {
+          id: `hw_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          title: title,
+          type: hwType,
+          groupId: groupId || selectedClassName,
+          className: selectedClassName,
+          config: config,
+          deadline: deadline,
+          timer: timerVal,
+          createdAt: new Date().toISOString()
+        };
+
+        await dispatchAssignmentObject(stagedItem);
+        renderActiveHomeworkGrid();
+        renderAvailableHomeworkForClass();
+        showToast("🚀 Homework Assigned!", `"${title}" is LIVE for ${selectedClassName}. Notifications sent to students' Telegram!`, "success");
+
+        creatorHwState.hasCustomTitle = false;
+        closeCreateHomeworkForm();
+        updateCreatorAutoTitle();
+      } catch (err) {
+        console.error("Direct assignment error:", err);
+        showToast("⚠️ Notice", "Homework assigned locally. Telegram notifications are processing.", "info");
+      } finally {
+        if (publishBtn) {
+          publishBtn.disabled = false;
+          publishBtn.innerHTML = `<span>🚀</span><span>Assign & Notify Class Now</span>`;
+        }
       }
     }
 
