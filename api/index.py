@@ -373,6 +373,17 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
 
+        # 5. GET /api/homework or /api/assignments - List assignments with optional group_id and student_id filtering
+        if clean_path in ("/api/homework", "/api/assignments"):
+            qs = urllib.parse.parse_qs(parsed_path.query)
+            grp_id = qs.get("group_id", [None])[0] or qs.get("group", [None])[0]
+            stu_id = qs.get("student_id", [None])[0] or qs.get("uid", [None])[0] or qs.get("id", [None])[0] or self.headers.get("X-User-Id") or self.headers.get("X-Telegram-Id") or self.headers.get("x-user-id") or self.headers.get("x-telegram-id")
+            try:
+                assignments = rdb.get_homework_assignments(group_id=grp_id, student_id=stu_id)
+                return self.send_json(200, {"ok": True, "assignments": assignments, "count": len(assignments)})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
         return self.send_json(404, {"ok": False, "error": f"Endpoint not found: {clean_path}"})
 
     def do_POST(self):
@@ -584,6 +595,61 @@ class handler(BaseHTTPRequestHandler):
 
             return self.send_json(200, {"ok": True, "message": "Report processed"})
 
+        # 6. POST /api/homework or /api/assignments - Create a new homework assignment
+        if clean_path in ("/api/homework", "/api/assignments"):
+            title = body.get("title") or "Digital SAT Homework"
+            hw_type = body.get("type") or "vocab"
+            group_id = body.get("group_id") or body.get("className") or "All Students"
+            student_id = body.get("student_id")
+            deadline = body.get("deadline")
+            created_by = body.get("created_by") or "teacher"
+            cfg = body.get("config") if isinstance(body.get("config"), dict) else {}
+            if "id" in body and "id" not in cfg: cfg["id"] = body["id"]
+            if "code" in body and "code" not in cfg: cfg["code"] = body["code"]
+            if "className" in body and "className" not in cfg: cfg["className"] = body["className"]
+            if "timeLimitMinutes" in body and "timeLimitMinutes" not in cfg: cfg["timeLimitMinutes"] = body["timeLimitMinutes"]
+            if "questionIds" in body and "questionIds" not in cfg: cfg["questionIds"] = body["questionIds"]
+
+            try:
+                assignment = rdb.create_homework_assignment(
+                    title=title,
+                    hw_type=hw_type,
+                    group_id=group_id,
+                    student_id=student_id,
+                    config=cfg,
+                    deadline=deadline,
+                    created_by=created_by
+                )
+                return self.send_json(201, {"ok": True, "assignment": assignment})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # 7. POST /api/homework/submit - Record student homework completion
+        if clean_path == "/api/homework/submit":
+            hw_id = body.get("homework_id")
+            stu_id = body.get("student_id")
+            stu_name = body.get("student_name") or "Student User"
+            score_pct = body.get("score_pct", 0)
+            corr_count = body.get("correct_count", 0)
+            total_q = body.get("total_questions", 0)
+            time_spent = body.get("time_spent_seconds", 0)
+            if not hw_id or not stu_id:
+                return self.send_json(400, {"ok": False, "error": "homework_id and student_id required"})
+            try:
+                sub = rdb.record_homework_submission(
+                    homework_id=hw_id,
+                    student_id=stu_id,
+                    student_name=stu_name,
+                    score_pct=score_pct,
+                    correct_count=corr_count,
+                    total_questions=total_q,
+                    is_passed=(int(score_pct) >= 80),
+                    time_spent_seconds=time_spent
+                )
+                return self.send_json(200, {"ok": True, "submission": sub})
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
         return self.send_json(404, {"ok": False, "error": "Endpoint not found"})
 
     def do_DELETE(self):
@@ -630,6 +696,20 @@ class handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {
                     "ok": True,
                     "message": "Student and test history hard-deleted successfully via CASCADE",
+                    "deleted": deleted
+                })
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # 3. DELETE /api/homework/:id or /api/assignments/:id - Delete homework assignment
+        m_del_hw = re.match(r"^/api/(?:homework|assignments)/([^/]+)$", clean_path)
+        if m_del_hw:
+            hw_id = m_del_hw.group(1)
+            try:
+                deleted = rdb.delete_homework_assignment(hw_id)
+                return self.send_json(200, {
+                    "ok": True,
+                    "message": f"Homework assignment '{hw_id}' deleted successfully",
                     "deleted": deleted
                 })
             except Exception as e:

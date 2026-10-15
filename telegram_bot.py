@@ -2489,6 +2489,20 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
 
+        # 7. DELETE /api/homework/:id or /api/assignments/:id - Delete homework assignment
+        m_del_hw = re.match(r"^/api/(?:homework|assignments)/([^/]+)$", clean_path)
+        if m_del_hw:
+            hw_id = m_del_hw.group(1)
+            try:
+                deleted = rdb.delete_homework_assignment(hw_id)
+                return self.send_json(200, {
+                    "ok": True,
+                    "message": f"Homework assignment '{hw_id}' deleted successfully",
+                    "deleted": deleted
+                })
+            except Exception as e:
+                return self.send_json(500, {"ok": False, "error": str(e)})
+
         return self.send_json(404, {"ok": False, "error": "Endpoint not found"})
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):

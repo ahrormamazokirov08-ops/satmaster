@@ -38,17 +38,20 @@ class TestStudentHomeworkPortal(unittest.TestCase):
             self.assertIn('id="student-pin-drawer"', html, f"{name}: #student-pin-drawer must exist")
         print("✅ Student Homework Portal DOM IDs and Structure verified: PASS")
 
-    def test_default_assignments_matching_teacher_view(self):
-        print("\n--- Test 3: Default Assignments matching Teacher View (MATH-46, HW-95, QB-24) ---")
+    def test_zero_samples_and_teacher_already_sent_button(self):
+        print("\n--- Test 3: Zero Samples at First & Already Sent Non-Tappable Pill ---")
         for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
-            self.assertIn('MATH-46', html, f"{name}: MATH-46 must exist in DEFAULT_ASSIGNMENTS")
-            self.assertIn('HW-95', html, f"{name}: HW-95 must exist in DEFAULT_ASSIGNMENTS")
-            self.assertIn('QB-24', html, f"{name}: QB-24 must exist in DEFAULT_ASSIGNMENTS")
-            self.assertIn('SAT Masters 2026', html, f"{name}: SAT Masters 2026 cohort must exist in DEFAULT_ASSIGNMENTS")
-            self.assertIn('assign-vocab-lesson-1', html, f"{name}: assign-vocab-lesson-1 must exist")
-            self.assertIn('assign-vocab-lesson-4', html, f"{name}: assign-vocab-lesson-4 must exist")
-            self.assertIn('assign-qb-01', html, f"{name}: assign-qb-01 must exist")
-        print("✅ Default assignments matching teacher view verified: PASS")
+            # Must not inject fake or sample homework by default
+            self.assertIn('const DEFAULT_ASSIGNMENTS = [];', html, f"{name}: DEFAULT_ASSIGNMENTS must be empty array (no fake samples)")
+            
+            # Active homework in teacher view must have non-tappable "Already Sent" pill
+            self.assertIn('<span>Already Sent</span>', html, f"{name}: Teacher card must display Already Sent status")
+            self.assertIn('cursor-default select-none', html, f"{name}: Already Sent must not be a clickable button")
+            
+            # Backend server sync function must exist
+            self.assertIn('fetchAndSyncHomework', html, f"{name}: fetchAndSyncHomework must exist for server synchronization")
+            self.assertIn('/api/homework', html, f"{name}: Must connect to /api/homework")
+        print("✅ Zero samples & Already Sent non-tappable pill verified: PASS")
 
     def test_square_cards_and_completion_tracking(self):
         print("\n--- Test 4: Square Card Layout, Auto-Settings, and Completion Tracking ---")

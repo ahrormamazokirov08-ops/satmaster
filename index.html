@@ -5965,9 +5965,13 @@
 
     window.addEventListener('hashchange', handleHashRouting);
     window.addEventListener('popstate', handleHashRouting);
-    // Initialize hash routing on window load
+    // Initialize hash routing and homework sync on window load
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(handleHashRouting, 100);
+      if (typeof fetchAndSyncHomework === 'function') {
+        fetchAndSyncHomework();
+        setInterval(fetchAndSyncHomework, 10000);
+      }
     });
 
     function renderClasses() {
@@ -6682,123 +6686,48 @@
     // ASSIGNMENTS & HOMEWORK CREATOR STORAGE ENGINE
     // =========================================================
 
-    const DEFAULT_ASSIGNMENTS = [
-      {
-        id: 'assign-vocab-lesson-1',
-        code: 'MATH-46',
-        className: 'SAT Masters 2026',
-        title: 'SAT Vocab: Lesson 1 (20 Words)',
-        type: 'vocab',
-        config: {
-          scopeId: 'lesson-1',
-          scopeName: 'Lesson 1: Foundational SAT Roots',
-          question_count: 20,
-          timer: 15
-        },
-        deadline: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-        timeLimitMinutes: 15,
-        questionIds: [],
-        createdAt: '2026-10-14T10:00:00.000Z'
-      },
-      {
-        id: 'assign-vocab-lesson-4',
-        code: 'HW-95',
-        className: 'SAT Masters 2026',
-        title: 'SAT Vocab: Lesson 4 (20 Words)',
-        type: 'vocab',
-        config: {
-          scopeId: 'lesson-4',
-          scopeName: 'Lesson 4: Advanced Context & Tone',
-          question_count: 20,
-          timer: 15
-        },
-        deadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
-        timeLimitMinutes: 15,
-        questionIds: [],
-        createdAt: '2026-10-14T12:00:00.000Z'
-      },
-      {
-        id: 'assign-qb-01',
-        code: 'QB-24',
-        className: 'SAT Masters 2026',
-        title: 'SAT Question Bank: Information and Ideas Drill',
-        type: 'qbank',
-        config: {
-          subject: 'rw',
-          question_count: 20,
-          timer: 20,
-          domains: ['Information and Ideas']
-        },
-        deadline: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
-        timeLimitMinutes: 20,
-        questionIds: [],
-        createdAt: '2026-10-14T14:00:00.000Z'
-      },
-      {
-        id: 'assign-math-01',
-        code: 'MATH-01',
-        className: 'SAT Masters 2026',
-        title: 'SAT Math: Algebra, Quadratics & Trigonometry Drill',
-        description: 'Practice set focused on linear equations, vertex form, trigonometric complementary identities, and grid-in algebraic responses.',
-        section: 'math',
-        questionIds: ['m-alg-01', 'm-alg-02', 'm-spr-01', 'm-adv-01', 'm-geom-02'],
-        timeLimitMinutes: 20,
-        createdAt: '2026-10-01T10:00:00.000Z'
-      },
-      {
-        id: 'assign-rw-01',
-        code: 'READ-01',
-        className: 'SAT Masters 2026',
-        title: 'SAT Reading & Writing: Words in Context & Transitions',
-        description: 'Targeted homework for sentence boundaries, modifier placement, context-dependent vocabulary, and transition logic.',
-        section: 'reading-writing',
-        questionIds: ['rw-wic-01', 'rw-wic-02', 'rw-tsp-01', 'rw-sec-01', 'rw-sec-02', 'rw-eoi-01'],
-        timeLimitMinutes: 15,
-        createdAt: '2026-10-02T14:30:00.000Z'
-      },
-      {
-        id: 'assign-mixed-01',
-        code: 'SAT-MIX',
-        className: 'SAT Masters 2026',
-        title: 'Comprehensive Digital SAT Diagnostic Review',
-        description: 'Comprehensive timed mixed drill covering reading analysis, writing conventions, and advanced math.',
-        section: 'mixed',
-        questionIds: ['rw-wic-01', 'rw-sec-01', 'rw-eoi-02', 'm-alg-01', 'm-spr-02', 'm-adv-02', 'm-psda-01', 'm-geom-01'],
-        timeLimitMinutes: 25,
-        createdAt: '2026-10-03T09:00:00.000Z'
-      }
-    ];
+    const DEFAULT_ASSIGNMENTS = [];
 
     function getAssignments() {
       const stored = localStorage.getItem('satmaster_assignments');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            // Auto-merge active assignments if missing
-            const existingCodes = new Set(parsed.map(p => (p.code || '').toUpperCase()));
-            let updated = false;
-            DEFAULT_ASSIGNMENTS.forEach(def => {
-              if (def.code && !existingCodes.has(def.code.toUpperCase())) {
-                parsed.push(def);
-                updated = true;
-              }
-            });
-            if (updated) {
-              localStorage.setItem('satmaster_assignments', JSON.stringify(parsed));
-            }
-            return parsed;
-          }
+          if (Array.isArray(parsed)) return parsed;
         } catch(e) {}
       }
-      localStorage.setItem('satmaster_assignments', JSON.stringify(DEFAULT_ASSIGNMENTS));
-      return DEFAULT_ASSIGNMENTS;
+      return [];
     }
 
     function saveAssignments(list) {
-      localStorage.setItem('satmaster_assignments', JSON.stringify(list));
+      localStorage.setItem('satmaster_assignments', JSON.stringify(list || []));
       updateDashboardStats();
       renderAvailableHomeworkForClass();
+    }
+
+    let isSyncingHomework = false;
+    async function fetchAndSyncHomework() {
+      if (isSyncingHomework) return;
+      isSyncingHomework = true;
+      try {
+        const role = (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'guest';
+        const res = await fetch('/api/homework', {
+          headers: { 'X-User-Role': role }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.assignments)) {
+            const serverList = data.assignments;
+            localStorage.setItem('satmaster_assignments', JSON.stringify(serverList));
+            renderActiveHomeworkGrid();
+            renderAvailableHomeworkForClass();
+          }
+        }
+      } catch (err) {
+        // Offline / network failure: fallback to localStorage
+      } finally {
+        isSyncingHomework = false;
+      }
     }
 
     function generateNewHwPin() {
@@ -7481,16 +7410,47 @@
       const pin = generateNewHwPin();
       const teacherId = (currentSession && (currentSession.uid || currentSession.telegram_id || currentSession.name)) || 'teacher';
 
+      const hwConfig = {
+        ...(item.config || {}),
+        code: pin,
+        className: item.className || 'SAT Masters 2026',
+        timeLimitMinutes: item.timer || (item.config?.timer || 20),
+        question_count: item.config?.question_count || item.questionCount || 20,
+        questionIds: item.questionIds || []
+      };
+
+      const newAssignment = {
+        id: `hw_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        code: pin,
+        className: item.className || 'SAT Masters 2026',
+        groupId: item.groupId || item.className || 'SAT Masters 2026',
+        title: item.title,
+        type: item.type,
+        config: hwConfig,
+        deadline: item.deadline,
+        timeLimitMinutes: item.timer || (item.config?.timer || 20),
+        questionIds: item.questionIds || [],
+        createdAt: new Date().toISOString()
+      };
+
+      const assignments = getAssignments();
+      assignments.unshift(newAssignment);
+      saveAssignments(assignments);
+
       try {
         await fetch('/api/homework', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title: item.title,
-            type: item.type,
-            group_id: item.groupId || item.className,
-            config: item.config,
-            deadline: item.deadline,
+            id: newAssignment.id,
+            title: newAssignment.title,
+            type: newAssignment.type,
+            group_id: newAssignment.groupId,
+            className: newAssignment.className,
+            code: newAssignment.code,
+            config: hwConfig,
+            deadline: newAssignment.deadline,
+            timeLimitMinutes: newAssignment.timeLimitMinutes,
             created_by: teacherId
           })
         });
@@ -7498,22 +7458,6 @@
         console.warn("Backend /api/homework sync warning:", err);
       }
 
-      const assignments = getAssignments();
-      const newAssignment = {
-        id: `hw_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        code: pin,
-        className: item.className,
-        groupId: item.groupId,
-        title: item.title,
-        type: item.type,
-        config: item.config,
-        deadline: item.deadline,
-        timeLimitMinutes: item.timer,
-        questionIds: [],
-        createdAt: new Date().toISOString()
-      };
-      assignments.unshift(newAssignment);
-      saveAssignments(assignments);
       return newAssignment;
     }
 
@@ -7654,9 +7598,9 @@
 
             <!-- Bottom: Action Buttons -->
             <div class="flex items-center gap-2 pt-1">
-              <button type="button" onclick="handleNotifyOrCopyHomework('${hw.id}', '${hw.code || ''}', '${escapeHtml(hw.title).replace(/'/g, "\\'")}')" class="flex-1 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
-                <span>📢</span><span>Send to Students</span>
-              </button>
+              <div class="flex-1 py-2 px-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 font-bold text-xs flex items-center justify-center gap-1.5 cursor-default select-none">
+                <span>✅</span><span>Already Sent</span>
+              </div>
               <button type="button" onclick="handleDeleteActiveHomework('${hw.id}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs" title="Delete Homework">
                 🗑️
               </button>
@@ -7676,10 +7620,20 @@
 
     function handleDeleteActiveHomework(hwId) {
       let assignments = getAssignments();
-      assignments = assignments.filter(hw => hw.id !== hwId);
+      assignments = assignments.filter(hw => hw.id !== hwId && hw.code !== hwId);
       saveAssignments(assignments);
       renderActiveHomeworkGrid();
+      renderAvailableHomeworkForClass();
       showToast("🗑️ Homework Removed", "The assignment was deleted.", "info");
+
+      // Delete from backend database so student portals immediately delete it too
+      if (typeof fetch === 'function') {
+        const role = (typeof currentSession !== 'undefined' && currentSession?.role) || currentUserRole || 'admin';
+        fetch(`/api/homework/${encodeURIComponent(hwId)}`, {
+          method: 'DELETE',
+          headers: { 'X-User-Role': role }
+        }).catch(err => console.warn("Backend delete sync warning:", err));
+      }
     }
 
     // =========================================================
@@ -8813,10 +8767,17 @@
         if (typeof initCreatorDefaults === 'function') {
           initCreatorDefaults();
         }
+        renderActiveHomeworkGrid();
+        if (typeof fetchAndSyncHomework === 'function') {
+          fetchAndSyncHomework();
+        }
       }
 
       if (tabName === 'student') {
         renderAvailableHomeworkForClass();
+        if (typeof fetchAndSyncHomework === 'function') {
+          fetchAndSyncHomework();
+        }
       }
 
       if (tabName === 'qbank') {

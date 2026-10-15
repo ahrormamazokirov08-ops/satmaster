@@ -10,6 +10,7 @@ with resilient fallback support for local SQLite.
 
 import os
 import sys
+import json
 import uuid
 import sqlite3
 import threading
@@ -984,7 +985,7 @@ class RelationalDB:
     def create_homework_assignment(self, title, hw_type, group_id, student_id=None, config=None, deadline=None, created_by=None):
         """Create a new homework assignment targeting a group or specific student."""
         self.invalidate_cache()
-        hw_id = f"hw_{int(time.time() * 1000)}"
+        hw_id = (config.get("id") if isinstance(config, dict) and config.get("id") else None) or f"hw_{int(time.time() * 1000)}"
         cfg_str = json.dumps(config) if isinstance(config, (dict, list)) else (config or "{}")
         created_at = datetime.utcnow().isoformat()
         stu_id = str(student_id).strip() if (student_id and str(student_id).strip() != 'all') else None
@@ -994,6 +995,12 @@ class RelationalDB:
             sql = """
                 INSERT INTO homework_assignments (id, title, type, group_id, student_id, config, deadline, created_by, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    type = EXCLUDED.type,
+                    group_id = EXCLUDED.group_id,
+                    config = EXCLUDED.config,
+                    deadline = EXCLUDED.deadline
                 RETURNING id, title, type, group_id, student_id, config, deadline, created_by, created_at
             """
             with self.cursor() as cur:
@@ -1002,15 +1009,19 @@ class RelationalDB:
                 if row and isinstance(row.get("config"), str):
                     try: row["config"] = json.loads(row["config"])
                     except Exception: pass
+                if row and isinstance(row.get("config"), dict):
+                    for k in ("code", "className", "timeLimitMinutes", "questionIds", "timer", "question_count"):
+                        if k in row["config"] and k not in row:
+                            row[k] = row["config"][k]
                 return row
         else:
             sql = """
-                INSERT INTO homework_assignments (id, title, type, group_id, student_id, config, deadline, created_by, created_at)
+                INSERT OR REPLACE INTO homework_assignments (id, title, type, group_id, student_id, config, deadline, created_by, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             with self.cursor() as cur:
                 cur.execute(sql, (hw_id, title, hw_type, str(group_id), stu_id, cfg_str, deadline_str, created_by, created_at))
-            return {
+            res = {
                 "id": hw_id,
                 "title": title,
                 "type": hw_type,
@@ -1021,6 +1032,11 @@ class RelationalDB:
                 "created_by": created_by,
                 "created_at": created_at
             }
+            if isinstance(res.get("config"), dict):
+                for k in ("code", "className", "timeLimitMinutes", "questionIds", "timer", "question_count"):
+                    if k in res["config"] and k not in res:
+                        res[k] = res["config"][k]
+            return res
 
     def get_homework_assignments(self, group_id=None, student_id=None):
         """Retrieve homework assignments with optional group / student filtering and submission status."""
@@ -1051,6 +1067,11 @@ class RelationalDB:
             if isinstance(a.get("config"), str):
                 try: a["config"] = json.loads(a["config"])
                 except Exception: pass
+
+            if isinstance(a.get("config"), dict):
+                for k in ("code", "className", "timeLimitMinutes", "questionIds", "timer", "question_count"):
+                    if k in a["config"] and k not in a:
+                        a[k] = a["config"][k]
 
             # Attach student submission if student_id was provided
             if student_id:
@@ -1158,9 +1179,10 @@ class RelationalDB:
 
     def delete_homework_assignment(self, assignment_id):
         """Delete homework assignment and its cascaded submissions."""
-        sql = self._query("DELETE FROM homework_assignments WHERE id = %s")
+        self.invalidate_cache()
+        sql = self._query("DELETE FROM homework_assignments WHERE id = %s OR config LIKE %s")
         with self.cursor() as cur:
-            cur.execute(sql, (str(assignment_id),))
+            cur.execute(sql, (str(assignment_id), f'%"{assignment_id}"%'))
             return True
 
 
