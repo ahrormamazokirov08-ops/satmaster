@@ -6869,13 +6869,22 @@
       const sClean = String(studentAns).trim().toLowerCase();
       if (!sClean) return false;
 
+      const isSPR = Boolean(
+        question.type === 'spr' || 
+        question.is_spr || 
+        !question.options || 
+        Object.keys(question.options || {}).length === 0
+      );
+
       // Multiple Choice check
-      if (question.type !== 'spr' && question.options) {
-        return sClean === String(question.correct || '').trim().toLowerCase();
+      if (!isSPR && question.options) {
+        const correctOpt = String(question.correct || question.correct_answer || '').trim().toLowerCase();
+        return sClean === correctOpt;
       }
 
       // SPR / Math Grid-in check
-      const accepted = (question.acceptedAnswers || [question.correct]).map(a => String(a).trim().toLowerCase());
+      const rawCorrect = question.correct || question.correct_answer || '';
+      const accepted = (question.acceptedAnswers || [rawCorrect]).map(a => String(a).trim().toLowerCase());
       if (accepted.includes(sClean)) return true;
 
       // Numerical / Fraction evaluation helper
@@ -8322,10 +8331,10 @@
               <p class="text-xs text-slate-700 leading-relaxed">${q.passage && getPassageSnippet(q.passage, 90) ? `<span class="italic text-slate-500 block mb-1">"${getPassageSnippet(q.passage, 90)}"</span>` : ''}${q.prompt}</p>
               <div class="flex items-center gap-4 text-xs font-mono pt-1 text-slate-700">
                 <span>Student Answer: <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600 font-bold'}">${userAns}</strong></span>
-                <span>Correct Answer: <strong class="text-emerald-600">${q.correct}</strong></span>
+                <span>Correct Answer: <strong class="text-emerald-600">${q.correct || q.correct_answer || '-'}</strong></span>
               </div>
               <p class="text-[11px] text-slate-600 pt-1 border-t border-slate-200 leading-relaxed">
-                <strong class="text-slate-800">Explanation:</strong> ${q.explanation}
+                <strong class="text-slate-800">Explanation:</strong> ${q.explanation || q.rationale || 'No explanation provided.'}
               </p>
             </div>
           `;
@@ -9221,7 +9230,8 @@
       const sprContainer = document.getElementById('runner-spr-container');
       const sprInput = document.getElementById('runner-spr-input');
 
-      if (q.type === 'spr') {
+      const isRunnerSPR = Boolean(q.type === 'spr' || q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+      if (isRunnerSPR) {
         if (optionsList) optionsList.classList.add('hidden');
         if (sprContainer) sprContainer.classList.remove('hidden');
         if (sprInput) {
@@ -9538,10 +9548,10 @@
               <p class="text-xs text-slate-700 leading-relaxed">${q.passage && getPassageSnippet(q.passage, 90) ? `<span class="italic text-slate-500 block mb-1">"${getPassageSnippet(q.passage, 90)}"</span>` : ''}${q.prompt}</p>
               <div class="flex items-center gap-4 text-xs font-mono pt-1 text-slate-700">
                 <span>Your Answer: <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600'}">${userAns}</strong></span>
-                <span>Correct Answer: <strong class="text-emerald-600">${q.correct}</strong></span>
+                <span>Correct Answer: <strong class="text-emerald-600">${q.correct || q.correct_answer || '-'}</strong></span>
               </div>
               <p class="text-[11px] text-slate-600 pt-1 border-t border-slate-200 leading-relaxed">
-                <strong class="text-slate-800">Explanation:</strong> ${q.explanation}
+                <strong class="text-slate-800">Explanation:</strong> ${q.explanation || q.rationale || 'No explanation provided.'}
               </p>
             </div>
           `;
@@ -15435,7 +15445,7 @@
         { left: '\\[', right: '\\]', display: true }
       ],
       ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'svg'],
-      ignoredClasses: ['qb-figure-wrapper'],
+      ignoredClasses: ['qb-figure-wrapper', 'no-math'],
       throwOnError: false
     };
 
@@ -15551,6 +15561,9 @@
     if (notesHtml) {
       return notesHtml;
     }
+
+    // Protect currency amounts like $$165$ from being misinterpreted as display math
+    formatted = formatted.replace(/\$\$(\d+(?:,\d+)*(?:\.\d+)?)\$/g, '<span class="no-math">$$$1</span>');
 
     return formatted;
   }

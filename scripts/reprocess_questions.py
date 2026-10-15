@@ -92,16 +92,36 @@ def convert_spoken_math_to_latex(alt):
     if not alt:
         return ""
     s = alt
+
+    # Handle "with numerator X, and denominator Y"
+    s = re.sub(r"with numerator\s+([^,]+?),\s+and denominator\s+([^,\$\.\n]+)", r"\\frac{\1}{\2}", s, flags=re.I)
+    s = re.sub(r"with numerator\s+([^,]+?)\s+and denominator\s+([^,\$\.\n]+)", r"\\frac{\1}{\2}", s, flags=re.I)
+
+    # Fractions
+    frac_map = {
+        "halves": "2", "half": "2",
+        "thirds": "3", "third": "3",
+        "fourths": "4", "fourth": "4",
+        "fifths": "5", "fifth": "5",
+        "sixths": "6", "sixth": "6",
+        "eighths": "8", "eighth": "8"
+    }
+    for word, den in frac_map.items():
+        s = re.sub(rf"\b(\d+)\s+{word}\b", rf"\\frac{{\1}}{{{den}}}", s, flags=re.I)
+
+    # Function notation
+    s = re.sub(r"\b([fghpqr])\s+of\s+([a-zA-Z0-9]+)\b", r"\1(\2)", s, flags=re.I)
+
     repls = [
         (r"\bopen parenthesis\b", "("),
         (r"\bclose parenthesis\b", ")"),
         (r"\bplus\b", "+"),
         (r"\bminus\b", "-"),
         (r"\bnegative\b", "-"),
-        (r"\bequals\b", "="),
-        (r"\btimes\b", "*"),
+        (r"\bequals,?\b", "="),
+        (r"\bwhich\s*(?:equals|=)\s*", "= "),
+        (r"\btimes,?\b", "*"),
         (r"\bdivided by\b", "/"),
-        (r"\bcomma\b", ","),
         (r"\bthe fraction\b", ""),
         (r"\bone half\b", "1/2"),
         (r"\bone third\b", "1/3"),
@@ -112,6 +132,8 @@ def convert_spoken_math_to_latex(alt):
     ]
     for pattern, rep in repls:
         s = re.sub(pattern, rep, s, flags=re.I)
+
+    s = re.sub(r"\b(\d+)\s+over\s+(\d+)\b", r"\\frac{\1}{\2}", s, flags=re.I)
     s = re.sub(r"\s*,\s*", ", ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return f"${s}$"
@@ -435,9 +457,11 @@ def process_item(meta_item, detail_data, subject_name, id_prefix, index_num):
         "domain": domain,
         "skill": skill,
         "difficulty": difficulty,
+        "type": "spr" if is_spr else "mcq",
         "passage": passage,
         "prompt": prompt,
         "options": options,
+        "correct": correct_answer,
         "correct_answer": correct_answer,
         "is_spr": is_spr,
         "rationale": rationale
