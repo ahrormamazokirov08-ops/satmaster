@@ -1425,6 +1425,23 @@ window.qbEngine = {
     const explCard = document.getElementById('qb-explanation-card');
     const explHeader = document.getElementById('qb-explanation-header');
     const explContent = document.getElementById('qb-explanation-content');
+    const checkContainer = document.getElementById('qb-check-container');
+    const footerCheckBtn = document.getElementById('qb-footer-btn-check');
+
+    // In homework mode, the student must not see check answer buttons or intermediate rationales
+    const isHomeworkMode = Boolean(
+      window.activeHomeworkAssignment || 
+      (session.config && session.config.homework)
+    );
+    if (isHomeworkMode) {
+      if (checkContainer) checkContainer.classList.add('hidden');
+      if (footerCheckBtn) footerCheckBtn.classList.add('hidden');
+      if (explCard) explCard.classList.add('hidden');
+      if (feedbackPill) feedbackPill.classList.add('hidden');
+    } else {
+      if (checkContainer) checkContainer.classList.remove('hidden');
+      if (footerCheckBtn) footerCheckBtn.classList.remove('hidden');
+    }
 
     if (isSPR) {
       if (mcqContainer) mcqContainer.classList.add('hidden');
@@ -1619,6 +1636,17 @@ window.qbEngine = {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
     if (!session || !session.questions) return;
+
+    const isHomeworkMode = Boolean(
+      window.activeHomeworkAssignment || 
+      (session.config && session.config.homework)
+    );
+    if (isHomeworkMode) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Homework Mode", "Answers and explanations are revealed after submitting your homework task.", "info");
+      }
+      return;
+    }
 
     const idx = session.currentIdx || 0;
     const q = session.questions[idx];

@@ -6859,7 +6859,12 @@
     };
 
     function handleCreatorTitleInput(val) {
-      creatorHwState.hasCustomTitle = true;
+      if (!val || !val.trim()) {
+        creatorHwState.hasCustomTitle = false;
+        updateCreatorAutoTitle();
+      } else {
+        creatorHwState.hasCustomTitle = true;
+      }
     }
 
     function initCreatorDefaults() {
@@ -6873,6 +6878,7 @@
 
     function switchCreatorHwType(type) {
       creatorHwState.type = type;
+      creatorHwState.hasCustomTitle = false;
       const isVocab = type === 'vocab';
 
       const typeSelect = document.getElementById('creator-hw-type-select');
@@ -7085,6 +7091,61 @@
       if (input) input.value = iso;
     }
 
+    function generateQBankHomeworkTitle(selectedSkillsSet, section) {
+      const secLabel = section === 'rw' ? 'Reading & Writing' : (section === 'math' ? 'Math' : 'Mixed R&W + Math');
+      if (!selectedSkillsSet || selectedSkillsSet.size === 0) {
+        return `${secLabel} Questions`;
+      }
+
+      const allGroups = [...CREATOR_SKILL_HIERARCHY.rw, ...CREATOR_SKILL_HIERARCHY.math];
+      const domainMap = new Map();
+
+      allGroups.forEach(g => {
+        const selectedInGroup = g.skills.filter(sk => selectedSkillsSet.has(sk.name));
+        if (selectedInGroup.length > 0) {
+          domainMap.set(g.domain, {
+            totalSkills: g.skills.length,
+            selectedSkills: selectedInGroup.map(s => s.name)
+          });
+        }
+      });
+
+      const domainNames = Array.from(domainMap.keys());
+
+      // Case 1: Exactly 1 domain
+      if (domainNames.length === 1) {
+        const domainName = domainNames[0];
+        const data = domainMap.get(domainName);
+        if (data.selectedSkills.length === 1) {
+          return `${data.selectedSkills[0]} in ${domainName}`;
+        } else if (data.selectedSkills.length === 2) {
+          return `${domainName}: ${data.selectedSkills[0]} & ${data.selectedSkills[1]}`;
+        } else {
+          return `${domainName} Questions`;
+        }
+      }
+
+      // Case 2: Exactly 2 domains
+      if (domainNames.length === 2) {
+        return `${domainNames[0]} & ${domainNames[1]} Questions`;
+      }
+
+      // Case 3: 3 or more domains
+      let sectionDomains = [];
+      if (section === 'rw') sectionDomains = CREATOR_SKILL_HIERARCHY.rw.map(g => g.domain);
+      else if (section === 'math') sectionDomains = CREATOR_SKILL_HIERARCHY.math.map(g => g.domain);
+      else sectionDomains = allGroups.map(g => g.domain);
+
+      const allSectionDomainsSelected = sectionDomains.every(d => domainMap.has(d));
+      if (allSectionDomainsSelected) {
+        if (section === 'math') return 'Math Questions (All Topics)';
+        if (section === 'rw') return 'Reading & Writing Questions (All Topics)';
+        return 'Mixed R&W + Math Questions';
+      }
+
+      return `${domainNames[0]}, ${domainNames[1]} & Others`;
+    }
+
     function updateCreatorAutoTitle() {
       const titleInput = document.getElementById('creator-hw-title');
       const summaryPill = document.getElementById('creator-summary-pill');
@@ -7105,18 +7166,14 @@
           summaryPill.innerText = `📚 Vocab • ${scopeName} (${countText})`;
         }
       } else {
-        const secLabel = creatorHwState.qbankSection === 'rw' ? 'Reading & Writing' : (creatorHwState.qbankSection === 'math' ? 'Math' : 'Mixed R&W + Math');
         const countText = `${creatorHwState.qbankCount} Unsolved Questions`;
-        const skillsCount = creatorHwState.qbankSkills.size;
-        const skillsDesc = skillsCount === 0 ? 'No skills selected' : `${skillsCount} Question Types/Skills`;
-
-        const generatedTitle = `Digital SAT ${secLabel} Practice Drill`;
+        const generatedTitle = generateQBankHomeworkTitle(creatorHwState.qbankSkills, creatorHwState.qbankSection);
         if (!creatorHwState.hasCustomTitle && titleInput) {
           titleInput.value = generatedTitle;
         }
         if (summaryPill) {
           summaryPill.className = 'text-sky-700 font-extrabold';
-          summaryPill.innerText = `📖 QBank • ${secLabel}: ${skillsDesc} (${countText})`;
+          summaryPill.innerText = `📖 QBank • ${generatedTitle} (${countText})`;
         }
       }
     }
@@ -8105,29 +8162,60 @@
         const submission = getHomeworkSubmission(hw.id, studentId) || getHomeworkSubmission(hw.code, studentId) || getHomeworkSubmission(hw.id, studentName) || getHomeworkSubmission(hw.code, studentName);
         const isCompleted = Boolean(submission);
 
+        const hwKeyId = hw.id || hw.code;
+        const attemptKey = `hw_att_${studentId}_${hwKeyId}`;
+        const attemptsUsed = parseInt(localStorage.getItem(attemptKey) || (isCompleted ? '1' : '0'), 10);
+        const maxAttempts = 3;
+        const attemptsLeft = Math.max(0, maxAttempts - attemptsUsed);
+
         let actionButtonHtml = '';
         if (isCompleted) {
-          actionButtonHtml = `
-            <div class="space-y-2 pt-1 w-full">
-              <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-sm">✅</span>
-                  <span>Done • Completed</span>
+          if (attemptsLeft <= 0) {
+            actionButtonHtml = `
+              <div class="space-y-2 pt-1 w-full">
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-sm">✅</span>
+                    <span>Done • Completed</span>
+                  </div>
+                  <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${submission.scorePct}%)</span>
                 </div>
-                <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${submission.scorePct}%)</span>
+                <button type="button" disabled class="w-full py-2 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                  <span>🔒 Max Attempts Reached (3/3)</span>
+                </button>
               </div>
-              <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
-                <span>🔄 Retake / Practice Again</span>
-              </button>
-            </div>
-          `;
+            `;
+          } else {
+            actionButtonHtml = `
+              <div class="space-y-2 pt-1 w-full">
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-sm">✅</span>
+                    <span>Done • Completed</span>
+                  </div>
+                  <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${submission.scorePct}%)</span>
+                </div>
+                <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
+                  <span>🔄 Retake Task (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
+                </button>
+              </div>
+            `;
+          }
         } else {
-          actionButtonHtml = `
-            <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95">
-              <span>🚀 Complete the Task</span>
-              <span>→</span>
-            </button>
-          `;
+          if (attemptsLeft <= 0) {
+            actionButtonHtml = `
+              <button type="button" disabled class="w-full py-2.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                <span>🔒 Max Attempts Reached (3/3)</span>
+              </button>
+            `;
+          } else {
+            actionButtonHtml = `
+              <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95">
+                <span>🚀 Complete the Task (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
+                <span>→</span>
+              </button>
+            `;
+          }
         }
 
         return `
@@ -8152,6 +8240,10 @@
               <div class="flex items-center justify-between text-slate-600">
                 <span class="text-slate-400">Drill Size:</span>
                 <span class="font-bold text-slate-800">${qCount} Questions</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600">
+                <span class="text-slate-400">Chances:</span>
+                <span class="font-bold ${attemptsLeft === 0 ? 'text-rose-600' : 'text-emerald-700'}">${attemptsLeft} of ${maxAttempts} remaining</span>
               </div>
               <div class="flex items-center justify-between text-slate-600">
                 <span class="text-slate-400">Timer:</span>
@@ -8277,6 +8369,14 @@
 
       if (!targetHw) {
         showToast("❌ Invalid PIN", `No homework found matching: "${pin}". Check with your teacher!`, "error");
+        return;
+      }
+
+      const studentId = (typeof currentSession !== 'undefined' && (currentSession.id || currentSession.uid || currentSession.username)) || studentName;
+      const attemptKey = `hw_att_${studentId}_${targetHw.id || targetHw.code}`;
+      const attemptsUsed = parseInt(localStorage.getItem(attemptKey) || '0', 10);
+      if (attemptsUsed >= 3) {
+        showToast("⛔ Max Attempts Reached", "You have already completed all 3 chances for this homework task!", "warning");
         return;
       }
 
@@ -11079,6 +11179,11 @@
       // Track homework completion if launched from homework tab
       const currentHw = window.activeHomeworkAssignment;
       if (currentHw && currentHw.type === 'vocab') {
+        const studentId = (typeof currentSession !== 'undefined' && (currentSession.id || currentSession.uid || currentSession.username)) || report.studentName;
+        const attemptKey = `hw_att_${studentId}_${currentHw.id || currentHw.code}`;
+        let attemptCount = parseInt(localStorage.getItem(attemptKey) || '0', 10) + 1;
+        localStorage.setItem(attemptKey, String(attemptCount));
+        report.attemptNumber = Math.min(attemptCount, 3);
         report.homeworkId = currentHw.id;
         report.homeworkTitle = currentHw.title;
         report.homeworkCode = currentHw.code;
@@ -11087,6 +11192,8 @@
             score: correctCount,
             total: totalQ,
             scorePct: scorePct,
+            attempt: Math.min(attemptCount, 3),
+            maxAttempts: 3,
             type: 'vocab',
             hwCode: currentHw.code,
             timeSpentSeconds: vocabTestState.timerSeconds
@@ -13718,6 +13825,23 @@
     const explCard = document.getElementById('qb-explanation-card');
     const explHeader = document.getElementById('qb-explanation-header');
     const explContent = document.getElementById('qb-explanation-content');
+    const checkContainer = document.getElementById('qb-check-container');
+    const footerCheckBtn = document.getElementById('qb-footer-btn-check');
+
+    // In homework mode, the student must not see check answer buttons or intermediate rationales
+    const isHomeworkMode = Boolean(
+      window.activeHomeworkAssignment || 
+      (session.config && session.config.homework)
+    );
+    if (isHomeworkMode) {
+      if (checkContainer) checkContainer.classList.add('hidden');
+      if (footerCheckBtn) footerCheckBtn.classList.add('hidden');
+      if (explCard) explCard.classList.add('hidden');
+      if (feedbackPill) feedbackPill.classList.add('hidden');
+    } else {
+      if (checkContainer) checkContainer.classList.remove('hidden');
+      if (footerCheckBtn) footerCheckBtn.classList.remove('hidden');
+    }
 
     if (isSPR) {
       if (mcqContainer) mcqContainer.classList.add('hidden');
@@ -13912,6 +14036,17 @@
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
     if (!session || !session.questions) return;
+
+    const isHomeworkMode = Boolean(
+      window.activeHomeworkAssignment || 
+      (session.config && session.config.homework)
+    );
+    if (isHomeworkMode) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Homework Mode", "Answers and explanations are revealed after submitting your homework task.", "info");
+      }
+      return;
+    }
 
     const idx = session.currentIdx || 0;
     const q = session.questions[idx];
