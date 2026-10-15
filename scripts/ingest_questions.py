@@ -196,13 +196,39 @@ def clean_table_html(tbl_html):
 
 
 def clean_svg_html(raw_svg):
-    """Standardizes College Board SVG graphics into responsive containers."""
+    """Standardizes College Board SVG graphics into responsive containers with valid XML & viewBox."""
     svg = raw_svg.strip()
-    if "class=" in svg[:120]:
-        svg = re.sub(r"<svg([^>]*?)class=[\x27\"]([^\x27\"]*)[\x27\"]", r"<svg\1class=\"\2 max-w-full h-auto mx-auto block\"", svg, count=1, flags=re.I)
+    
+    # Clean non-standard XML named entities to avoid parsing failures
+    entities = {
+        '&ndash;': '–', '&mdash;': '—', '&deg;': '°', '&plusmn;': '±',
+        '&times;': '×', '&divide;': '÷', '&le;': '≤', '&ge;': '≥',
+        '&ne;': '≠', '&sup2;': '²', '&sup3;': '³', '&micro;': 'µ',
+        '&nbsp;': '&#160;', '&lsquo;': '‘', '&rsquo;': '’',
+        '&ldquo;': '“', '&rdquo;': '”', '&minus;': '−',
+        '&eacute;': 'é', '&auml;': 'ä', '&frac12;': '½',
+    }
+    for ent, val in entities.items():
+        svg = svg.replace(ent, val)
+
+    # Ensure xmlns attribute is present
+    if "xmlns=" not in svg[:150]:
+        svg = re.sub(r'<svg\b', '<svg xmlns="http://www.w3.org/2000/svg"', svg, count=1, flags=re.I)
+
+    # Ensure viewBox exists if width and height are specified
+    if "viewBox" not in svg[:250] and "viewbox" not in svg[:250]:
+        w_m = re.search(r'\bwidth=[\x27"](\d+(?:\.\d+)?)(?:px)?[\x27"]', svg[:250])
+        h_m = re.search(r'\bheight=[\x27"](\d+(?:\.\d+)?)(?:px)?[\x27"]', svg[:250])
+        if w_m and h_m:
+            svg = re.sub(r'<svg\b', f'<svg viewBox="0 0 {w_m.group(1)} {h_m.group(1)}"', svg, count=1, flags=re.I)
+
+    # Standardize responsive classes
+    if "class=" in svg[:150]:
+        svg = re.sub(r"<svg([^>]*?)class=[\x27\"]([^\x27\"]*)[\x27\"]", r'<svg\1class="\2 max-w-full h-auto mx-auto block"', svg, count=1, flags=re.I)
     else:
-        svg = re.sub(r"<svg\b", r"<svg class=\"max-w-full h-auto mx-auto block\"", svg, count=1, flags=re.I)
-    return f"<div class=\"qb-figure-wrapper my-4 flex justify-center overflow-x-auto w-full\">{svg}</div>"
+        svg = re.sub(r"<svg\b", r'<svg class="max-w-full h-auto mx-auto block"', svg, count=1, flags=re.I)
+
+    return f'<div class="qb-figure-wrapper my-4 flex justify-center overflow-x-auto w-full">{svg}</div>'
 
 
 def clean_html_and_convert_math(raw_html):

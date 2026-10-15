@@ -6842,6 +6842,17 @@
       return getAllBankQuestions().find(q => q.id === id);
     }
 
+    function getPassageSnippet(htmlStr, maxLen = 90) {
+      if (!htmlStr) return '';
+      const text = htmlStr.replace(/<svg[\s\S]*?<\/svg>/gi, '')
+                          .replace(/<table[\s\S]*?<\/table>/gi, '')
+                          .replace(/<[^>]+>/g, ' ')
+                          .replace(/\s+/g, ' ')
+                          .trim();
+      if (!text) return '';
+      return text.length > maxLen ? text.substring(0, maxLen).trim() + '...' : text;
+    }
+
     function getQBankTotalCount() {
       if (window.qbEngine && window.qbEngine.questionsData && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.math) {
         return window.qbEngine.questionsData.rw.length + window.qbEngine.questionsData.math.length;
@@ -8308,7 +8319,7 @@
                   ${isCorrect ? '✓ Correct' : '✕ Missed'}
                 </span>
               </div>
-              <p class="text-xs text-slate-700 leading-relaxed">${q.passage ? `<span class="italic text-slate-500 block mb-1">"${q.passage.substring(0, 90)}..."</span>` : ''}${q.prompt}</p>
+              <p class="text-xs text-slate-700 leading-relaxed">${q.passage && getPassageSnippet(q.passage, 90) ? `<span class="italic text-slate-500 block mb-1">"${getPassageSnippet(q.passage, 90)}"</span>` : ''}${q.prompt}</p>
               <div class="flex items-center gap-4 text-xs font-mono pt-1 text-slate-700">
                 <span>Student Answer: <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600 font-bold'}">${userAns}</strong></span>
                 <span>Correct Answer: <strong class="text-emerald-600">${q.correct}</strong></span>
@@ -9199,7 +9210,11 @@
 
       // 3. Prompt
       const promptEl = document.getElementById('runner-prompt-text');
-      if (promptEl) promptEl.innerText = q.prompt;
+      if (promptEl) {
+        promptEl.innerHTML = (window.qbEngine && typeof window.qbEngine.formatQuestionText === 'function')
+          ? window.qbEngine.formatQuestionText(q.prompt)
+          : q.prompt;
+      }
 
       // 4. Options vs SPR
       const optionsList = document.getElementById('runner-options-list');
@@ -9222,7 +9237,10 @@
           const elims = test.eliminations[q.id] || {};
 
           optionsList.innerHTML = letters.map(letter => {
-            const optText = q.options[letter] || '';
+            const rawOpt = q.options[letter] || '';
+            const optText = (window.qbEngine && typeof window.qbEngine.formatQuestionText === 'function')
+              ? window.qbEngine.formatQuestionText(rawOpt)
+              : rawOpt;
             const isSelected = selectedAnswer === letter;
             const isEliminated = !!elims[letter];
 
@@ -9285,6 +9303,14 @@
 
       // 7. Palette Dots
       renderRunnerPaletteDots();
+
+      // 8. KaTeX Math rendering
+      if (window.qbEngine && typeof window.qbEngine.renderMath === 'function') {
+        const runnerContent = document.getElementById('student-runner-container');
+        if (runnerContent) {
+          window.qbEngine.renderMath(runnerContent);
+        }
+      }
     }
 
     function renderRunnerPaletteDots() {
@@ -9509,7 +9535,7 @@
                   ${isCorrect ? '✓ Correct' : '✕ Missed'}
                 </span>
               </div>
-              <p class="text-xs text-slate-700 leading-relaxed">${q.passage ? `<span class="italic text-slate-500 block mb-1">"${q.passage.substring(0, 90)}..."</span>` : ''}${q.prompt}</p>
+              <p class="text-xs text-slate-700 leading-relaxed">${q.passage && getPassageSnippet(q.passage, 90) ? `<span class="italic text-slate-500 block mb-1">"${getPassageSnippet(q.passage, 90)}"</span>` : ''}${q.prompt}</p>
               <div class="flex items-center gap-4 text-xs font-mono pt-1 text-slate-700">
                 <span>Your Answer: <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600'}">${userAns}</strong></span>
                 <span>Correct Answer: <strong class="text-emerald-600">${q.correct}</strong></span>
