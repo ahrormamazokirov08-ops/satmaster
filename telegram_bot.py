@@ -549,6 +549,8 @@ def format_vocab_summary_text(report):
 
 def format_vocab_details_text(report):
     """Generate the full detailed breakdown Telegram message when 'More Information' is tapped."""
+    if report.get("telegramDetailsText"):
+        return report.get("telegramDetailsText")
     student_name = report.get("studentName", "Student User")
     student_id = report.get("studentId")
     student_class = report.get("studentClass")
@@ -2331,7 +2333,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
             if bot_client:
                 rep_id = report.get("id") or f"vrep_{int(time.time() * 1000)}"
                 report["id"] = rep_id
-                summary_text = format_vocab_summary_text(report)
+                summary_text = report.get("telegramSummaryText") or format_vocab_summary_text(report)
                 reply_markup = {
                     "inline_keyboard": [
                         [{"text": "ℹ️ More Information", "callback_data": f"vrep_more:{rep_id}"}]

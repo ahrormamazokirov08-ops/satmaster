@@ -1165,6 +1165,8 @@
           </div>
 
           <div class="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 text-slate-800" data-theme-tokens="#0f172a #334155">
+            <!-- Active Homework Banner (Dynamically displayed when launched from homework) -->
+            <div id="qb-homework-active-banner" class="hidden"></div>
             
             <!-- Subject Detail Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-200">
@@ -1225,6 +1227,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Questions:</span>
                   <div class="flex flex-wrap items-center gap-1.5" id="qb-count-selector">
+                    <button type="button" onclick="qbEngine.setCount(10)" id="qb-count-10" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="10">10</button>
                     <button type="button" onclick="qbEngine.setCount(20)" id="qb-count-20" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-blue-600 border-blue-500 text-white shadow-xs" data-count="20">20</button>
                     <button type="button" onclick="qbEngine.setCount(30)" id="qb-count-30" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="30">30</button>
                     <button type="button" onclick="qbEngine.setCount(40)" id="qb-count-40" class="qb-count-btn px-3 py-1.5 rounded-lg border text-xs font-bold transition-all bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 shadow-xs" data-count="40">40</button>
@@ -1661,8 +1664,8 @@
               </div>
             </div>
 
-            <div class="pt-2 flex justify-center gap-3">
-              <button type="button" onclick="qbEngine.returnToSetupFromResults()" class="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md shadow-blue-600/20 transition-all">
+            <div class="pt-2 flex flex-col sm:flex-row justify-center gap-3" id="qb-results-modal-actions">
+              <button type="button" onclick="qbEngine.returnToSetupFromResults()" id="btn-qb-res-practice-again" class="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md shadow-blue-600/20 transition-all">
                 Practice Again / New Session
               </button>
             </div>
@@ -8185,6 +8188,57 @@
       startTime: null
     };
 
+    function renderQbHomeworkActiveBanner(hw) {
+      const banner = document.getElementById('qb-homework-active-banner');
+      if (!banner) return;
+      if (!hw) {
+        banner.classList.add('hidden');
+        banner.innerHTML = '';
+        return;
+      }
+
+      const title = hw.title || 'Digital SAT Practice Drill';
+      const className = hw.className || 'Assigned Class';
+      const pin = hw.code || hw.id || '';
+      const qCount = hw.config?.question_count || 10;
+      const timeLimit = hw.config?.time_limit || (hw.duration ? parseInt(hw.duration) : 20);
+      const subj = hw.config?.subject === 'math' ? 'Math' : (hw.config?.subject === 'rw' ? 'Reading & Writing' : 'Combined / All');
+      const passStd = subj === 'Math' ? '80%' : (subj === 'Reading & Writing' ? '70%' : '75%');
+
+      banner.className = "p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-sky-500/10 border-2 border-blue-400/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm";
+      banner.innerHTML = `
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-xs">
+              🎯 Assigned Homework Task
+            </span>
+            <span class="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-white text-blue-700 border border-blue-200 shadow-xs">
+              PIN: ${typeof escapeHtml === 'function' ? escapeHtml(pin) : pin}
+            </span>
+            <span class="text-xs text-slate-500 font-semibold">
+              • ${typeof escapeHtml === 'function' ? escapeHtml(className) : className}
+            </span>
+          </div>
+          <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+            ${typeof escapeHtml === 'function' ? escapeHtml(title) : title}
+          </h3>
+          <div class="text-xs text-slate-600 font-medium flex items-center gap-3 flex-wrap">
+            <span>📚 Subject: <b class="text-slate-800">${typeof escapeHtml === 'function' ? escapeHtml(subj) : subj}</b></span>
+            <span>📝 Questions: <b class="text-slate-800">${qCount} Questions</b></span>
+            <span>⏱️ Timer: <b class="text-slate-800">${timeLimit} Mins Limit</b></span>
+            <span>🎯 Passing: <b class="text-emerald-700">${passStd}</b></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="qbEngine.startPractice()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs shadow-md shadow-blue-600/20 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
+            <span>🚀 Start Practice</span>
+            <span>→</span>
+          </button>
+        </div>
+      `;
+      banner.classList.remove('hidden');
+    }
+
     function handleStartStudentQuiz(presetPin = null) {
       const nameInput = document.getElementById('student-name-input');
       const studentName = (nameInput && nameInput.value.trim()) || (currentSession.name) || 'Student User';
@@ -8236,17 +8290,26 @@
       // Check for QUESTION BANK type homework
       if (targetHw.type === 'qbank') {
         window.activeHomeworkAssignment = targetHw;
-        showLoading('Loading Question Bank Drill...', `Preparing authentic Bluebook drill (unsolved questions) for ${studentName}...`, 800, function() {
+        const hwTitle = targetHw.title || 'Digital SAT Practice Drill';
+        showLoading('Loading Question Bank Drill...', `Setting up ${hwTitle} with teacher settings for ${studentName}...`, 600, function() {
           switchTab('qbank');
           if (window.qbEngine) {
             window.qbEngine.activeHomeworkId = targetHw.id;
             const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
-            window.qbEngine.activeSubject = subj;
+
+            // Switch directly into the subject detail setup view
+            window.qbEngine.openSetup(subj);
+            window.qbEngine.selectSubjectView(subj);
+
             // STRICT GUARANTEE: Always select from unsolved questions pool only!
             window.qbEngine.activeStatusFilter = 'unsolved';
-            window.qbEngine.activeCount = targetHw.config?.question_count || 20;
-            window.qbEngine.isCustomCount = false;
-            window.qbEngine.isAllCount = false;
+
+            // Pre-set question count assigned by teacher
+            const qCount = targetHw.config?.question_count || 10;
+            window.qbEngine.setCount(qCount);
+            if (qCount !== 10 && qCount !== 20 && qCount !== 30 && qCount !== 40 && qCount !== 50) {
+              window.qbEngine.setCustomCountDirect(qCount);
+            }
 
             // Preselect exact skills specified by the teacher
             window.qbEngine.selectedSkills.clear();
@@ -8256,15 +8319,28 @@
                 window.qbEngine.selectedSkills.add(norm);
               });
             } else if (targetHw.config?.domains && Array.isArray(targetHw.config.domains)) {
-              const hierarchy = (subj === 'math' ? window.qbEngine.skillHierarchy.math : (subj === 'rw' ? window.qbEngine.skillHierarchy.rw : [...(window.qbEngine.skillHierarchy.rw || []), ...(window.qbEngine.skillHierarchy.math || [])])) || [];
+              const hierarchy = (subj === 'math' ? window.qbEngine.skillHierarchy?.math : (subj === 'rw' ? window.qbEngine.skillHierarchy?.rw : [...(window.qbEngine.skillHierarchy?.rw || []), ...(window.qbEngine.skillHierarchy?.math || [])])) || [];
               hierarchy.forEach(dom => {
                 if (targetHw.config.domains.includes(dom.domain)) {
-                  dom.skills.forEach(sk => window.qbEngine.selectedSkills.add(window.qbEngine.normalizeSkill(sk.name)));
+                  (dom.skills || []).forEach(sk => window.qbEngine.selectedSkills.add(window.qbEngine.normalizeSkill(sk.name)));
                 }
               });
             }
 
-            if (typeof window.qbEngine.startPractice === 'function') {
+            // Render prominent homework active banner inside qb-detail-view
+            renderQbHomeworkActiveBanner(targetHw);
+
+            // Refresh UI checkboxes and question counter
+            window.qbEngine.renderSkillList();
+            window.qbEngine.updateMatchingCount();
+
+            // Smooth scroll to top of setup view
+            const setupView = document.getElementById('qb-setup-view');
+            if (setupView) {
+              setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            if (targetHw.autoStart && typeof window.qbEngine.startPractice === 'function') {
               window.qbEngine.startPractice();
             }
           }
@@ -8768,9 +8844,11 @@
           return;
         }
         if (tabName === 'qbank' && !isQBankPublished()) {
-          showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
-          switchTab('vocab');
-          return;
+          if (!window.activeHomeworkAssignment) {
+            showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+            switchTab('vocab');
+            return;
+          }
         }
       }
 
@@ -12288,6 +12366,11 @@
 
   backToHub() {
     this.showHubView();
+    if (typeof renderQbHomeworkActiveBanner === 'function') {
+      renderQbHomeworkActiveBanner(null);
+    }
+    window.activeHomeworkAssignment = null;
+    this.activeHomeworkId = null;
     const setupView = document.getElementById('qb-setup-view');
     if (setupView) {
       setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -12798,7 +12881,7 @@
   openSetup(subject) {
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-    if (isStudent && !isPub) {
+    if (isStudent && !isPub && !window.activeHomeworkAssignment) {
       if (typeof showToast === 'function') {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
       }
@@ -12847,7 +12930,7 @@
     // Check if student lockout is active
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-    if (isStudent && !isPub) {
+    if (isStudent && !isPub && !window.activeHomeworkAssignment) {
       if (typeof showToast === 'function') {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
       }
@@ -13223,7 +13306,7 @@
   },
 
   syncCountUI() {
-    const presetCounts = [20, 30, 40, 50, 'all', 'custom'];
+    const presetCounts = [10, 20, 30, 40, 50, 'all', 'custom'];
     presetCounts.forEach(c => {
       const btn = document.getElementById(`qb-count-${c}`);
       if (!btn) return;
@@ -13335,7 +13418,7 @@
   startPractice() {
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-    if (isStudent && !isPub) {
+    if (isStudent && !isPub && !window.activeHomeworkAssignment) {
       if (typeof showToast === 'function') {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
       }
@@ -13357,9 +13440,16 @@
       return;
     }
 
+    const activeHw = window.activeHomeworkAssignment || null;
+    const timeLimitMinutes = activeHw 
+      ? (activeHw.config?.time_limit || (activeHw.duration ? parseInt(activeHw.duration) : 20))
+      : 0;
+
     // Determine target question count
     let targetCount = filtered.length;
-    if (this.isAllCount) {
+    if (activeHw && activeHw.config?.question_count) {
+      targetCount = parseInt(activeHw.config.question_count);
+    } else if (this.isAllCount) {
       targetCount = filtered.length;
     } else if (this.isCustomCount) {
       targetCount = parseInt(document.getElementById('qb-custom-count-input')?.value) || (typeof this.activeCount === 'number' ? this.activeCount : 25);
@@ -13387,12 +13477,22 @@
       flags: {},
       strikethroughs: {},
       checked: {},
+      timeLimitMinutes: timeLimitMinutes,
+      remainingSeconds: timeLimitMinutes > 0 ? timeLimitMinutes * 60 : 0,
       config: {
         subject: this.activeSubject,
         domains: Array.from(this.getActiveDomains()),
         difficulties: Array.from(this.activeDifficulties),
         requestedCount: targetCount,
-        totalAvailable: filtered.length
+        totalAvailable: filtered.length,
+        homework: activeHw ? {
+          id: activeHw.id,
+          code: activeHw.code,
+          title: activeHw.title,
+          className: activeHw.className,
+          subject: activeHw.config?.subject || this.activeSubject,
+          timeLimitMinutes: timeLimitMinutes
+        } : null
       },
       version: this.dataVersion,
       startedAt: Date.now()
@@ -13932,23 +14032,43 @@
     const idx = session.currentIdx || 0;
     if (!session.timePerQuestion) session.timePerQuestion = {};
     let currentSec = session.timePerQuestion[idx] || 0;
+    const isCountdown = Boolean(session.timeLimitMinutes && session.timeLimitMinutes > 0);
+    let remainingSec = (typeof session.remainingSeconds === 'number') ? session.remainingSeconds : (isCountdown ? session.timeLimitMinutes * 60 : 0);
 
-    this.updateTimerDisplay(currentSec);
+    this.updateTimerDisplay(isCountdown ? remainingSec : currentSec, isCountdown);
 
     this.timerInterval = setInterval(() => {
       currentSec++;
-      this.updateTimerDisplay(currentSec);
+      if (isCountdown) {
+        remainingSec--;
+        if (remainingSec < 0) remainingSec = 0;
+        this.updateTimerDisplay(remainingSec, true);
+      } else {
+        this.updateTimerDisplay(currentSec, false);
+      }
 
       try {
         const s = JSON.parse(sessionStorage.getItem('qb_active_session')) || session;
         if (!s.timePerQuestion) s.timePerQuestion = {};
         s.timePerQuestion[idx] = currentSec;
+        if (isCountdown) {
+          s.remainingSeconds = remainingSec;
+        }
         sessionStorage.setItem('qb_active_session', JSON.stringify(s));
       } catch (e) {}
+
+      if (isCountdown && remainingSec <= 0) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        if (typeof showToast === 'function') {
+          showToast("⏰ Time's Up!", "Your time limit for this drill has expired. Submitting your answers...", "warning");
+        }
+        this.finishSession();
+      }
     }, 1000);
   },
 
-  updateTimerDisplay(sec) {
+  updateTimerDisplay(sec, isCountdown = false) {
     const el = document.getElementById('qb-timer-display');
     if (!el) return;
 
@@ -13960,6 +14080,11 @@
     const m = String(Math.floor(sec / 60)).padStart(2, '0');
     const s = String(sec % 60).padStart(2, '0');
     el.innerText = `${m}:${s}`;
+    if (isCountdown && sec <= 60) {
+      el.classList.add('text-rose-600', 'font-black');
+    } else {
+      el.classList.remove('text-rose-600');
+    }
   },
 
   toggleTimerVisibility() {
@@ -13968,8 +14093,11 @@
     try {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
-    const sec = (session && session.timePerQuestion && session.timePerQuestion[session.currentIdx]) || 0;
-    this.updateTimerDisplay(sec);
+    const isCountdown = Boolean(session && session.timeLimitMinutes && session.timeLimitMinutes > 0);
+    const sec = isCountdown 
+      ? ((session && typeof session.remainingSeconds === 'number') ? session.remainingSeconds : (session.timeLimitMinutes * 60))
+      : ((session && session.timePerQuestion && session.timePerQuestion[session.currentIdx]) || 0);
+    this.updateTimerDisplay(sec, isCountdown);
   },
 
   prevQuestion() {
@@ -14155,14 +14283,63 @@
     const accuracyPct = Math.round((correctCount / total) * 100);
     const avgSec = Math.round(totalSeconds / total);
 
+    // Homework metadata & Pass/Fail evaluation
+    const activeHw = window.activeHomeworkAssignment || (session.config && session.config.homework) || null;
+    const hwId = this.activeHomeworkId || (activeHw && (activeHw.id || activeHw.code)) || null;
+    const subj = (activeHw && activeHw.config && activeHw.config.subject) || session.config?.subject || this.activeSubject || 'rw';
+    const isMath = (subj === 'math');
+    const isRw = (subj === 'rw');
+    const passThreshold = isMath ? 80 : (isRw ? 70 : 75);
+    const isPassed = (accuracyPct >= passThreshold);
+
+    // Track homework attempts (max 3)
+    const studentId = (typeof currentSession !== 'undefined' && (currentSession.id || currentSession.uid || currentSession.username)) || 'STU_CURRENT';
+    const studentName = (typeof currentSession !== 'undefined' && currentSession.name) || (document.getElementById('student-name-input')?.value.trim()) || 'Student User';
+    const attemptKey = `hw_att_${studentId}_${hwId || 'qb'}`;
+    let attemptCount = parseInt(localStorage.getItem(attemptKey) || '0', 10);
+    if (activeHw) {
+      attemptCount += 1;
+      localStorage.setItem(attemptKey, String(attemptCount));
+    }
+    const attemptsMax = 3;
+    const canRetake = Boolean(activeHw && attemptCount < attemptsMax);
+
     const summaryEl = document.getElementById('qb-results-summary');
     if (summaryEl) {
+      let hwBannerHtml = '';
+      if (activeHw) {
+        const statusClass = isPassed ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-rose-300 bg-rose-50 text-rose-900';
+        const badgeClass = isPassed ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white';
+        const statusTitle = isPassed ? '🎉 PASSED' : '❌ NEEDS IMPROVEMENT';
+        const attemptNotice = attemptCount >= attemptsMax 
+          ? '<span class="text-rose-600 font-bold block mt-1">Maximum attempts reached (3 of 3).</span>'
+          : `<span class="text-slate-600 font-medium block mt-1">${attemptsMax - attemptCount} attempt(s) remaining.</span>`;
+
+        hwBannerHtml = `
+          <div class="w-full p-4 rounded-2xl border-2 ${statusClass} space-y-1.5 text-center mb-3">
+            <div class="flex items-center justify-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${badgeClass}">
+                ${statusTitle}
+              </span>
+              <span class="text-xs font-bold text-slate-700">
+                Attempt ${Math.min(attemptCount, attemptsMax)} of ${attemptsMax}
+              </span>
+            </div>
+            <div class="text-sm font-extrabold">
+              Score: ${correctCount}/${total} (${accuracyPct}%) • Required: ${passThreshold}% for ${isMath ? 'Math' : (isRw ? 'Reading & Writing' : 'Combined')}
+            </div>
+            ${attemptNotice}
+          </div>
+        `;
+      }
+
       summaryEl.innerHTML = `
+        ${hwBannerHtml}
         <div class="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
           ${correctCount} / ${total}
         </div>
         <div class="text-xs sm:text-sm font-bold text-slate-600">
-          Accuracy: <span class="text-emerald-600 font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
+          Accuracy: <span class="${isPassed ? 'text-emerald-600' : 'text-rose-600'} font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
         </div>
       `;
     }
@@ -14208,6 +14385,33 @@
       this.renderMath(listEl);
     }
 
+    // Configure action buttons inside modal
+    const actionsEl = document.getElementById('qb-results-modal-actions');
+    if (actionsEl) {
+      if (activeHw) {
+        actionsEl.innerHTML = `
+          <button type="button" onclick="qbEngine.closeResultsAndReturnToHomework()" class="flex-1 py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all text-center">
+            ← Return to Homework Portal
+          </button>
+          ${canRetake ? `
+            <button type="button" onclick="qbEngine.retakeHomeworkPractice()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all text-center">
+              🔄 Retake Homework (${attemptsMax - attemptCount} left)
+            </button>
+          ` : `
+            <button type="button" disabled class="flex-1 py-3.5 px-4 rounded-xl bg-slate-200 text-slate-400 font-extrabold text-xs sm:text-sm cursor-not-allowed text-center">
+              Max Attempts Reached (3/3)
+            </button>
+          `}
+        `;
+      } else {
+        actionsEl.innerHTML = `
+          <button type="button" onclick="qbEngine.returnToSetupFromResults()" id="btn-qb-res-practice-again" class="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md shadow-blue-600/20 transition-all">
+            Practice Again / New Session
+          </button>
+        `;
+      }
+    }
+
     // Batch record all answered questions from this session as solved
     try {
       const batchAnswers = [];
@@ -14236,21 +14440,130 @@
     } catch (e) {}
 
     // Track homework completion if launched from homework tab
-    if (this.activeHomeworkId || (window.activeHomeworkAssignment && window.activeHomeworkAssignment.type === 'qbank')) {
-      const hwId = this.activeHomeworkId || window.activeHomeworkAssignment.id;
+    if (activeHw && hwId) {
       if (typeof markHomeworkCompleted === 'function') {
         markHomeworkCompleted(hwId, {
           score: correctCount,
           total: total,
           scorePct: accuracyPct,
+          passed: isPassed,
+          attempt: Math.min(attemptCount, attemptsMax),
+          maxAttempts: attemptsMax,
           type: 'qbank',
-          hwCode: window.activeHomeworkAssignment?.code
+          hwCode: activeHw.code,
+          timeSpentSeconds: totalSeconds
         });
+      }
+
+      // Dispatch rich Telegram report to Teacher & Admin
+      const hwTitle = activeHw.title || 'Digital SAT Question Bank Drill';
+      const hwPin = activeHw.code || activeHw.id || 'N/A';
+      const studentClass = activeHw.className || (typeof currentSession !== 'undefined' ? currentSession.className : 'SAT Prep');
+      const timeLimitMins = activeHw.config?.time_limit || (activeHw.duration ? parseInt(activeHw.duration) : 20);
+      const timeSpentFormatted = `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
+      const repId = `qbrep_${Date.now()}`;
+
+      const statusEmoji = isPassed ? "✅" : "⚠️";
+      const statusWord = isPassed ? "PASSED" : "NEEDS IMPROVEMENT";
+      const subjDisplay = isMath ? 'Math' : (isRw ? 'Reading & Writing' : 'Combined / All');
+
+      const telegramSummary = [
+        `🎯 *DIGITAL SAT QUESTION BANK REPORT*`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `👤 *Student:* ${studentName}`,
+        studentId ? `🆔 *ID:* #${studentId}` : null,
+        studentClass ? `🏫 *Class:* ${studentClass}` : null,
+        `📝 *Task:* ${hwTitle}`,
+        `🔑 *PIN:* ${hwPin}`,
+        `🔄 *Attempt:* Attempt ${Math.min(attemptCount, attemptsMax)} of ${attemptsMax}`,
+        ``,
+        `📊 *RESULT:* ${statusWord} ${statusEmoji}`,
+        `🏆 *Score:* ${correctCount} / ${total} (${accuracyPct}%)`,
+        `📌 *Passing Standard:* ${passThreshold}% (${subjDisplay})`,
+        `⏱️ *Time Spent:* ${timeSpentFormatted} (Limit: ${timeLimitMins}m)`,
+        `📚 *Subject:* ${subjDisplay}`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `✅ Practiced with authentic College Board format.`
+      ].filter(Boolean).join("\n");
+
+      const telegramDetails = [
+        `📊 [TEACHER REPORT - DETAILED BREAKDOWN]`,
+        `🎯 DIGITAL SAT QUESTION BANK DRILL`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `👤 Student: ${studentName}`,
+        studentId ? `🆔 ID: #${studentId}` : null,
+        studentClass ? `🏫 Class: ${studentClass}` : null,
+        `📝 Task: ${hwTitle} (PIN: ${hwPin})`,
+        `🔄 Attempt: ${Math.min(attemptCount, attemptsMax)} of ${attemptsMax}`,
+        `🏆 Score: ${correctCount}/${total} (${accuracyPct}%) — ${statusWord} ${statusEmoji}`,
+        `⏱️ Time Taken: ${timeSpentFormatted}`,
+        ``,
+        `📋 QUESTION BREAKDOWN:`
+      ].filter(Boolean);
+
+      session.questions.forEach((q, i) => {
+        const studentAns = session.answers ? session.answers[i] : null;
+        const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+        const isCorr = isSPR
+          ? this.isSPREqual(studentAns, q.correct_answer)
+          : Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+        const icon = isCorr ? "✅" : "❌";
+        const sec = (session.timePerQuestion && session.timePerQuestion[i]) || 0;
+        telegramDetails.push(`  ${icon} Q${i + 1} [${q.domain || 'Domain'}]: Ans=${studentAns || 'Skipped'} | Key=${q.correct_answer || '-'} (${sec}s)`);
+      });
+
+      const qbReport = {
+        id: repId,
+        type: 'qbank',
+        studentName: studentName,
+        studentId: studentId,
+        studentClass: studentClass,
+        scopeName: hwTitle,
+        hwCode: hwPin,
+        totalQuestions: total,
+        correctCount: correctCount,
+        scorePct: accuracyPct,
+        passed: isPassed,
+        attemptNumber: Math.min(attemptCount, attemptsMax),
+        timeFormatted: timeSpentFormatted,
+        durationSeconds: totalSeconds,
+        date: new Date().toLocaleDateString(),
+        telegramSummaryText: telegramSummary,
+        telegramDetailsText: telegramDetails.join("\n")
+      };
+
+      if (typeof dispatchTelegramReportIfConfigured === 'function') {
+        dispatchTelegramReportIfConfigured(qbReport);
       }
     }
 
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
+  },
+
+  closeResultsAndReturnToHomework() {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+    this.saveAllAnsweredQuestionsFromSession();
+    window.activeHomeworkAssignment = null;
+    this.activeHomeworkId = null;
+    sessionStorage.removeItem('qb_active_session');
+    if (typeof renderQbHomeworkActiveBanner === 'function') {
+      renderQbHomeworkActiveBanner(null);
+    }
+    if (typeof switchTab === 'function') {
+      switchTab('student');
+      if (typeof renderAvailableHomeworkForClass === 'function') {
+        renderAvailableHomeworkForClass();
+      }
+    }
+  },
+
+  retakeHomeworkPractice() {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+    sessionStorage.removeItem('qb_active_session');
+    this.startPractice();
   },
 
   isSPREqual(studentVal, correctVal) {

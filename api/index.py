@@ -573,7 +573,7 @@ class handler(BaseHTTPRequestHandler):
                 try:
                     rep_id = body.get("id") or f"vrep_{int(time.time() * 1000)}"
                     body["id"] = rep_id
-                    report_text = format_vocab_summary_text(body)
+                    report_text = body.get("telegramSummaryText") or format_vocab_summary_text(body)
                     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                     import urllib.request
                     req = urllib.request.Request(

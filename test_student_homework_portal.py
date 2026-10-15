@@ -89,5 +89,47 @@ class TestStudentHomeworkPortal(unittest.TestCase):
             self.assertIn('/api/homework/submit', html, f"{name}: /api/homework/submit must be called in markHomeworkCompleted")
         print("✅ Vocab homework settings, countdown timer & Telegram dispatch verified: PASS")
 
+    def test_qbank_homework_flow_and_pass_fail_criteria(self):
+        print("\n--- Test 7: QBank Homework Flow, Setup Banner, Countdown, 70%/80% Pass/Fail, and Telegram ---")
+        for name, html in [('Root index.html', self.root_html), ('Public index.html', self.public_html)]:
+            # 1. Homework active banner element in DOM
+            self.assertIn('id="qb-homework-active-banner"', html, f"{name}: #qb-homework-active-banner must exist")
+            self.assertIn('renderQbHomeworkActiveBanner', html, f"{name}: renderQbHomeworkActiveBanner function must exist")
+            
+            # 2. 10-question count preset button
+            self.assertIn('id="qb-count-10"', html, f"{name}: #qb-count-10 preset button must exist")
+            self.assertIn('qbEngine.setCount(10)', html, f"{name}: qbEngine.setCount(10) must be available")
+            
+            # 3. Draft mode bypass for assigned homework
+            self.assertIn("if (tabName === 'qbank' && !isQBankPublished())", html, f"{name}: switchTab must intercept students entering qbank")
+            self.assertIn("!window.activeHomeworkAssignment", html, f"{name}: switchTab must allow active homework")
+            self.assertIn("isStudent && !isPub && !window.activeHomeworkAssignment", html, f"{name}: qbEngine must bypass draft mode for homework")
+
+            # 4. handleStartStudentQuiz navigates to setup view with teacher settings
+            self.assertIn("window.qbEngine.openSetup(subj)", html, f"{name}: handleStartStudentQuiz must open setup view")
+            self.assertIn("renderQbHomeworkActiveBanner(targetHw)", html, f"{name}: handleStartStudentQuiz must render homework banner")
+            self.assertIn("window.qbEngine.setCount(qCount)", html, f"{name}: handleStartStudentQuiz must set assigned count")
+
+            # 5. Countdown timer and auto-submit
+            self.assertIn("isCountdown", html, f"{name}: qbEngine must support countdown mode for timed homework")
+            self.assertIn("this.finishSession()", html, f"{name}: qbEngine must auto-submit when countdown hits zero")
+
+            # 6. Pass/Fail thresholds (80% Math, 70% R&W) and 3 attempts
+            self.assertIn("const passThreshold = isMath ? 80 : (isRw ? 70 : 75);", html, f"{name}: Passing standard must be 80% Math, 70% R&W")
+            self.assertIn("const isPassed = (accuracyPct >= passThreshold);", html, f"{name}: Pass evaluation must compare accuracy against threshold")
+            self.assertIn("hw_att_", html, f"{name}: Homework attempts must be tracked in storage")
+            self.assertIn("attemptsMax = 3", html, f"{name}: Up to 3 attempts must be supported")
+
+            # 7. Results modal actions and helpers
+            self.assertIn('id="qb-results-modal-actions"', html, f"{name}: #qb-results-modal-actions must exist")
+            self.assertIn('closeResultsAndReturnToHomework', html, f"{name}: closeResultsAndReturnToHomework must exist")
+            self.assertIn('retakeHomeworkPractice', html, f"{name}: retakeHomeworkPractice must exist")
+
+            # 8. Telegram report dispatch
+            self.assertIn('DIGITAL SAT QUESTION BANK REPORT', html, f"{name}: Telegram summary text must contain QBank report header")
+            self.assertIn('dispatchTelegramReportIfConfigured(qbReport)', html, f"{name}: dispatchTelegramReportIfConfigured must be invoked with qbReport")
+
+        print("✅ QBank homework flow, setup banner, countdown, Pass/Fail, and Telegram verified: PASS")
+
 if __name__ == '__main__':
     unittest.main()
