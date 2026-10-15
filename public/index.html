@@ -3445,16 +3445,43 @@
     </div>
   </div>
 
-  <!-- SLEEK LOADING SPINNER OVERLAY -->
-  <div id="loading-overlay" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex flex-col items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-white border border-slate-200 p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4 text-center max-w-xs w-full text-slate-800">
-      <div class="relative flex items-center justify-center">
-        <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-        <div class="absolute text-sm font-bold text-blue-600">⚡</div>
+  <!-- SLEEK LOADING SPINNER OVERLAY (HOMEWORK LAUNCHPAD) -->
+  <div id="loading-overlay" class="hidden fixed inset-0 z-[120] bg-slate-900/40 backdrop-blur-md flex flex-col items-center justify-center p-4 transition-opacity duration-300">
+    <!-- Ambient glowing backdrop effect -->
+    <div class="absolute inset-0 bg-gradient-to-b from-sky-50/70 via-[#f8fafc]/90 to-[#f8fafc]/95 pointer-events-none"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 sm:w-96 h-80 sm:h-96 bg-blue-200/25 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="relative w-full max-w-sm sm:max-w-md p-6 sm:p-8 rounded-3xl border border-slate-200/90 bg-white/95 shadow-xl backdrop-blur-xl text-center space-y-6 overflow-hidden my-auto transition-transform">
+      <!-- Top Subtle Homework Badge -->
+      <div class="flex justify-center">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200" id="loading-badge">
+          <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          <span id="loading-badge-text">Homework Task Initialization</span>
+        </span>
       </div>
-      <div>
-        <h4 class="text-slate-900 font-bold text-base" id="loading-title">Processing...</h4>
-        <p class="text-xs text-slate-500 mt-1" id="loading-subtext">Please wait a moment</p>
+
+      <!-- Center Animated Icon Container (Circle animation matching homework/study - NOT a lock) -->
+      <div class="relative h-24 w-24 sm:h-28 sm:w-28 mx-auto flex items-center justify-center">
+        <!-- Pulse / Radar Ring -->
+        <div class="absolute inset-0 rounded-full bg-blue-500/15 animate-ping"></div>
+        <div class="absolute inset-0 rounded-full border-2 border-blue-500/25 animate-pulse"></div>
+
+        <!-- Animated circular spinner with Homework / Study Icon in center -->
+        <div class="relative z-10 w-20 h-20 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin flex items-center justify-center shadow-md">
+          <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-xl shadow-xs" id="loading-center-icon">
+            📝
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Text -->
+      <div class="space-y-2">
+        <h2 id="loading-title" class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight transition-all">
+          Please wait on the process...
+        </h2>
+        <p id="loading-subtext" class="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-xs mx-auto transition-all">
+          Applying teacher settings and loading questions...
+        </p>
       </div>
     </div>
   </div>
@@ -6114,21 +6141,50 @@
       }, 3500);
     }
 
-    // SLEEK LOADING SPINNER SYSTEM
-    function showLoading(title, subtext, durationMs, onComplete) {
+    // SLEEK LOADING SPINNER SYSTEM (HOMEWORK & TEST LAUNCHPAD)
+    function showLoading(title, subtext, durationMs, onComplete, icon = '📝', badge = 'Homework Task Initialization') {
       const overlay = document.getElementById('loading-overlay');
       const titleEl = document.getElementById('loading-title');
       const subtextEl = document.getElementById('loading-subtext');
+      const iconEl = document.getElementById('loading-center-icon');
+      const badgeTextEl = document.getElementById('loading-badge-text');
 
-      if (titleEl) titleEl.innerText = title || 'Processing...';
-      if (subtextEl) subtextEl.innerText = subtext || 'Please wait a moment';
+      if (titleEl) titleEl.innerText = title || 'Please wait on the process...';
+      if (subtextEl) subtextEl.innerText = subtext || 'Applying teacher settings and loading questions...';
+      if (iconEl) iconEl.innerText = icon || '📝';
+      if (badgeTextEl) badgeTextEl.innerText = badge || 'Homework Task Initialization';
 
-      if (overlay) overlay.classList.remove('hidden');
+      if (overlay) {
+        overlay.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+        overlay.style.display = 'flex';
+      }
 
-      setTimeout(() => {
-        if (overlay) overlay.classList.add('hidden');
-        if (typeof onComplete === 'function') onComplete();
-      }, durationMs || 1200);
+      const finalDuration = durationMs || 1500; // 1 to 2 seconds (default 1.5s)
+      const startTime = Date.now();
+
+      setTimeout(async () => {
+        try {
+          if (typeof onComplete === 'function') {
+            await onComplete();
+          }
+        } catch (err) {
+          console.error('[SATMaster] Error executing onComplete in showLoading:', err);
+        }
+
+        const elapsed = Date.now() - startTime;
+        const remainingDelay = Math.max(0, finalDuration - elapsed);
+
+        setTimeout(() => {
+          if (overlay) {
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+              overlay.classList.add('hidden');
+              overlay.style.display = 'none';
+              overlay.classList.remove('opacity-0', 'pointer-events-none');
+            }, 300);
+          }
+        }, remainingDelay);
+      }, finalDuration);
     }
 
     // Modal Control Functions
@@ -8461,29 +8517,36 @@
       if (targetHw.type === 'vocab') {
         window.activeHomeworkAssignment = targetHw;
         const hwTitle = targetHw.title || targetHw.config?.scopeName || 'Vocab Drill';
-        showLoading('Loading Vocab Task...', `Setting up ${hwTitle} with teacher settings for ${studentName}...`, 500, function() {
-          switchTab('vocab');
-          switchVocabView('reports');
+        showLoading(
+          'Please wait on the process...',
+          `Setting up ${hwTitle} with teacher settings for ${studentName}...`,
+          1500,
+          function() {
+            switchTab('vocab');
+            switchVocabView('reports');
 
-          const nameInput = document.getElementById('test-student-name');
-          if (nameInput) nameInput.value = studentName;
-          const displayStudentName = document.getElementById('test-display-student-name');
-          if (displayStudentName) displayStudentName.innerText = studentName;
-          const displayStudentClass = document.getElementById('test-display-student-class');
-          if (displayStudentClass) displayStudentClass.innerText = `(${targetHw.className || 'Assigned Class'})`;
+            const nameInput = document.getElementById('test-student-name');
+            if (nameInput) nameInput.value = studentName;
+            const displayStudentName = document.getElementById('test-display-student-name');
+            if (displayStudentName) displayStudentName.innerText = studentName;
+            const displayStudentClass = document.getElementById('test-display-student-class');
+            if (displayStudentClass) displayStudentClass.innerText = `(${targetHw.className || 'Assigned Class'})`;
 
-          const scopeSelect = document.getElementById('test-scope-select');
-          if (scopeSelect && targetHw.config?.scopeId) {
-            scopeSelect.value = targetHw.config.scopeId;
-          }
-          const countSelect = document.getElementById('test-question-count');
-          if (countSelect && targetHw.config?.question_count) {
-            countSelect.value = String(targetHw.config.question_count);
-          }
-          if (typeof handleStartVocabUnitTest === 'function') {
-            handleStartVocabUnitTest(null, targetHw);
-          }
-        });
+            const scopeSelect = document.getElementById('test-scope-select');
+            if (scopeSelect && targetHw.config?.scopeId) {
+              scopeSelect.value = targetHw.config.scopeId;
+            }
+            const countSelect = document.getElementById('test-question-count');
+            if (countSelect && targetHw.config?.question_count) {
+              countSelect.value = String(targetHw.config.question_count);
+            }
+            if (typeof handleStartVocabUnitTest === 'function') {
+              handleStartVocabUnitTest(null, targetHw);
+            }
+          },
+          '📚',
+          'SAT Vocab Task'
+        );
         return;
       }
 
@@ -8494,71 +8557,78 @@
         const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
         const qCount = targetHw.config?.question_count || 10;
 
-        showLoading('Starting Homework Drill...', `Preparing ${hwTitle} (${qCount} questions) for ${studentName}...`, 350, async function() {
-          // Immediately ensure setup view and hub view stay hidden so student directly enters test
-          const hubView = document.getElementById('qbank-hub-view');
-          const detailView = document.getElementById('qb-detail-view');
-          const setupView = document.getElementById('qb-setup-view');
-          if (hubView) hubView.classList.add('hidden');
-          if (detailView) detailView.classList.add('hidden');
-          if (setupView) setupView.classList.add('hidden');
-
-          switchTab('qbank');
-
-          if (window.qbEngine) {
-            window.qbEngine.activeHomeworkId = targetHw.id;
-
-            // Make sure qbEngine datasets are loaded first before setting filters
-            if (!window.qbEngine.isInitialized) {
-              await window.qbEngine.init(subj);
-            } else {
-              window.qbEngine.openSetup(subj);
-              if (!window.qbEngine.questionsData.rw || !window.qbEngine.questionsData.math) {
-                await window.qbEngine.loadQuestions();
-              }
-              await window.qbEngine.loadSolvedQuestions();
-            }
-
-            // Set subject & activeStatusFilter
-            window.qbEngine.activeSubject = subj;
-            window.qbEngine.activeStatusFilter = 'unsolved';
-
-            // Pre-set question count assigned by teacher
-            window.qbEngine.setCount(qCount);
-            if (qCount !== 10 && qCount !== 20 && qCount !== 30 && qCount !== 40 && qCount !== 50) {
-              window.qbEngine.setCustomCountDirect(qCount);
-            }
-
-            // Preselect exact skills specified by the teacher
-            window.qbEngine.selectedSkills.clear();
-            if (targetHw.config?.skills && Array.isArray(targetHw.config.skills) && targetHw.config.skills.length > 0) {
-              targetHw.config.skills.forEach(skName => {
-                const norm = (typeof window.qbEngine.normalizeSkill === 'function') ? window.qbEngine.normalizeSkill(skName) : skName;
-                window.qbEngine.selectedSkills.add(norm);
-              });
-            } else if (targetHw.config?.domains && Array.isArray(targetHw.config.domains)) {
-              const hierarchy = (subj === 'math' ? window.qbEngine.skillHierarchy?.math : (subj === 'rw' ? window.qbEngine.skillHierarchy?.rw : [...(window.qbEngine.skillHierarchy?.rw || []), ...(window.qbEngine.skillHierarchy?.math || [])])) || [];
-              hierarchy.forEach(dom => {
-                if (targetHw.config.domains.includes(dom.domain)) {
-                  (dom.skills || []).forEach(sk => window.qbEngine.selectedSkills.add(window.qbEngine.normalizeSkill(sk.name)));
-                }
-              });
-            }
-
-            // Render prominent homework active banner (ready for results or exit)
-            renderQbHomeworkActiveBanner(targetHw);
-
-            // Ensure setup and hub views remain hidden
-            if (setupView) setupView.classList.add('hidden');
+        showLoading(
+          'Please wait on the process...',
+          `Setting up ${hwTitle} (${qCount} questions) with teacher settings...`,
+          1500,
+          async function() {
+            // Immediately ensure setup view and hub view stay hidden so student directly enters test
+            const hubView = document.getElementById('qbank-hub-view');
+            const detailView = document.getElementById('qb-detail-view');
+            const setupView = document.getElementById('qb-setup-view');
             if (hubView) hubView.classList.add('hidden');
             if (detailView) detailView.classList.add('hidden');
+            if (setupView) setupView.classList.add('hidden');
 
-            // DIRECTLY START PRACTICE TEST: Immediately starts on Question 1 in the simulator!
-            if (typeof window.qbEngine.startPractice === 'function') {
-              window.qbEngine.startPractice();
+            switchTab('qbank');
+
+            if (window.qbEngine) {
+              window.qbEngine.activeHomeworkId = targetHw.id;
+
+              // Make sure qbEngine datasets are loaded first before setting filters
+              if (!window.qbEngine.isInitialized) {
+                await window.qbEngine.init(subj);
+              } else {
+                window.qbEngine.openSetup(subj);
+                if (!window.qbEngine.questionsData.rw || !window.qbEngine.questionsData.math) {
+                  await window.qbEngine.loadQuestions();
+                }
+                await window.qbEngine.loadSolvedQuestions();
+              }
+
+              // Set subject & activeStatusFilter
+              window.qbEngine.activeSubject = subj;
+              window.qbEngine.activeStatusFilter = 'unsolved';
+
+              // Pre-set question count assigned by teacher
+              window.qbEngine.setCount(qCount);
+              if (qCount !== 10 && qCount !== 20 && qCount !== 30 && qCount !== 40 && qCount !== 50) {
+                window.qbEngine.setCustomCountDirect(qCount);
+              }
+
+              // Preselect exact skills specified by the teacher
+              window.qbEngine.selectedSkills.clear();
+              if (targetHw.config?.skills && Array.isArray(targetHw.config.skills) && targetHw.config.skills.length > 0) {
+                targetHw.config.skills.forEach(skName => {
+                  const norm = (typeof window.qbEngine.normalizeSkill === 'function') ? window.qbEngine.normalizeSkill(skName) : skName;
+                  window.qbEngine.selectedSkills.add(norm);
+                });
+              } else if (targetHw.config?.domains && Array.isArray(targetHw.config.domains)) {
+                const hierarchy = (subj === 'math' ? window.qbEngine.skillHierarchy?.math : (subj === 'rw' ? window.qbEngine.skillHierarchy?.rw : [...(window.qbEngine.skillHierarchy?.rw || []), ...(window.qbEngine.skillHierarchy?.math || [])])) || [];
+                hierarchy.forEach(dom => {
+                  if (targetHw.config.domains.includes(dom.domain)) {
+                    (dom.skills || []).forEach(sk => window.qbEngine.selectedSkills.add(window.qbEngine.normalizeSkill(sk.name)));
+                  }
+                });
+              }
+
+              // Render prominent homework active banner (ready for results or exit)
+              renderQbHomeworkActiveBanner(targetHw);
+
+              // Ensure setup and hub views remain hidden
+              if (setupView) setupView.classList.add('hidden');
+              if (hubView) hubView.classList.add('hidden');
+              if (detailView) detailView.classList.add('hidden');
+
+              // DIRECTLY START PRACTICE TEST: Immediately starts on Question 1 in the simulator!
+              if (typeof window.qbEngine.startPractice === 'function') {
+                window.qbEngine.startPractice();
+              }
             }
-          }
-        });
+          },
+          '📖',
+          'Question Bank Task'
+        );
         return;
       }
 
@@ -8569,7 +8639,11 @@
         return;
       }
 
-      showLoading('Loading SAT Homework...', `Preparing Digital SAT drill for ${studentName}...`, 800, function() {
+      showLoading(
+        'Please wait on the process...',
+        `Preparing Digital SAT drill for ${studentName}...`,
+        1500,
+        function() {
         currentRunnerTest = {
           assignment: targetHw,
           questions: questions,
