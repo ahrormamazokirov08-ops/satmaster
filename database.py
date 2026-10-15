@@ -66,6 +66,70 @@ def _format_rows(rows):
     return [_format_row(r) for r in rows] if rows else []
 
 
+def _is_id_like(val):
+    """Check if a value looks like a raw ID, UUID, numeric Telegram ID, or placeholder."""
+    if not val:
+        return True
+    s = str(val).strip()
+    if not s or s.lower() in ("none", "null", "student", "student user", "undefined"):
+        return True
+    # UUID pattern
+    if len(s) == 36 and s.count("-") == 4:
+        return True
+    # TG or STU followed by digits
+    if s.upper().startswith("TG") or s.upper().startswith("STU"):
+        return True
+    # Raw numeric ID
+    if s.isdigit() and len(s) >= 5:
+        return True
+    return False
+
+
+def _resolve_registered_student_info(telegram_id=None, student_id=None):
+    """Resolve registered Telegram student details from students_db.json."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    json_path = os.path.join(base_dir, "students_db.json")
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as jf:
+                data = json.load(jf)
+                json_students = data.get("students", {})
+                for uid, js in json_students.items():
+                    s_tg = str(js.get("telegram_id") or "")
+                    s_id = str(js.get("student_id") or "")
+                    tid = str(telegram_id or "").strip()
+                    sid = str(student_id or "").strip()
+                    if (tid and s_tg == tid) or (sid and (s_id == sid or s_tg == sid or f"TG{s_tg}" == sid)):
+                        return js
+        except Exception:
+            pass
+    return None
+
+
+def _sanitize_student_dict(student_dict):
+    """Ensure student dict contains a human-readable display name, never a raw ID."""
+    if not student_dict:
+        return student_dict
+    s = dict(student_dict)
+    name = s.get("display_name")
+    tg_id = s.get("telegram_id")
+    stu_id = s.get("id")
+    username = s.get("telegram_username")
+
+    js = _resolve_registered_student_info(telegram_id=tg_id, student_id=stu_id)
+    if js and js.get("name") and not _is_id_like(js.get("name")):
+        if _is_id_like(name) or name in ("bod boy", "Student User", "Student", None, ""):
+            s["display_name"] = js["name"]
+    elif _is_id_like(name):
+        if username:
+            clean_u = str(username).lstrip("@")
+            s["display_name"] = f"@{clean_u}"
+        else:
+            s["display_name"] = "Student User"
+    return s
+
+
+
 DEFAULT_SUPABASE_URL = "postgresql://postgres.mzagstfpiiueiofoehhl:0000AAxx..88@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
 
@@ -673,7 +737,7 @@ class RelationalDB:
             except Exception:
                 pass
 
-        return matched_students
+        return [_sanitize_student_dict(s) for s in matched_students]
 
     def get_students_by_group_or_all(self, group_id=None, group_name=None):
         """Fetch students for a specific group, or all enrolled students if group is 'All Students' or empty."""
@@ -717,7 +781,7 @@ class RelationalDB:
                                 seen_keys.add(s_tg)
                 except Exception:
                     pass
-            return students
+            return [_sanitize_student_dict(s) for s in students]
         return self.get_group_students(group_id=group_id, group_name=group_name) or []
 
     def get_student(self, student_id):
@@ -734,7 +798,7 @@ class RelationalDB:
         sql = self._query("""
             SELECT s.*, g.name AS group_name
             FROM students s
-            JOIN groups g ON s.group_id = g.id
+            LEFT JOIN groups g ON (s.group_id = g.id OR LOWER(CAST(s.group_id AS TEXT)) = LOWER(g.name))
             WHERE CAST(s.id AS TEXT) = %s 
                OR CAST(s.telegram_id AS TEXT) = %s 
                OR CAST(s.telegram_id AS TEXT) = %s
@@ -742,7 +806,29 @@ class RelationalDB:
         with self.cursor() as cur:
             cur.execute(sql, (raw_id, raw_id, num_id))
             row = cur.fetchone()
-            return _format_row(row)
+            stu = _format_row(row)
+
+        if not stu:
+            # Fallback to students_db.json
+            js = _resolve_registered_student_info(student_id=raw_id, telegram_id=num_id if num_id.isdigit() else None)
+            if js:
+                stu = {
+                    "id": js.get("student_id") or f"TG{raw_id}",
+                    "group_id": js.get("class") or "SAT Masters 2026",
+                    "group_name": js.get("class") or "SAT Masters 2026",
+                    "telegram_id": js.get("telegram_id"),
+                    "telegram_username": js.get("username"),
+                    "display_name": js.get("name"),
+                    "created_at": js.get("registered_at")
+                }
+
+        if stu:
+            stu = _sanitize_student_dict(stu)
+            if not stu.get("group_name") and stu.get("group_id"):
+                grp = self.get_group(stu["group_id"])
+                if grp:
+                    stu["group_name"] = grp.get("name")
+        return stu
 
     def upsert_student(self, telegram_id, display_name, group_id, telegram_username=None):
         """Register or update student in relational database linked to group_id."""

@@ -713,19 +713,30 @@ class handler(BaseHTTPRequestHandler):
                             "<i>Tap the button below to launch your homework on the website:</i>"
                         )
 
-                        target_chat_ids = set()
+                        student_map = {}
                         for stu in (students or []):
                             tg_id = stu.get("telegram_id")
                             if tg_id:
                                 try:
-                                    target_chat_ids.add(int(tg_id))
+                                    student_map[int(tg_id)] = stu
                                 except Exception:
                                     pass
 
-                        print(f"[Telegram Notify] Sending new homework alert to {len(target_chat_ids)} student(s): {target_chat_ids}")
+                        print(f"[Telegram Notify] Sending new homework alert to {len(student_map)} student(s): {list(student_map.keys())}")
 
-                        for cid in target_chat_ids:
+                        for cid, s_info in student_map.items():
                             try:
+                                s_id = s_info.get("id") or f"TG{cid}"
+                                s_name = s_info.get("display_name") or s_info.get("name") or "Student"
+                                s_group = s_info.get("group_name") or group_name or "SAT Masters 2026"
+                                query = urllib.parse.urlencode({
+                                    "role": "student",
+                                    "uid": s_id,
+                                    "name": s_name,
+                                    "class": s_group
+                                })
+                                student_link = f"https://satmaster-w58j.vercel.app/index.html?{query}"
+
                                 send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                                 payload = {
                                     "chat_id": cid,
@@ -733,7 +744,7 @@ class handler(BaseHTTPRequestHandler):
                                     "parse_mode": "HTML",
                                     "reply_markup": {
                                         "inline_keyboard": [
-                                            [{"text": "🚀 Open Homework on Website", "url": "https://satmaster-w58j.vercel.app"}]
+                                            [{"text": "🚀 Open Homework on Website", "url": student_link}]
                                         ]
                                     }
                                 }

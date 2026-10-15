@@ -31,10 +31,11 @@ except ImportError:
     pass
 
 try:
-    from database import db as rdb
+    from database import db as rdb, _sanitize_student_dict
 except ImportError:
     import database
     rdb = database.db
+    _sanitize_student_dict = getattr(database, "_sanitize_student_dict", lambda s: s)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "bot_config.json")
@@ -912,10 +913,11 @@ def ask_student_group_buttons(bot, chat_id, name, db, username=None):
 
 def send_student_hub(bot, chat_id, student_record, config, is_welcome_back=False):
     base_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
-    name = student_record.get("display_name") or student_record.get("name", "Student")
-    student_id = student_record.get("id") or student_record.get("student_id", f"TG{chat_id}")
-    class_name = student_record.get("group_name") or student_record.get("class") or ""
-    username = student_record.get("telegram_username") or student_record.get("username", "")
+    rec = _sanitize_student_dict(student_record) if student_record else {}
+    name = rec.get("display_name") or rec.get("name") or "Student"
+    student_id = rec.get("id") or rec.get("student_id") or f"TG{chat_id}"
+    class_name = rec.get("group_name") or rec.get("class") or ""
+    username = rec.get("telegram_username") or rec.get("username") or ""
 
     student_link = generate_student_link(base_url, student_id, name, class_name)
 
@@ -2460,18 +2462,30 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                         )
 
                         target_chat_ids = set()
+                        student_map = {}
                         for stu in (students or []):
                             tg_id = stu.get("telegram_id")
                             if tg_id:
                                 try:
-                                    target_chat_ids.add(int(tg_id))
+                                    student_map[int(tg_id)] = stu
                                 except Exception:
                                     pass
 
-                        print(f"[Telegram Notify] Sending new homework alert to {len(target_chat_ids)} student(s): {target_chat_ids}")
+                        print(f"[Telegram Notify] Sending new homework alert to {len(student_map)} student(s): {list(student_map.keys())}")
 
-                        for cid in target_chat_ids:
+                        for cid, s_info in student_map.items():
                             try:
+                                s_id = s_info.get("id") or f"TG{cid}"
+                                s_name = s_info.get("display_name") or s_info.get("name") or "Student"
+                                s_group = s_info.get("group_name") or group_name or "SAT Masters 2026"
+                                query = urllib.parse.urlencode({
+                                    "role": "student",
+                                    "uid": s_id,
+                                    "name": s_name,
+                                    "class": s_group
+                                })
+                                student_link = f"https://satmaster-w58j.vercel.app/index.html?{query}"
+
                                 send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                                 payload = {
                                     "chat_id": cid,
@@ -2479,7 +2493,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                                     "parse_mode": "HTML",
                                     "reply_markup": {
                                         "inline_keyboard": [
-                                            [{"text": "🚀 Open Homework on Website", "url": "https://satmaster-w58j.vercel.app"}]
+                                            [{"text": "🚀 Open Homework on Website", "url": student_link}]
                                         ]
                                     }
                                 }

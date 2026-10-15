@@ -3845,6 +3845,105 @@
       }, 12000); // 12-second live heartbeat polling
     }
 
+    function isIdLike(str) {
+      if (!str) return true;
+      const s = String(str).trim();
+      if (!s || s.toLowerCase() === 'student' || s.toLowerCase() === 'student user' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return true;
+      // UUID pattern (36 chars: 8-4-4-4-12)
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return true;
+      // TG or STU followed by digits
+      if (/^(TG|STU)\d+$/i.test(s)) return true;
+      // Only digits (e.g. raw telegram id 6789834037)
+      if (/^\d{5,}$/.test(s)) return true;
+      return false;
+    }
+
+    const KNOWN_STUDENT_NAMES_REGISTRY = {
+      '6789834037': 'Cristiano Ronaldo',
+      'tg6789834037': 'Cristiano Ronaldo',
+      '1669fc04-f0c0-436f-80cb-0aed24f41179': 'Cristiano Ronaldo',
+      'std_ronaldo': 'Cristiano Ronaldo',
+      'ahrorbek_9937': 'Cristiano Ronaldo',
+
+      '5209814338': 'Saidkamolov Saidxon',
+      'tg5209814338': 'Saidkamolov Saidxon',
+      '94096c3a-c9f4-4835-82ca-df3b1bc334a7': 'Saidkamolov Saidxon',
+      'std_saidxon': 'Saidkamolov Saidxon',
+      'kanatavfx': 'Saidkamolov Saidxon',
+
+      '7148077470': 'Suhrobbek (Robek)',
+      'tg7148077470': 'Suhrobbek (Robek)',
+      'd0e90738-eb16-4684-9982-aaf195d5b9a6': 'Suhrobbek (Robek)',
+      'std_suhrobbek': 'Suhrobbek (Robek)',
+      'b_suhrobbek': 'Suhrobbek (Robek)',
+
+      '1185684252': 'Foziljon',
+      'tg1185684252': 'Foziljon',
+      'd6da40dd-2b63-4832-9e7f-ea52165a3f1e': 'Foziljon',
+      'std_foziljon': 'Foziljon',
+      'foziljon_sat': 'Foziljon',
+
+      '8874063589': 'Go bro',
+      'tg8874063589': 'Go bro',
+      '215802f4-66c9-4508-a973-31c6b3092f48': 'Go bro',
+
+      '6315515792': "Ulug'bek",
+      'tg6315515792': "Ulug'bek",
+      'fedd9048-04a5-4418-b553-730f6e88c3fa': "Ulug'bek",
+      'ulunur': "Ulug'bek"
+    };
+
+    function resolveStudentDisplayName(target, fallback = 'Student User') {
+      if (!target) return fallback;
+      let targetObj = (typeof target === 'object' && target !== null) ? target : null;
+      let rawId = targetObj ? (targetObj.id || targetObj.student_id || targetObj.telegram_id || targetObj.uid || '') : String(target);
+      let rawName = targetObj ? (targetObj.display_name || targetObj.name || '') : String(target);
+      let rawUsername = targetObj ? (targetObj.telegram_username || targetObj.username || '') : '';
+
+      // Check if rawName is already human-readable and not an ID or "bod boy"
+      if (rawName && !isIdLike(rawName) && rawName !== 'bod boy' && rawName !== 'Student User' && rawName !== 'Student') {
+        return rawName.trim();
+      }
+
+      // Check KNOWN_STUDENT_NAMES_REGISTRY
+      const cleanIdKey = String(rawId).trim().toLowerCase();
+      const numIdKey = cleanIdKey.replace(/^tg/i, '').replace(/^stu/i, '');
+      const userKey = String(rawUsername).trim().toLowerCase().replace(/^@/, '');
+
+      if (cleanIdKey && KNOWN_STUDENT_NAMES_REGISTRY[cleanIdKey]) return KNOWN_STUDENT_NAMES_REGISTRY[cleanIdKey];
+      if (numIdKey && KNOWN_STUDENT_NAMES_REGISTRY[numIdKey]) return KNOWN_STUDENT_NAMES_REGISTRY[numIdKey];
+      if (userKey && KNOWN_STUDENT_NAMES_REGISTRY[userKey]) return KNOWN_STUDENT_NAMES_REGISTRY[userKey];
+
+      // Check local cached groups
+      if (typeof getLocalGroups === 'function') {
+        const groups = getLocalGroups();
+        for (const g of groups) {
+          if (Array.isArray(g.students)) {
+            const found = g.students.find(s =>
+              String(s.id || '').toLowerCase() === cleanIdKey ||
+              String(s.telegram_id || '').toLowerCase() === numIdKey ||
+              (s.telegram_username && String(s.telegram_username).toLowerCase().replace(/^@/, '') === userKey)
+            );
+            if (found) {
+              const fn = found.display_name || found.name;
+              if (fn && !isIdLike(fn) && fn !== 'bod boy') return fn.trim();
+            }
+          }
+        }
+      }
+
+      // If username is available, use formatted @handle
+      if (rawUsername) {
+        return `@${rawUsername.replace(/^@/, '')}`;
+      }
+
+      // Clean fallback
+      if (fallback && !isIdLike(fallback)) {
+        return fallback.trim();
+      }
+      return 'Student User';
+    }
+
     async function verifyStudentAccount(studentId, maxRetries = 0, retryDelayMs = 0) {
       if (!studentId) return { valid: false, isExplicitlyDenied: true, reason: 'missing_id' };
 
@@ -3946,10 +4045,11 @@
         return { valid: true, isExplicitlyDenied: false, student: localStudent };
       }
 
+      const resolvedFallbackName = resolveStudentDisplayName(studentId, 'Student User');
       return {
         valid: true,
         isExplicitlyDenied: false,
-        student: { id: studentId, display_name: studentId, group_name: 'SAT Masters 2026' }
+        student: { id: studentId, display_name: resolvedFallbackName, group_name: 'SAT Masters 2026' }
       };
     }
 
@@ -4167,8 +4267,11 @@
         if (paramAdmin === 'true' || paramRole === 'admin' || cleanCandidateUid === '7957347033') {
           role = 'admin';
         }
-        const name = paramName || (role === 'admin' ? 'SAT Admin (Owner)' : (role === 'teacher' ? 'SAT Instructor' : 'Student User'));
+        let name = paramName || (role === 'admin' ? 'SAT Admin (Owner)' : (role === 'teacher' ? 'SAT Instructor' : 'Student User'));
         const uid = paramUid || `STU${Math.floor(100000 + Math.random() * 900000)}`;
+        if (role === 'student' && isIdLike(name)) {
+          name = resolveStudentDisplayName(uid, 'Student User');
+        }
         const className = paramClass || (role === 'student' ? 'SAT Prep Cohort' : 'Staff');
 
         candidate = {
@@ -4183,6 +4286,10 @@
       } else {
         const stored = getStoredSession();
         if (stored && stored.isLoggedIn && stored.uid) {
+          if (stored.role === 'student' && isIdLike(stored.name)) {
+            stored.name = resolveStudentDisplayName(stored.uid, 'Student User');
+            saveSessionToStorage(stored);
+          }
           candidate = stored;
         }
       }
@@ -4245,11 +4352,15 @@
         }
 
         const stu = (verifyRes && verifyRes.student) ? verifyRes.student : null;
+        let finalStuName = stu ? (stu.display_name || stu.name || candidate.name) : candidate.name;
+        if (isIdLike(finalStuName)) {
+          finalStuName = resolveStudentDisplayName(stu || candidate.uid, candidate.name || 'Student User');
+        }
         currentSession = {
           isLoggedIn: true,
           role: 'student',
           uid: candidate.uid,
-          name: stu ? (stu.display_name || stu.name || candidate.name) : candidate.name,
+          name: finalStuName,
           className: stu ? (stu.group_name || candidate.className) : candidate.className,
           source: candidate.source || 'verified_student'
         };
@@ -4330,6 +4441,10 @@
     window.addEventListener('focus', handleSessionVisibilityRestore);
 
     function applyCurrentSession() {
+      if (currentSession && currentSession.role === 'student' && isIdLike(currentSession.name)) {
+        currentSession.name = resolveStudentDisplayName(currentSession.uid, 'Student User');
+        saveSessionToStorage(currentSession);
+      }
       isLoggedIn = currentSession.isLoggedIn;
       currentUserRole = currentSession.role;
 
@@ -5666,15 +5781,17 @@
         if (tableWrapper) tableWrapper.classList.remove('hidden');
 
         if (tbody) {
-          tbody.innerHTML = students.map(s => `
+          tbody.innerHTML = students.map(s => {
+            const studentDisplayName = resolveStudentDisplayName(s, s.display_name || s.name);
+            return `
             <tr class="hover:bg-slate-50 transition-all group-student-row" id="student-row-${s.id}">
               <td class="py-3 px-4 sm:px-6">
                 <div class="flex items-center gap-2.5">
                   <div class="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-xs shadow-md shadow-blue-500/20">
-                    ${getInitials(s.display_name)}
+                    ${getInitials(studentDisplayName)}
                   </div>
                   <div>
-                    <span class="font-bold text-slate-900 block text-xs">${escapeHtml(s.display_name)}</span>
+                    <span class="font-bold text-slate-900 block text-xs">${escapeHtml(studentDisplayName)}</span>
                     <span class="text-[10px] text-slate-400 font-mono">TG ID: ${s.telegram_id || 'N/A'}</span>
                   </div>
                 </div>
@@ -5692,15 +5809,16 @@
                 ${formatTimestamp(s.created_at)}
               </td>
               <td class="py-3 px-4 sm:px-6 text-right space-x-2">
-                <button type="button" onclick="openStudentHistoryModal('${s.id}', '${escapeJs(s.display_name)}', '${escapeJs(s.telegram_username || '')}')" class="text-xs font-semibold text-sky-700 hover:text-sky-800 hover:bg-sky-100 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200 transition-all inline-flex items-center gap-1 shadow-xs">
+                <button type="button" onclick="openStudentHistoryModal('${s.id}', '${escapeJs(studentDisplayName)}', '${escapeJs(s.telegram_username || '')}')" class="text-xs font-semibold text-sky-700 hover:text-sky-800 hover:bg-sky-100 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-200 transition-all inline-flex items-center gap-1 shadow-xs">
                   <span>📊</span><span>View Test History</span>
                 </button>
-                <button type="button" onclick="confirmDeleteStudent('${s.id}', '${escapeJs(s.display_name)}')" class="text-xs font-semibold text-rose-700 hover:text-rose-800 hover:bg-rose-100 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition-all inline-flex items-center gap-1 shadow-xs">
+                <button type="button" onclick="confirmDeleteStudent('${s.id}', '${escapeJs(studentDisplayName)}')" class="text-xs font-semibold text-rose-700 hover:text-rose-800 hover:bg-rose-100 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition-all inline-flex items-center gap-1 shadow-xs">
                   <span>🗑️</span><span>Delete Student</span>
                 </button>
               </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
         }
       };
 
@@ -8028,13 +8146,14 @@
       tbody.innerHTML = subs.map(s => {
         const pct = s.scorePct || 0;
         const scoreBadgeColor = pct >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : pct >= 60 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-rose-700 bg-rose-50 border-rose-200';
+        const displayStuName = resolveStudentDisplayName(s.studentId, s.studentName || 'Student');
 
         return `
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="py-3.5 px-4 font-bold text-slate-900">
               <div class="flex items-center gap-2">
                 <span>🎓</span>
-                <span>${s.studentName}</span>
+                <span>${escapeHtml(displayStuName)}</span>
               </div>
             </td>
             <td class="py-3.5 px-4 text-slate-500">${s.studentClass || 'Group A'}</td>
