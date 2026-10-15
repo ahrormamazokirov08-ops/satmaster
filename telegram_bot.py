@@ -2391,7 +2391,82 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                     deadline=deadline,
                     created_by=created_by,
                 )
-                # Optional: sync to legacy JSON DB (not implemented here)
+
+                # Send Telegram notification to cohort students and admin
+                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ"
+                admin_chat_id = os.environ.get("ADMIN_CHAT_ID") or "7957347033"
+
+                if bot_token:
+                    try:
+                        students = rdb.get_students_by_group_or_all(group_id)
+                        type_label = (
+                            "📚 SAT Vocabulary" if hw_type == "vocab"
+                            else ("📖 Digital SAT Question Bank" if hw_type == "qbank" else "📝 Digital SAT Practice")
+                        )
+                        dl_text = "Flexible"
+                        if deadline:
+                            dl_str = str(deadline)
+                            if "T" in dl_str:
+                                try:
+                                    d_obj = datetime.fromisoformat(dl_str.replace("Z", "+00:00"))
+                                    dl_text = d_obj.strftime("%b %d, %Y %I:%M %p")
+                                except Exception:
+                                    dl_text = dl_str
+                            else:
+                                dl_text = dl_str
+
+                        group_label = body.get("className") or str(group_id)
+
+                        notify_text = (
+                            "🔔 <b>NEW HOMEWORK ASSIGNED!</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━━\n"
+                            f"📝 <b>Task:</b> {title}\n"
+                            f"📚 <b>Type:</b> {type_label}\n"
+                            f"🏫 <b>Class:</b> {group_label}\n"
+                            f"📅 <b>Deadline:</b> {dl_text}\n"
+                            "━━━━━━━━━━━━━━━━━━━━━━\n"
+                            "You have new homework on the website. Please move on to it and solve it!"
+                        )
+
+                        target_chat_ids = set()
+                        if admin_chat_id:
+                            try:
+                                target_chat_ids.add(int(admin_chat_id))
+                            except Exception:
+                                pass
+
+                        for stu in (students or []):
+                            tg_id = stu.get("telegram_id")
+                            if tg_id:
+                                try:
+                                    target_chat_ids.add(int(tg_id))
+                                except Exception:
+                                    pass
+
+                        for cid in target_chat_ids:
+                            try:
+                                send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                                payload = {
+                                    "chat_id": cid,
+                                    "text": notify_text,
+                                    "parse_mode": "HTML",
+                                    "reply_markup": {
+                                        "inline_keyboard": [
+                                            [{"text": "🚀 Open Homework on Website", "url": "https://satmaster-w58j.vercel.app"}]
+                                        ]
+                                    }
+                                }
+                                req = urllib.request.Request(
+                                    send_url,
+                                    data=json.dumps(payload).encode("utf-8"),
+                                    headers={"Content-Type": "application/json"}
+                                )
+                                urllib.request.urlopen(req, timeout=4)
+                            except Exception as send_err:
+                                print(f"[Telegram Notify Error for {cid}]: {send_err}")
+                    except Exception as notify_err:
+                        print(f"[Telegram Batch Notify Error]: {notify_err}")
+
                 return self.send_json(201, {"ok": True, "assignment": assignment})
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})

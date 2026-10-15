@@ -270,8 +270,9 @@
         <span>📖</span><span>Question Bank</span>
         <span id="qbank-draft-tag" class="text-[9px] uppercase tracking-wider font-extrabold bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded-full">Draft</span>
       </button>
-      <button onclick="switchTab('student')" id="nav-student" class="px-3.5 py-1.5 rounded-lg transition-all text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1.5">
+      <button onclick="switchTab('student')" id="nav-student" class="relative px-3.5 py-1.5 rounded-lg transition-all text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1.5">
         <span>📝</span><span>Homework</span>
+        <span id="hw-badge-count" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm border border-white animate-pulse">0</span>
       </button>
     </nav>
 
@@ -4559,6 +4560,7 @@
           startTestCard.classList.add('col-span-full', 'lg:col-span-3');
         }
       }
+      if (typeof updateHomeworkNavBadge === 'function') updateHomeworkNavBadge();
     }
 
     function syncStudentFormIdentities() {
@@ -6810,6 +6812,7 @@
             localStorage.setItem('satmaster_assignments', JSON.stringify(serverList));
             renderActiveHomeworkGrid();
             renderAvailableHomeworkForClass();
+            if (typeof updateHomeworkNavBadge === 'function') updateHomeworkNavBadge();
           }
         }
       } catch (err) {
@@ -7604,6 +7607,8 @@
         console.warn("Backend /api/homework sync warning:", err);
       }
 
+      if (typeof updateHomeworkNavBadge === 'function') updateHomeworkNavBadge();
+
       return newAssignment;
     }
 
@@ -8143,6 +8148,7 @@
       }
       localStorage.setItem('satmaster_completed_homework', JSON.stringify(list));
       renderAvailableHomeworkForClass();
+      updateHomeworkNavBadge();
 
       // Synchronize homework completion record with backend API
       if (typeof fetch === 'function') {
@@ -8160,6 +8166,116 @@
           })
         }).catch(err => console.warn("Homework backend submission sync notice:", err));
       }
+    }
+
+    // =========================================================
+    // STUDENT HOMEWORK REMINDER & BADGE SYSTEM
+    // =========================================================
+    function getStudentActiveUncompletedHomework() {
+      const studentClass = (typeof currentSession !== 'undefined' && (currentSession?.className || currentSession?.group_name)) || 'SAT Masters 2026';
+      const studentId = (typeof currentSession !== 'undefined' && (currentSession?.id || currentSession?.uid || currentSession?.name)) || 'Student User';
+      const studentName = (typeof currentSession !== 'undefined' && currentSession?.name) || studentId;
+
+      const assignments = getAssignments();
+      const now = Date.now();
+
+      return assignments.filter(hw => {
+        // Must match student cohort or be all-students
+        const hwClass = (hw.className || hw.groupId || '').toLowerCase().trim();
+        const myClass = studentClass.toLowerCase().trim();
+        const matchesClass = !hwClass || hwClass === 'all' || hwClass === 'all students' || hwClass === myClass;
+        if (!matchesClass) return false;
+
+        // Check deadline: only active non-expired homework counts
+        if (hw.deadline) {
+          const dlTime = new Date(hw.deadline).getTime();
+          if (!isNaN(dlTime) && dlTime < now) return false;
+        }
+
+        // Check if student already completed this homework
+        const submission = getHomeworkSubmission(hw.id, studentId) || 
+                           getHomeworkSubmission(hw.code, studentId) || 
+                           getHomeworkSubmission(hw.id, studentName) || 
+                           getHomeworkSubmission(hw.code, studentName);
+        if (submission) {
+          const hwKeyId = hw.id || hw.code;
+          const attemptKey = `hw_att_${studentId}_${hwKeyId}`;
+          const attemptsUsed = parseInt(localStorage.getItem(attemptKey) || '1', 10);
+          if (submission.passed || attemptsUsed >= 3) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    }
+
+    function updateHomeworkNavBadge() {
+      const badgeDesk = document.getElementById('hw-badge-count');
+      const badgeMob = document.getElementById('mob-hw-badge-count');
+      if (!badgeDesk && !badgeMob) return;
+
+      const isStudent = (currentUserRole === 'student') || (typeof currentSession !== 'undefined' && currentSession?.role === 'student');
+      if (!isStudent) {
+        if (badgeDesk) badgeDesk.classList.add('hidden');
+        if (badgeMob) badgeMob.classList.add('hidden');
+        return;
+      }
+
+      const activeUncompleted = getStudentActiveUncompletedHomework();
+      const studentId = (typeof currentSession !== 'undefined' && (currentSession?.id || currentSession?.uid || currentSession?.name)) || 'Student User';
+      const seenKey = `hw_seen_ids_${studentId}`;
+      let seenIds = [];
+      try {
+        seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]');
+      } catch (e) {
+        seenIds = [];
+      }
+
+      // Count assignments that have NOT been seen yet
+      const unseenList = activeUncompleted.filter(hw => {
+        const idKey = hw.id || hw.code;
+        return !seenIds.includes(idKey);
+      });
+
+      const count = unseenList.length;
+
+      if (count > 0) {
+        const displayCount = String(count > 9 ? '9+' : count);
+        if (badgeDesk) {
+          badgeDesk.textContent = displayCount;
+          badgeDesk.classList.remove('hidden');
+        }
+        if (badgeMob) {
+          badgeMob.textContent = displayCount;
+          badgeMob.classList.remove('hidden');
+        }
+      } else {
+        if (badgeDesk) badgeDesk.classList.add('hidden');
+        if (badgeMob) badgeMob.classList.add('hidden');
+      }
+    }
+
+    function markHomeworkAsSeenByStudent() {
+      const studentId = (typeof currentSession !== 'undefined' && (currentSession?.id || currentSession?.uid || currentSession?.name)) || 'Student User';
+      const activeUncompleted = getStudentActiveUncompletedHomework();
+      const currentIds = activeUncompleted.map(hw => hw.id || hw.code).filter(Boolean);
+
+      const seenKey = `hw_seen_ids_${studentId}`;
+      let existingSeen = [];
+      try {
+        existingSeen = JSON.parse(localStorage.getItem(seenKey) || '[]');
+      } catch (e) {
+        existingSeen = [];
+      }
+
+      const mergedSeen = Array.from(new Set([...existingSeen, ...currentIds]));
+      localStorage.setItem(seenKey, JSON.stringify(mergedSeen));
+
+      const badgeDesk = document.getElementById('hw-badge-count');
+      const badgeMob = document.getElementById('mob-hw-badge-count');
+      if (badgeDesk) badgeDesk.classList.add('hidden');
+      if (badgeMob) badgeMob.classList.add('hidden');
     }
 
     function renderAvailableHomeworkForClass() {
@@ -9225,6 +9341,9 @@
       }
 
       if (tabName === 'student') {
+        if (typeof markHomeworkAsSeenByStudent === 'function') {
+          markHomeworkAsSeenByStudent();
+        }
         renderAvailableHomeworkForClass();
         if (typeof fetchAndSyncHomework === 'function') {
           fetchAndSyncHomework();
@@ -10734,6 +10853,7 @@
       updateTelegramBotLink();
       initAssignmentsAndGradebook();
       renderAvailableHomeworkForClass();
+      if (typeof updateHomeworkNavBadge === 'function') updateHomeworkNavBadge();
       updateDashboardStats();
       if (typeof updateOnlineStatus === 'function') updateOnlineStatus();
       if (typeof restoreActiveTestProgress === 'function') restoreActiveTestProgress();
@@ -15138,9 +15258,10 @@ if (typeof window !== 'undefined') {
       <span class="text-base">📖</span>
       <span>Q-Bank</span>
     </button>
-    <button type="button" onclick="switchTab('student')" id="mob-nav-student" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all text-emerald-600">
+    <button type="button" onclick="switchTab('student')" id="mob-nav-student" class="relative flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all text-emerald-600">
       <span class="text-base">📝</span>
       <span>Homework</span>
+      <span id="mob-hw-badge-count" class="hidden absolute top-0.5 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm border border-white animate-pulse">0</span>
     </button>
   </nav>
 </body>

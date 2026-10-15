@@ -611,6 +611,26 @@ class RelationalDB:
             rows = cur.fetchall()
             return _format_rows(rows)
 
+    def get_students_by_group_or_all(self, group_id=None):
+        """Fetch students for a specific group, or all enrolled students if group is 'All Students' or empty."""
+        if not group_id or str(group_id).strip().lower() in ("all", "all students", "everyone"):
+            all_stu_sql = self._query("""
+                SELECT 
+                    id,
+                    group_id,
+                    telegram_id,
+                    telegram_username,
+                    display_name,
+                    created_at
+                FROM students
+                ORDER BY created_at ASC
+            """)
+            with self.cursor() as cur:
+                cur.execute(all_stu_sql)
+                rows = cur.fetchall()
+                return _format_rows(rows)
+        return self.get_group_students(group_id) or []
+
     def get_student(self, student_id):
         """Fetch a single student by UUID or telegram_id (with optional TG/STU prefix)."""
         if not student_id:
