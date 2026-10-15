@@ -45,6 +45,18 @@ class TestDesmosCalculatorIntegration(unittest.TestCase):
             self.assertIn('function resetDesmosCalculator(', html, f"Missing resetDesmosCalculator in {name}")
             self.assertIn('function initDesmosDraggable(', html, f"Missing initDesmosDraggable in {name}")
             self.assertIn('function updateCalculatorButtonStates(', html, f"Missing updateCalculatorButtonStates in {name}")
+            self.assertIn('function popOutDesmosCalculator(', html, f"Missing popOutDesmosCalculator in {name}")
+            self.assertIn('function dockDesmosCalculator(', html, f"Missing dockDesmosCalculator in {name}")
+            self.assertIn('function syncCurrentQuestionLayout(', html, f"Missing syncCurrentQuestionLayout in {name}")
+
+    def test_docked_calculator_panes(self):
+        for name, html in [("root", self.root_html), ("public", self.pub_html)]:
+            self.assertIn('id="qb-calculator-pane"', html, f"Missing qb-calculator-pane in {name}")
+            self.assertIn('id="qb-desmos-iframe"', html, f"Missing qb-desmos-iframe in {name}")
+            self.assertIn('id="runner-calculator-col"', html, f"Missing runner-calculator-col in {name}")
+            self.assertIn('id="runner-desmos-iframe"', html, f"Missing runner-desmos-iframe in {name}")
+            self.assertIn('onclick="popOutDesmosCalculator()"', html, f"Missing popOutDesmosCalculator handler in {name}")
+            self.assertIn('onclick="dockDesmosCalculator()"', html, f"Missing dockDesmosCalculator handler in {name}")
 
     def test_math_section_rules_and_draggable_init(self):
         for name, html in [("root", self.root_html), ("public", self.pub_html)]:

@@ -1431,6 +1431,33 @@
 
         <!-- SPLIT-SCREEN TESTING CANVAS -->
         <main id="qb-split-container" class="grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]">
+          <!-- Left Pane: Desmos Calculator (Docked Mode) -->
+          <article id="qb-calculator-pane" class="hidden bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-sm flex-col min-h-[540px] max-h-[660px]">
+            <div class="px-4 py-2.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between shrink-0">
+              <div class="flex items-center gap-2 text-white">
+                <span class="text-base">🧮</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold tracking-wide">Calculator</span>
+                  <span class="text-[10px] bg-slate-700 text-sky-400 font-semibold px-2 py-0.5 rounded">Graphing</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="resetDesmosCalculator()" title="Clear / Reset Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer">
+                  <span>🔄</span><span class="text-[10px] hidden sm:inline">Clear</span>
+                </button>
+                <button type="button" onclick="popOutDesmosCalculator()" title="Pop out into floating window" class="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer">
+                  <span>Pop Out</span><span>↗</span>
+                </button>
+                <button type="button" onclick="toggleDesmosCalculator(false)" title="Close Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition-colors w-7 h-7 flex items-center justify-center cursor-pointer">
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div class="relative flex-1 w-full bg-white overflow-hidden min-h-[480px]">
+              <iframe id="qb-desmos-iframe" src="https://www.desmos.com/testing/collegeboard/graphing" title="College Board Digital SAT Desmos Calculator" class="w-full h-full border-0 block" allow="clipboard-read; clipboard-write"></iframe>
+            </div>
+          </article>
+
           <!-- Left Pane: Passage (if present) -->
           <article id="qb-passage-pane" class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto max-h-[620px] shadow-sm text-slate-800 text-sm leading-relaxed space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
@@ -2077,8 +2104,35 @@
         </div>
 
         <!-- Split Screen Layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div id="runner-split-container" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
+          <!-- Left Column: Desmos Calculator (Docked Mode) -->
+          <div id="runner-calculator-col" class="hidden lg:col-span-6 rounded-3xl bg-slate-900 border border-slate-700/80 shadow-sm flex flex-col overflow-hidden min-h-[560px]">
+            <div class="px-4 py-2.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between shrink-0">
+              <div class="flex items-center gap-2 text-white">
+                <span class="text-base">🧮</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold tracking-wide">Calculator</span>
+                  <span class="text-[10px] bg-slate-700 text-sky-400 font-semibold px-2 py-0.5 rounded">Graphing</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="resetDesmosCalculator()" title="Clear / Reset Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer">
+                  <span>🔄</span><span class="text-[10px] hidden sm:inline">Clear</span>
+                </button>
+                <button type="button" onclick="popOutDesmosCalculator()" title="Pop out into floating window" class="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer">
+                  <span>Pop Out</span><span>↗</span>
+                </button>
+                <button type="button" onclick="toggleDesmosCalculator(false)" title="Close Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition-colors w-7 h-7 flex items-center justify-center cursor-pointer">
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div class="relative flex-1 w-full bg-white overflow-hidden min-h-[500px]">
+              <iframe id="runner-desmos-iframe" src="https://www.desmos.com/testing/collegeboard/graphing" title="College Board Digital SAT Desmos Calculator" class="w-full h-full border-0 block" allow="clipboard-read; clipboard-write"></iframe>
+            </div>
+          </div>
+
           <!-- Left Column: Stimulus / Passage Context -->
           <div id="runner-passage-col" class="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4 min-h-[320px] text-slate-800">
             <div class="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -3468,10 +3522,13 @@
         </div>
       </div>
       <div class="flex items-center gap-1.5">
-        <button type="button" onclick="resetDesmosCalculator()" title="Clear / Reset Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1">
+        <button type="button" onclick="dockDesmosCalculator()" title="Dock calculator into split screen" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer">
+          <span>Dock</span><span>↙</span>
+        </button>
+        <button type="button" onclick="resetDesmosCalculator()" title="Clear / Reset Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer">
           <span>🔄</span><span class="text-[10px] hidden sm:inline">Clear</span>
         </button>
-        <button type="button" onclick="toggleDesmosCalculator(false)" title="Minimize / Hide Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition-colors w-7 h-7 flex items-center justify-center">
+        <button type="button" onclick="toggleDesmosCalculator(false)" title="Minimize / Hide Calculator" class="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition-colors w-7 h-7 flex items-center justify-center cursor-pointer">
           ✕
         </button>
       </div>
@@ -9266,12 +9323,18 @@
           : 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30';
       }
 
-      // 2. Stimulus / Passage Column
+      // 2. Stimulus / Passage Column & Docked Calculator
       const passageCol = document.getElementById('runner-passage-col');
       const passageText = document.getElementById('runner-passage-text');
       const passageSource = document.getElementById('runner-passage-source');
+      const runnerCalcCol = document.getElementById('runner-calculator-col');
+      const runnerQuestionCol = document.getElementById('runner-question-col');
 
-      if (q.passage && q.passage.trim()) {
+      const hasPassage = Boolean(q.passage && q.passage.trim());
+      const isRunnerMath = Boolean(q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
+      const isDockedCalcRunner = Boolean(typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen && !desmosCalcState.isPoppedOut && isRunnerMath);
+
+      if (hasPassage && !isDockedCalcRunner) {
         if (passageCol) passageCol.classList.remove('hidden');
         const formattedPassage = (window.qbEngine && typeof window.qbEngine.formatQuestionText === 'function')
           ? window.qbEngine.formatQuestionText(q.passage)
@@ -9280,6 +9343,24 @@
         if (passageSource) passageSource.innerText = q.source || 'Digital SAT Context';
       } else {
         if (passageCol) passageCol.classList.add('hidden');
+      }
+
+      if (runnerCalcCol) {
+        if (isDockedCalcRunner) {
+          runnerCalcCol.classList.remove('hidden');
+          runnerCalcCol.classList.add('flex');
+        } else {
+          runnerCalcCol.classList.add('hidden');
+          runnerCalcCol.classList.remove('flex');
+        }
+      }
+
+      if (runnerQuestionCol) {
+        if (hasPassage || isDockedCalcRunner) {
+          runnerQuestionCol.className = "lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 text-slate-800";
+        } else {
+          runnerQuestionCol.className = "lg:col-span-8 lg:col-start-3 p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 text-slate-800";
+        }
       }
 
       // 3. Prompt
@@ -9640,20 +9721,42 @@
     // =========================================================
     let desmosCalcState = {
       isOpen: false,
+      isPoppedOut: false,
       isDragging: false,
       hasPositioned: false
     };
 
     function toggleDesmosCalculator(forceOpen) {
-      const panel = document.getElementById('desmos-calculator-panel');
-      if (!panel) return;
-
-      const shouldOpen = forceOpen !== undefined ? forceOpen : panel.classList.contains('hidden');
+      const shouldOpen = forceOpen !== undefined ? forceOpen : !desmosCalcState.isOpen;
 
       if (shouldOpen) {
-        panel.classList.remove('hidden');
         desmosCalcState.isOpen = true;
         updateCalculatorButtonStates(true);
+        if (desmosCalcState.isPoppedOut) {
+          const panel = document.getElementById('desmos-calculator-panel');
+          if (panel) panel.classList.remove('hidden');
+        } else {
+          const panel = document.getElementById('desmos-calculator-panel');
+          if (panel) panel.classList.add('hidden');
+          syncCurrentQuestionLayout();
+        }
+      } else {
+        desmosCalcState.isOpen = false;
+        updateCalculatorButtonStates(false);
+        const panel = document.getElementById('desmos-calculator-panel');
+        if (panel) panel.classList.add('hidden');
+        syncCurrentQuestionLayout();
+      }
+    }
+
+    function popOutDesmosCalculator() {
+      desmosCalcState.isOpen = true;
+      desmosCalcState.isPoppedOut = true;
+      updateCalculatorButtonStates(true);
+      syncCurrentQuestionLayout();
+      const panel = document.getElementById('desmos-calculator-panel');
+      if (panel) {
+        panel.classList.remove('hidden');
         if (!desmosCalcState.hasPositioned) {
           const w = window.innerWidth;
           const h = window.innerHeight;
@@ -9669,10 +9772,70 @@
           }
           desmosCalcState.hasPositioned = true;
         }
-      } else {
-        panel.classList.add('hidden');
-        desmosCalcState.isOpen = false;
-        updateCalculatorButtonStates(false);
+      }
+    }
+
+    function dockDesmosCalculator() {
+      desmosCalcState.isOpen = true;
+      desmosCalcState.isPoppedOut = false;
+      updateCalculatorButtonStates(true);
+      const panel = document.getElementById('desmos-calculator-panel');
+      if (panel) panel.classList.add('hidden');
+      syncCurrentQuestionLayout();
+    }
+
+    function syncCurrentQuestionLayout() {
+      const isQBank = !document.getElementById('view-qbank')?.classList.contains('hidden');
+      const isRunner = !document.getElementById('view-homework-runner')?.classList.contains('hidden');
+
+      const qbCalcPane = document.getElementById('qb-calculator-pane');
+      const qbPassagePane = document.getElementById('qb-passage-pane');
+      const qbSplitContainer = document.getElementById('qb-split-container');
+      const runnerCalcCol = document.getElementById('runner-calculator-col');
+      const runnerPassageCol = document.getElementById('runner-passage-col');
+      const runnerQuestionCol = document.getElementById('runner-question-col');
+
+      const isDocked = Boolean(desmosCalcState.isOpen && !desmosCalcState.isPoppedOut);
+
+      // QBank Layout
+      if (qbCalcPane && qbSplitContainer) {
+        if (isDocked && isQBank) {
+          qbCalcPane.classList.remove('hidden');
+          qbCalcPane.classList.add('flex');
+          if (qbPassagePane) qbPassagePane.classList.add('hidden');
+          qbSplitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[520px]";
+        } else {
+          qbCalcPane.classList.add('hidden');
+          qbCalcPane.classList.remove('flex');
+          const curQ = window.qbEngine && window.qbEngine.currentSession && window.qbEngine.currentSession.questions && window.qbEngine.currentSession.questions[window.qbEngine.currentIndex];
+          const hasPassage = Boolean(curQ && curQ.passage && curQ.passage.trim().length > 0);
+          if (hasPassage && qbPassagePane) {
+            qbPassagePane.classList.remove('hidden');
+            qbSplitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]";
+          } else {
+            if (qbPassagePane) qbPassagePane.classList.add('hidden');
+            qbSplitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
+          }
+        }
+      }
+
+      // Runner Layout
+      if (runnerCalcCol && runnerQuestionCol) {
+        if (isDocked && isRunner) {
+          runnerCalcCol.classList.remove('hidden');
+          runnerCalcCol.classList.add('flex');
+          if (runnerPassageCol) runnerPassageCol.classList.add('hidden');
+          runnerQuestionCol.className = "lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 text-slate-800";
+        } else {
+          runnerCalcCol.classList.add('hidden');
+          runnerCalcCol.classList.remove('flex');
+          const runnerHasPassage = runnerPassageCol && !runnerPassageCol.classList.contains('hidden') && runnerPassageCol.innerText.trim().length > 0;
+          if (runnerHasPassage) {
+            runnerQuestionCol.className = "lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 text-slate-800";
+          } else {
+            runnerQuestionCol.className = "lg:col-span-8 lg:col-start-3 p-6 sm:p-7 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 text-slate-800";
+          }
+        }
       }
     }
 
@@ -9690,10 +9853,12 @@
     }
 
     function resetDesmosCalculator() {
-      const iframe = document.getElementById('desmos-iframe');
-      if (iframe) {
-        iframe.src = "https://www.desmos.com/testing/collegeboard/graphing";
-      }
+      ['desmos-iframe', 'qb-desmos-iframe', 'runner-desmos-iframe'].forEach(id => {
+        const iframe = document.getElementById(id);
+        if (iframe) {
+          iframe.src = "https://www.desmos.com/testing/collegeboard/graphing";
+        }
+      });
       showToast("🔄 Calculator Reset", "Desmos session reloaded to fresh state.", "info");
     }
 
@@ -14559,26 +14724,41 @@
       }
     }
 
-    // Passage pane handling
+    // Passage pane and Docked Calculator handling
     const passagePane = document.getElementById('qb-passage-pane');
     const passageContent = document.getElementById('qb-passage-content');
     const passageSkill = document.getElementById('qb-passage-skill');
     const splitContainer = document.getElementById('qb-split-container');
+    const calcPane = document.getElementById('qb-calculator-pane');
 
     const hasPassage = Boolean(q.passage && q.passage.trim().length > 0);
+    const isDockedCalc = Boolean(typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen && !desmosCalcState.isPoppedOut && isMathQuestion);
+
     if (passagePane) {
-      if (hasPassage) {
+      if (hasPassage && !isDockedCalc) {
         passagePane.classList.remove('hidden');
         if (passageSkill) passageSkill.innerText = q.skill || q.domain || 'Passage';
         if (passageContent) passageContent.innerHTML = this.formatQuestionText(q.passage);
-        if (splitContainer) {
-          splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]";
-        }
       } else {
         passagePane.classList.add('hidden');
-        if (splitContainer) {
-          splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
-        }
+      }
+    }
+
+    if (calcPane) {
+      if (isDockedCalc) {
+        calcPane.classList.remove('hidden');
+        calcPane.classList.add('flex');
+      } else {
+        calcPane.classList.add('hidden');
+        calcPane.classList.remove('flex');
+      }
+    }
+
+    if (splitContainer) {
+      if (hasPassage || isDockedCalc) {
+        splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[520px]";
+      } else {
+        splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
       }
     }
 
