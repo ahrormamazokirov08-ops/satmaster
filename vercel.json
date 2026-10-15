@@ -1,13 +1,14 @@
 {
-  "version": 2,
   "cleanUrls": true,
-  "routes": [
-    { "src": "/data/(.*)", "dest": "/data/$1", "headers": { "Cache-Control": "no-cache, no-store, must-revalidate" } },
-    { "src": "/public/(.*)", "dest": "/public/$1", "headers": { "Cache-Control": "no-cache, no-store, must-revalidate" } },
-    { "src": "/api/homework/(.*)", "dest": "/api/homework" },
-    { "src": "/api/groups/(.*)", "dest": "/api/groups" },
-    { "src": "/api/students/(.*)", "dest": "/api/students" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/index.html", "headers": { "Cache-Control": "no-cache, no-store, must-revalidate" } }
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/api/:match*", "destination": "/api" }
   ]
 }
