@@ -241,21 +241,32 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def _get_clean_path(self):
-        # Prefer original client path if forwarded via x-matched-path or x-forwarded-uri
-        raw = (
+        # Look for the true original request path:
+        # On Vercel, x-vercel-original-url or x-forwarded-uri has the client path
+        # x-matched-path often holds the rewrite destination (/api), so prefer the original URI if present
+        candidates = [
+            self.headers.get("x-vercel-original-url"),
+            self.headers.get("x-forwarded-uri"),
+            self.headers.get("x-invoke-path"),
+            self.path,
             self.headers.get("x-matched-path")
-            or self.headers.get("x-invoke-path")
-            or self.headers.get("x-vercel-original-url")
-            or self.headers.get("x-forwarded-uri")
-            or self.path
-        )
+        ]
+        raw = "/"
+        for c in candidates:
+            if c:
+                p = urllib.parse.urlparse(c).path.rstrip("/")
+                if p and p != "/api" and not p.endswith("/index.py"):
+                    raw = c
+                    break
+        if raw == "/" and self.path:
+            raw = self.path
         parsed = urllib.parse.urlparse(raw)
         clean = parsed.path.rstrip("/")
-        if not clean or clean.endswith("/index.py"):
-            parsed_orig = urllib.parse.urlparse(self.path)
-            clean_orig = parsed_orig.path.rstrip("/")
-            if clean_orig and not clean_orig.endswith("/index.py"):
-                clean = clean_orig
+        if not clean or clean == "/api":
+            qs = urllib.parse.parse_qs(parsed.query)
+            if "__path" in qs:
+                sub = qs["__path"][0]
+                clean = f"/api/{sub.lstrip('/')}"
         return clean or "/", parsed
 
     def do_OPTIONS(self):
