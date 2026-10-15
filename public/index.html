@@ -8190,11 +8190,34 @@
 
     function renderQbHomeworkActiveBanner(hw) {
       const banner = document.getElementById('qb-homework-active-banner');
+      const backBtn = document.getElementById('btn-qb-back-hub');
       if (!banner) return;
       if (!hw) {
         banner.classList.add('hidden');
         banner.innerHTML = '';
+        if (backBtn) {
+          backBtn.innerHTML = `
+            <span class="group-hover:-translate-x-0.5 transition-transform text-slate-500 font-bold">‹</span>
+            <span>Back to Question Bank</span>
+          `;
+          backBtn.onclick = function() {
+            if (window.qbEngine) window.qbEngine.backToHub();
+          };
+        }
         return;
+      }
+
+      if (backBtn) {
+        backBtn.innerHTML = `
+          <span class="group-hover:-translate-x-0.5 transition-transform text-slate-500 font-bold">‹</span>
+          <span>Return to Homework</span>
+        `;
+        backBtn.onclick = function() {
+          renderQbHomeworkActiveBanner(null);
+          window.activeHomeworkAssignment = null;
+          if (window.qbEngine) window.qbEngine.activeHomeworkId = null;
+          switchTab('student');
+        };
       }
 
       const title = hw.title || 'Digital SAT Practice Drill';
@@ -8291,14 +8314,26 @@
       if (targetHw.type === 'qbank') {
         window.activeHomeworkAssignment = targetHw;
         const hwTitle = targetHw.title || 'Digital SAT Practice Drill';
-        showLoading('Loading Question Bank Drill...', `Setting up ${hwTitle} with teacher settings for ${studentName}...`, 600, function() {
+        showLoading('Loading Question Bank Drill...', `Setting up ${hwTitle} with teacher settings for ${studentName}...`, 600, async function() {
+          const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
+
           switchTab('qbank');
+
           if (window.qbEngine) {
             window.qbEngine.activeHomeworkId = targetHw.id;
-            const subj = targetHw.config?.subject === 'all' ? 'combined' : (targetHw.config?.subject || 'rw');
+
+            // Make sure qbEngine datasets are loaded first before setting filters
+            if (!window.qbEngine.isInitialized) {
+              await window.qbEngine.init(subj);
+            } else {
+              window.qbEngine.openSetup(subj);
+              if (!window.qbEngine.questionsData.rw || !window.qbEngine.questionsData.math) {
+                await window.qbEngine.loadQuestions();
+              }
+              await window.qbEngine.loadSolvedQuestions();
+            }
 
             // Switch directly into the subject detail setup view
-            window.qbEngine.openSetup(subj);
             window.qbEngine.selectSubjectView(subj);
 
             // STRICT GUARANTEE: Always select from unsolved questions pool only!
@@ -8943,9 +8978,11 @@
       }
 
       if (tabName === 'qbank') {
-        openBluebookSimulator();
-        if (window.qbEngine) {
-          window.qbEngine.init();
+        if (!window.activeHomeworkAssignment) {
+          openBluebookSimulator();
+          if (window.qbEngine) {
+            window.qbEngine.init();
+          }
         }
       }
     }
@@ -11810,13 +11847,18 @@
     }
 
     function openBluebookSimulator(subject) {
+      const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
+        ? (window.activeHomeworkAssignment.config.subject === 'all' ? 'combined' : window.activeHomeworkAssignment.config.subject) 
+        : null;
+      const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : activeHwSubj;
+
       if (window.qbEngine && typeof window.qbEngine.openSetup === 'function') {
-        window.qbEngine.openSetup(subject);
+        window.qbEngine.openSetup(targetSubj);
         return;
       }
       const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
       const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-      if (isStudent && !isPub) {
+      if (isStudent && !isPub && !window.activeHomeworkAssignment) {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
         switchTab('vocab');
         return;
@@ -11840,11 +11882,11 @@
 
       if (window.qbEngine) {
         if (!window.qbEngine.isInitialized) {
-          window.qbEngine.init(subject);
+          window.qbEngine.init(targetSubj);
         } else {
-          if (subject && ['rw', 'math', 'combined'].includes(subject)) {
-            window.qbEngine.selectSubjectView(subject);
-          } else {
+          if (targetSubj && ['rw', 'math', 'combined'].includes(targetSubj)) {
+            window.qbEngine.selectSubjectView(targetSubj);
+          } else if (!window.activeHomeworkAssignment) {
             window.qbEngine.backToHub();
           }
         }
@@ -12908,7 +12950,10 @@
     if (testContainer) testContainer.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
-    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : null;
+    const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
+      ? (window.activeHomeworkAssignment.config.subject === 'all' ? 'combined' : window.activeHomeworkAssignment.config.subject) 
+      : null;
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : activeHwSubj;
 
     if (!this.isInitialized) {
       this.init(targetSubj);
@@ -12916,7 +12961,7 @@
       this.loadSolvedQuestions();
       if (targetSubj) {
         this.selectSubjectView(targetSubj);
-      } else {
+      } else if (!window.activeHomeworkAssignment) {
         this.backToHub();
       }
     }
@@ -12953,8 +12998,13 @@
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
 
-    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
-      this.activeSubject = defaultSubj;
+    const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
+      ? (window.activeHomeworkAssignment.config.subject === 'all' ? 'combined' : window.activeHomeworkAssignment.config.subject) 
+      : null;
+    const resolvedSubj = (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) ? defaultSubj : activeHwSubj;
+
+    if (resolvedSubj && ['rw', 'math', 'combined'].includes(resolvedSubj)) {
+      this.activeSubject = resolvedSubj;
     }
 
     // Invalidate stale active session from older versions
@@ -12975,9 +13025,9 @@
       await this.loadSolvedQuestions();
     }
 
-    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
-      this.selectSubjectView(defaultSubj);
-    } else {
+    if (resolvedSubj && ['rw', 'math', 'combined'].includes(resolvedSubj)) {
+      this.selectSubjectView(resolvedSubj);
+    } else if (!window.activeHomeworkAssignment) {
       this.backToHub();
     }
   },
