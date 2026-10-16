@@ -2403,6 +2403,9 @@ window.qbEngine = {
     // Protect currency amounts like $$165$ from being misinterpreted as display math
     formatted = formatted.replace(/\$\$(\d+(?:,\d+)*(?:\.\d+)?)\$/g, '<span class="no-math">$$$1</span>');
 
+    // Unwrap figure/graph/answer descriptions accidentally wrapped in math delimiters ($...$)
+    formatted = formatted.replace(/\$((?:The figure|Figure \d+|The graph presents|The cylindrical shape presents|The answer choice presents)\b[^$]+)\$/gi, '$1');
+
     // Normalize coordinate points without commas (e.g. (0 y) -> (0, y), (8 2) -> (8, 2), \left(x y\right) -> \left(x, y\right))
     // Protect SVGs from coordinate replacements
     formatted = formatted.split(/(<svg[\s\S]*?<\/svg>)/g).map(part => {
