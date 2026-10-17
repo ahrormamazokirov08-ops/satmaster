@@ -1,6 +1,6 @@
 # SATMaster Question Bank Invariants & Quality Standards
 
-When inspecting, generating, modifying, or testing Digital SAT questions (Math and Reading & Writing) in this workspace, strictly uphold the following 10 invariants:
+When inspecting, generating, modifying, or testing Digital SAT questions (Math and Reading & Writing) in this workspace, strictly uphold the following 11 invariants:
 
 ## 1. Visual Elements Invariant (SVGs & Tables Over Text Descriptions)
 - Never allow screen-reader accessibility descriptions ("The figure presents a bar graph...", "The figure presents a scatterplot...", "The figure presents right triangle...", "The figure presents 2 parallel lines...") to stand in for visual figures.
@@ -66,3 +66,9 @@ When inspecting, generating, modifying, or testing Digital SAT questions (Math a
 - Solve every question from first principles.
 - Verify that the prompt contains sufficient conditions for a unique solution.
 - Verify that the intermediate steps in `rationale` are algebraically sound and conclude with the exact correct choice.
+
+## 11. KaTeX Math Delimiter Invariant
+- All mathematical expressions, fractions (`\frac`), radicals (`\sqrt`), variables, and LaTeX commands in prompts, options, and rationales MUST be enclosed in math delimiters (`$...$` or `$$...$$`).
+- Never leave bare LaTeX commands un-delimited, as KaTeX will ignore them and render raw text (e.g., `\frac{512p}{3}`).
+- The frontend engine must also provide an automatic fallback in `formatQuestionText` that detects and wraps bare LaTeX expressions in `$...$` before KaTeX rendering.
+

@@ -781,7 +781,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.7.6',
+  dataVersion: '2.7.7',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -2458,6 +2458,23 @@ window.qbEngine = {
         const right = r.includes('\\right') ? '\\right)' : ')';
         return `${left}${p1.trim()}, ${p2.trim()}${right}`;
       });
+      return part;
+    }).join('');
+
+    // Auto-wrap bare LaTeX math expressions in $...$ if missing delimiters (Invariant 11)
+    formatted = formatted.split(/(<svg[\s\S]*?<\/svg>|<div[\s\S]*?<\/div>)/g).map(part => {
+      if (part.startsWith('<svg') || part.startsWith('<div')) return part;
+      const trimmed = part.trim();
+      if (!trimmed.includes('$') && !trimmed.includes('\\(') && !trimmed.includes('\\[') && /\\(?:frac|sqrt|bar|overline|pm|times|ge|le|approx|cdot|circ|sin|cos|tan|angle)\b/.test(trimmed)) {
+        if (/^(?:The |No additional|For |In |What |Which |If |A |An |According )/i.test(trimmed)) {
+          return trimmed
+            .replace(/\\bar\{([^{}]+)\}/g, '$\\overline{$1}$')
+            .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '$\\frac{$1}{$2}$')
+            .replace(/\\sqrt\{([^{}]+)\}/g, '$\\sqrt{$1}$');
+        } else {
+          return `$${trimmed}$`;
+        }
+      }
       return part;
     }).join('');
 

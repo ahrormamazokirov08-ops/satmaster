@@ -263,7 +263,41 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.7.6'", code, f"{p} missing dataVersion 2.7.6")
+            self.assertIn("dataVersion: '2.7.7'", code, f"{p} missing dataVersion 2.7.7")
+
+    def test_zero_bare_latex_in_options(self):
+        """Invariant 11: All LaTeX expressions in options must be wrapped in KaTeX math delimiters."""
+        with open(DATA_MATH, "r", encoding="utf-8") as f:
+            questions = json.load(f)
+
+        # 1. Verify user-reported bug question cb_math_2240
+        q2240 = next(q for q in questions if q["id"] == "cb_math_2240")
+        self.assertEqual(q2240["options"]["A"], r"$\frac{512p}{3}$")
+        self.assertEqual(q2240["options"]["B"], r"$\frac{224p}{3} + 96$")
+        self.assertEqual(q2240["options"]["C"], r"$56p + 192$")
+        self.assertEqual(q2240["options"]["D"], r"$560p + 96$")
+
+        # 2. Verify all math questions have zero bare LaTeX in options
+        bare_latex_pattern = re.compile(r'\\(?:frac|sqrt|bar|overline|pm|times|ge|le|approx|cdot|circ|sin|cos|tan|angle)\b')
+        for q in questions:
+            opts = q.get("options")
+            if not opts or not isinstance(opts, dict):
+                continue
+            for k, val in opts.items():
+                if not isinstance(val, str):
+                    continue
+                # If it contains bare LaTeX without math delimiters
+                if not ('$' in val or r'\(' in val or r'\[' in val):
+                    self.assertIsNone(
+                        bare_latex_pattern.search(val),
+                        f"{q['id']} option {k} contains bare LaTeX without math delimiters: {val}"
+                    )
+
+        # 3. Engine verification: formatQuestionText has bare LaTeX auto-wrap failsafe
+        for p in [os.path.join(ROOT_DIR, "index.html"), os.path.join(ROOT_DIR, "public", "index.html"), os.path.join(ROOT_DIR, "public", "qb_engine.js"), os.path.join(ROOT_DIR, "public", "public", "qb_engine.js")]:
+            with open(p, "r", encoding="utf-8") as f:
+                code = f.read()
+            self.assertIn("Auto-wrap bare LaTeX math expressions in $...$", code, f"{p} missing bare LaTeX auto-wrap safeguard")
 
 
 if __name__ == "__main__":
