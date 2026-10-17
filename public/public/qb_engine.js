@@ -2400,6 +2400,28 @@ window.qbEngine = {
       return notesHtml;
     }
 
+    // Convert any markdown tables into styled responsive HTML tables
+    formatted = formatted.replace(/(?:^|\n)(\|[^\n]+\|\n\|[-:\s|]+\|\n(?:\|[^\n]+\|\n?)+)/g, (match, tableText) => {
+      const lines = tableText.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) return match;
+      const headerCols = lines[0].split('|').map(c => c.trim()).filter(Boolean);
+      const bodyRows = lines.slice(2).map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+      let html = '\n<div class="qb-table-wrapper overflow-x-auto my-4 w-full"><table class="qb-data-table min-w-full border-collapse border border-slate-300 text-sm"><thead><tr>';
+      headerCols.forEach(col => {
+        html += `<th class="border border-slate-300 bg-slate-50 px-3 py-2 text-center font-semibold text-slate-800" scope="col">${col}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      bodyRows.forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => {
+          html += `<td class="border border-slate-300 px-3 py-2 text-center text-slate-700">${cell}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>\n';
+      return html;
+    });
+
     // Protect currency amounts like $$165$ from being misinterpreted as display math
     formatted = formatted.replace(/\$\$(\d+(?:,\d+)*(?:\.\d+)?)\$/g, '<span class="no-math">$$$1</span>');
 
