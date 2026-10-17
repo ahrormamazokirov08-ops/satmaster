@@ -2072,6 +2072,29 @@
           </div>
         </div>
 
+        <!-- Self-Study Official SAT Question Bank Card -->
+        <div id="student-qbank-launcher-card" class="p-6 sm:p-7 rounded-3xl border border-sky-200 bg-gradient-to-br from-white via-sky-50/50 to-blue-50/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 text-slate-800">
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2">
+              <span class="bg-sky-100 text-sky-800 border border-sky-200 px-3 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                <span>📖</span><span>Official Question Bank</span>
+              </span>
+              <span class="text-xs text-slate-400">•</span>
+              <span class="text-xs font-bold text-sky-700 font-mono">3,770 Practice Questions</span>
+            </div>
+            <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Digital SAT Self-Study &amp; Manual Practice</h2>
+            <p class="text-xs text-slate-600 max-w-2xl leading-relaxed">
+              Build your own custom practice drill to improve individually. Choose Reading &amp; Writing (1,845) or Math (2,326), filter by domain and difficulty, and practice with instant check answer, full step-by-step rationales, and the official Desmos calculator.
+            </p>
+          </div>
+          <div class="flex items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            <button type="button" onclick="switchTab('qbank')" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 font-extrabold text-xs text-white shadow-md shadow-sky-600/25 active:scale-95 transition-all flex items-center justify-center gap-2">
+              <span>Open Question Bank Hub</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Full-Width Responsive Homework Cards Grid matching Teacher view -->
         <div id="student-active-hw-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <!-- Dynamically populated homework cards -->
@@ -4478,15 +4501,15 @@
         return;
       }
 
-      // 4. Fresh direct visitor (Teacher / Default Admin workspace)
+      // 4. Fresh direct visitor (Student default with full Question Bank & Vocab access)
       await ensureElapsed();
       clearTimeout(safetyTimeout);
       currentSession = {
         isLoggedIn: true,
-        role: 'teacher',
-        uid: 'TEACHER_DEFAULT',
-        name: 'SAT Instructor',
-        className: 'Staff',
+        role: 'student',
+        uid: 'STU_DEFAULT',
+        name: 'Student User',
+        className: 'SAT Prep Cohort',
         source: 'default_access'
       };
       saveSessionToStorage(currentSession);
@@ -4586,7 +4609,7 @@
       } else if (currentSession.role === 'teacher' || currentSession.role === 'admin') {
         switchTab('groups');
       } else if (currentSession.role === 'student') {
-        switchTab('vocab');
+        switchTab('student');
       } else {
         switchTab('gateway');
       }
@@ -4876,9 +4899,41 @@
         <p class="text-[11px] text-slate-500 leading-relaxed">
           💡 This session is authenticated for your SAT account. Daily test limits and gradebook submissions are keyed directly to your unique ID.
         </p>
+        <div class="pt-2 border-t border-slate-200">
+          ${currentSession.role === 'student' ? `
+            <button type="button" onclick="switchUserRole('teacher')" class="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all border border-slate-300 flex items-center justify-center gap-1.5 shadow-xs">
+              <span>👨‍🏫 Switch to Teacher / Admin Portal</span>
+            </button>
+          ` : `
+            <button type="button" onclick="switchUserRole('student')" class="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all border border-emerald-300 flex items-center justify-center gap-1.5 shadow-xs">
+              <span>🎓 Switch to Student Portal</span>
+            </button>
+          `}
+        </div>
       `;
 
       modal.classList.remove('hidden');
+    }
+
+    function switchUserRole(newRole) {
+      if (!currentSession) currentSession = {};
+      currentSession.role = newRole;
+      if (newRole === 'teacher') {
+        currentSession.name = (currentSession.name && currentSession.name.includes('Student')) ? 'SAT Instructor' : (currentSession.name || 'SAT Instructor');
+        currentSession.className = 'Staff';
+      } else {
+        currentSession.name = (currentSession.name && currentSession.name.includes('Instructor')) ? 'Student User' : (currentSession.name || 'Student User');
+        currentSession.className = 'SAT Prep Cohort';
+      }
+      saveSessionToStorage(currentSession);
+      applyCurrentSession();
+      closeSessionInfoModal();
+      if (newRole === 'teacher') {
+        switchTab('groups');
+      } else {
+        switchTab('student');
+      }
+      showToast("🔄 Role Switched", `Now viewing as ${newRole === 'teacher' ? 'Teacher' : 'Student'}.`, "info");
     }
 
     function closeSessionInfoModal() {
@@ -12920,8 +12975,8 @@
 
     // DRAFT / PUBLISH MANAGEMENT
     function isQBankPublished() {
-      const val = localStorage.getItem('satmaster_qbank_published');
-      return val === 'true'; // Defaults strictly to false (DRAFT MODE)
+      const val = localStorage.getItem('satmaster_qbank_published') || 'true';
+      return val === 'true'; // Defaults strictly to true (LIVE & UNLOCKED FOR ALL STUDENTS)
     }
 
     function togglePublishQBank() {
@@ -14159,7 +14214,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.7.7',
+  dataVersion: '2.7.8',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -16168,7 +16223,7 @@ if (typeof window !== 'undefined') {
 
   <!-- Mobile Bottom Navigation Bar (Visible on mobile/tablet screens < 768px) -->
   <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200 px-2 py-2 flex items-center justify-around text-[10px] font-semibold text-slate-600 shadow-lg">
-    <button type="button" onclick="switchTab('groups')" id="mob-nav-groups" class="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all text-blue-600">
+    <button type="button" onclick="switchTab('groups')" id="mob-nav-groups" class="hidden flex flex-col items-center gap-1 p-1.5 rounded-xl hover:text-slate-900 transition-all text-blue-600">
       <span class="text-base">👥</span>
       <span>Groups</span>
     </button>
