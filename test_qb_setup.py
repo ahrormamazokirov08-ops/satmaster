@@ -159,7 +159,7 @@ class TestQBSetupScreen(unittest.TestCase):
         # 1. Total Reading & Writing
         self.assertEqual(len(self.rw_questions), 1845)
         # 2. Total Math
-        self.assertEqual(len(self.math_questions), 2084)
+        self.assertEqual(len(self.math_questions), 2086)
         
         # 3. Simulate English Easy filter
         rw_easy = [q for q in self.rw_questions if q["difficulty"] == "Easy"]
@@ -167,12 +167,12 @@ class TestQBSetupScreen(unittest.TestCase):
 
         # 4. Simulate Math Algebra filter
         math_alg = [q for q in self.math_questions if q["domain"] == "Algebra"]
-        self.assertEqual(len(math_alg), 657)
+        self.assertEqual(len(math_alg), 659)
 
-        # 5. Simulate Combined Hard filter (610 RW + 159 Math authentic hard questions)
+        # 5. Simulate Combined Hard filter (610 RW + 161 Math authentic hard questions)
         combined = self.rw_questions + self.math_questions
         combined_hard = [q for q in combined if q["difficulty"] == "Hard"]
-        self.assertEqual(len(combined_hard), 610 + 159)
+        self.assertEqual(len(combined_hard), 610 + 161)
         print(f"✅ Filter simulation passed: RW={len(self.rw_questions)}, Math={len(self.math_questions)}, Combined={len(combined)}")
 
     # 10. Two-Stage Navigation DOM Structure (Hub vs Detail Views)
@@ -250,8 +250,8 @@ class TestQBSetupScreen(unittest.TestCase):
             "Linear functions": 177,
             "Linear equations in two variables": 136,
             "Systems of two linear equations in two variables": 135,
-            "Linear equations in one variable": 119,
-            "Linear inequalities in one or two variables": 90,
+            "Linear equations in one variable": 120,
+            "Linear inequalities in one or two variables": 91,
             "Nonlinear functions": 315,
             "Nonlinear equations in one variable and systems of equations in two variables": 184,
             "Equivalent expressions": 137,
@@ -269,8 +269,8 @@ class TestQBSetupScreen(unittest.TestCase):
         }
         for sk, count in expected_math.items():
             self.assertEqual(math_skills[sk], count, f"Math Skill '{sk}' must have exactly {count} questions")
-        self.assertEqual(sum(math_skills.values()), 2084, "Math skills must sum to 2,084 questions")
-        print("✅ Official 10 RW + 19 Math skills exactly match ingested datasets (3,929 total): PASS")
+        self.assertEqual(sum(math_skills.values()), 2086, "Math skills must sum to 2,086 questions")
+        print("✅ Official 10 RW + 19 Math skills exactly match ingested datasets (3,931 total): PASS")
 
     # 13. Skill-Level Filtering Simulation
     def test_skill_level_filtering_simulation(self):

@@ -41122,5 +41122,47 @@
     "type": "mcq",
     "correct": "B",
     "calibrated_difficulty": "Hard"
+  },
+  {
+    "id": "cb_math_2085",
+    "subject": "Math",
+    "domain": "Algebra",
+    "skill": "Linear inequalities in one or two variables",
+    "difficulty": "Hard",
+    "passage": "",
+    "prompt": "A psychologist set up an experiment to study the tendency of a person to select the first item when presented with a series of items. In the experiment, $ people were presented with a set of five pictures arranged in random order. Each person was asked to choose the most appealing picture. Of the first $ participants, $ chose the first picture in the set. Among the remaining $ participants, $ people chose the first picture in the set. If more than \\%$ of all participants chose the first picture in the set, which of the following inequalities best describes the possible values of 0",
+    "options": {
+      "A": " > 0.20(300 - 36), \text{ where } p \\le 150$",
+      "B": " > 0.20(300 + 36), \text{ where } p \\le 150$",
+      "C": " - 36 > 0.20(300), \text{ where } p \\le 150$",
+      "D": " + 36 > 0.20(300), \text{ where } p \\le 150$"
+    },
+    "correct_answer": "D",
+    "is_spr": false,
+    "rationale": "Choice D is correct. The total number of people who chose the first picture is  + p$. Since more than \\%$ of the $ participants chose the first picture, the inequality is  + 36 > 0.20(300)$. Since $ represents participants out of the remaining $, we have  \\le 150$.",
+    "type": "mcq",
+    "correct": "D",
+    "calibrated_difficulty": "Hard"
+  },
+  {
+    "id": "cb_math_2086",
+    "subject": "Math",
+    "domain": "Algebra",
+    "skill": "Linear equations in one variable",
+    "difficulty": "Hard",
+    "passage": "",
+    "prompt": "Let $ and $ be two numbers such that $ is \\%$ of the sum of $ and $, and  = 3{,}102$. If $ is another number, which of the following expressions represents \\%$ of the sum  + q + r$ in terms of 0",
+    "options": {
+      "A": "/bin/zsh.20m + 886.29$",
+      "B": "/bin/zsh.20m + 620.40$",
+      "C": "/bin/zsh.20m + 3{,}102$",
+      "D": "/bin/zsh.20m + 4{,}431.43$"
+    },
+    "correct_answer": "A",
+    "is_spr": false,
+    "rationale": "Choice A is correct. We are given that $ is \\%$ of the sum of $ and $:  = 0.30(q + r) = 0.30q + 0.30r \\implies 0.70q = 0.30r \\implies q = \frac{3}{7}r$. The sum  + r$ is therefore $\frac{3}{7}r + r = \frac{10}{7}r$. Given  = 3{,}102$, the sum  + r = \frac{10}{7}(3{,}102) \u0007pprox 4{,}431.43$. We wish to find \\%$ of the sum  + q + r$: /bin/zsh.20(m + q + r) = 0.20m + 0.20(q + r) = 0.20m + 0.20(4{,}431.43) = 0.20m + 886.29$.",
+    "type": "mcq",
+    "correct": "A",
+    "calibrated_difficulty": "Hard"
   }
 ]

@@ -79,7 +79,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             data1 = json.load(f1)
             data2 = json.load(f2)
             
-        self.assertEqual(len(data1), 2084, "Expected 2,084 Math questions")
+        self.assertEqual(len(data1), 2086, "Expected 2,086 Math questions")
         self.assertEqual(len(data1), len(data2), "Mirrored files must have identical counts")
 
     def test_all_math_svgs_are_valid_xml_with_viewbox(self):
@@ -141,7 +141,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 self.assertIn(correct, ["A", "B", "C", "D"], f"{qid} invalid correct choice {correct}")
 
         self.assertEqual(spr_count, 528, f"Expected 528 SPR questions, found {spr_count}")
-        self.assertEqual(mcq_count, 1556, f"Expected 1,556 MCQ questions, found {mcq_count}")
+        self.assertEqual(mcq_count, 1558, f"Expected 1,558 MCQ questions, found {mcq_count}")
 
     def test_cb_math_334_and_359_restored(self):
         with open(DATA_MATH, "r", encoding="utf-8") as f:

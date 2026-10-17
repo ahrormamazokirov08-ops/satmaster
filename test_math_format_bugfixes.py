@@ -15,8 +15,8 @@ class TestMathFormatBugfixes(unittest.TestCase):
 
     def test_01_math_datasets_parity(self):
         """Ensure canonical and public math.json are completely identical."""
-        self.assertEqual(len(self.math_questions), 2084)
-        self.assertEqual(len(self.public_math_questions), 2084)
+        self.assertEqual(len(self.math_questions), 2086)
+        self.assertEqual(len(self.public_math_questions), 2086)
         with open('data/questions/math.json', 'rb') as f1, open('public/data/questions/math.json', 'rb') as f2:
             self.assertEqual(f1.read(), f2.read(), "data/questions/math.json and public/data/questions/math.json must be byte-for-byte identical")
         print("\n✅ Dataset parity verified: PASS")
@@ -29,7 +29,7 @@ class TestMathFormatBugfixes(unittest.TestCase):
             for suffix in ['th', 'st', 'nd', 'rd']:
                 self.assertNotIn(f'^{{\\text{{{suffix}}}}}', dump, f"Superscript ordinal found in {q['id']}")
                 self.assertNotIn(f'^{{{suffix}}}', dump, f"Superscript ordinal found in {q['id']}")
-        print("✅ No superscript ordinals across all 3,929 questions: PASS")
+        print("✅ No superscript ordinals across all 3,931 questions: PASS")
 
     def test_03_cb_math_1973_nth_term(self):
         """Verify cb_math_1973 displays nth term without exponent."""
