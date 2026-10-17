@@ -1612,7 +1612,7 @@ window.qbEngine = {
               <span class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${badgeClass}">
                 ${key}
               </span>
-              <span class="text-xs sm:text-sm font-medium leading-relaxed pt-0.5 qb-choice-text ${textStrike}">
+              <span class="text-xs sm:text-sm font-medium leading-relaxed pt-0.5 qb-choice-text whitespace-pre-line ${textStrike}">
                 ${this.formatQuestionText(val)}
               </span>
               ${statusTag}
