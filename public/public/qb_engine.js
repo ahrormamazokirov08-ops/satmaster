@@ -159,17 +159,22 @@ window.qbEngine = {
     const badgeEl = document.getElementById('qb-detail-subject-badge');
     const subtitleEl = document.getElementById('qb-practice-all-subtitle');
 
+    const mathCount = (this.questionsData.math && this.questionsData.math.length) ? this.questionsData.math.length.toLocaleString() : "2,326";
+    const rwCount = (this.questionsData.rw && this.questionsData.rw.length) ? this.questionsData.rw.length.toLocaleString() : "1,845";
+    const totalNum = (this.questionsData.math ? this.questionsData.math.length : 2326) + (this.questionsData.rw ? this.questionsData.rw.length : 1845);
+    const totalCount = totalNum.toLocaleString();
+
     if (this.activeSubject === 'rw') {
       if (titleEl) titleEl.innerText = "Reading & Writing";
-      if (badgeEl) badgeEl.innerText = "1,845 questions • 10 skills";
+      if (badgeEl) badgeEl.innerText = `${rwCount} questions • 10 skills`;
       if (subtitleEl) subtitleEl.innerText = "Start practicing all 10 skills in Reading & Writing.";
     } else if (this.activeSubject === 'math') {
       if (titleEl) titleEl.innerText = "Math";
-      if (badgeEl) badgeEl.innerText = "1,925 questions • 19 skills";
+      if (badgeEl) badgeEl.innerText = `${mathCount} questions • 19 skills`;
       if (subtitleEl) subtitleEl.innerText = "Start practicing all 19 skills in Math.";
     } else {
       if (titleEl) titleEl.innerText = "Combined / All";
-      if (badgeEl) badgeEl.innerText = "3,770 questions • 29 skills";
+      if (badgeEl) badgeEl.innerText = `${totalCount} questions • 29 skills`;
       if (subtitleEl) subtitleEl.innerText = "Start practicing all 29 skills across both subjects.";
     }
 
@@ -776,7 +781,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.5.2',
+  dataVersion: '2.6.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -787,14 +792,17 @@ window.qbEngine = {
     if (!force && this.currentDataVersion === this.dataVersion) {
       if (targetSubj === 'math' && hasMath) {
         this.updateMatchingCount();
+        this.syncSubjectDetailHeader();
         return;
       }
       if (targetSubj === 'rw' && hasRw) {
         this.updateMatchingCount();
+        this.syncSubjectDetailHeader();
         return;
       }
       if (hasMath && hasRw) {
         this.updateMatchingCount();
+        this.syncSubjectDetailHeader();
         return;
       }
     }
@@ -802,6 +810,7 @@ window.qbEngine = {
     if (this._loadingPromise) {
       await this._loadingPromise;
       this.updateMatchingCount();
+      this.syncSubjectDetailHeader();
       return;
     }
 
@@ -839,12 +848,14 @@ window.qbEngine = {
           this.isLoading = false;
           this.renderSkillList();
           this.updateMatchingCount();
+          this.syncSubjectDetailHeader();
           // Load RW in background
           if (!hasRw) {
             fetchWithFallback('data/questions/reading_writing.json').then(rw => {
               this.questionsData.rw = rw || [];
               this.renderSkillList();
               this.updateMatchingCount();
+              this.syncSubjectDetailHeader();
             }).catch(err => console.warn('[qbEngine] Background RW preload error:', err));
           }
           return;
@@ -857,12 +868,14 @@ window.qbEngine = {
           this.isLoading = false;
           this.renderSkillList();
           this.updateMatchingCount();
+          this.syncSubjectDetailHeader();
           // Load Math in background
           if (!hasMath) {
             fetchWithFallback('data/questions/math.json').then(m => {
               this.questionsData.math = m || [];
               this.renderSkillList();
               this.updateMatchingCount();
+              this.syncSubjectDetailHeader();
             }).catch(err => console.warn('[qbEngine] Background Math preload error:', err));
           }
           return;
@@ -880,6 +893,7 @@ window.qbEngine = {
         this.isLoading = false;
         this.renderSkillList();
         this.updateMatchingCount();
+        this.syncSubjectDetailHeader();
       } catch (err) {
         console.error("[qbEngine] Error loading questions:", err);
         this.isLoading = false;

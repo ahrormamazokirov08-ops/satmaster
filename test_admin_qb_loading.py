@@ -49,9 +49,9 @@ class TestAdminQBLoading(unittest.TestCase):
     def test_official_dataset_integrity(self):
         print("\n--- Test 1: Official Dataset Verification ---")
         self.assertEqual(len(self.rw_questions), 1845, "Reading & Writing must have exactly 1,845 questions")
-        self.assertEqual(len(self.math_questions), 2086, "Math must have exactly 2,086 questions")
+        self.assertEqual(len(self.math_questions), 2326, "Math must have exactly 2,326 questions")
         total = len(self.rw_questions) + len(self.math_questions)
-        self.assertEqual(total, 3931, "Total questions must be exactly 3,931")
+        self.assertEqual(total, 4171, "Total questions must be exactly 4,171")
         print(f"✅ Official Datasets Verified: {len(self.rw_questions)} RW + {len(self.math_questions)} Math = {total} Total")
 
     # 2. Setup View (#qb-setup-view) Structure & Elements

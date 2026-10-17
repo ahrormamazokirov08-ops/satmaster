@@ -159,7 +159,7 @@ class TestQBSetupScreen(unittest.TestCase):
         # 1. Total Reading & Writing
         self.assertEqual(len(self.rw_questions), 1845)
         # 2. Total Math
-        self.assertEqual(len(self.math_questions), 2086)
+        self.assertEqual(len(self.math_questions), 2326)
         
         # 3. Simulate English Easy filter
         rw_easy = [q for q in self.rw_questions if q["difficulty"] == "Easy"]
@@ -167,12 +167,12 @@ class TestQBSetupScreen(unittest.TestCase):
 
         # 4. Simulate Math Algebra filter
         math_alg = [q for q in self.math_questions if q["domain"] == "Algebra"]
-        self.assertEqual(len(math_alg), 659)
+        self.assertEqual(len(math_alg), 697)
 
-        # 5. Simulate Combined Hard filter (610 RW + 161 Math authentic hard questions)
+        # 5. Simulate Combined Hard filter (610 RW + 401 Math authentic hard questions)
         combined = self.rw_questions + self.math_questions
         combined_hard = [q for q in combined if q["difficulty"] == "Hard"]
-        self.assertEqual(len(combined_hard), 610 + 161)
+        self.assertEqual(len(combined_hard), 610 + 401)
         print(f"✅ Filter simulation passed: RW={len(self.rw_questions)}, Math={len(self.math_questions)}, Combined={len(combined)}")
 
     # 10. Two-Stage Navigation DOM Structure (Hub vs Detail Views)
@@ -247,30 +247,30 @@ class TestQBSetupScreen(unittest.TestCase):
         math_skills = Counter(norm_s(q.get("skill")) for q in self.math_questions)
         self.assertEqual(len(math_skills), 19, "Math dataset must contain exactly 19 skills")
         expected_math = {
-            "Linear functions": 177,
-            "Linear equations in two variables": 136,
-            "Systems of two linear equations in two variables": 135,
-            "Linear equations in one variable": 120,
-            "Linear inequalities in one or two variables": 91,
-            "Nonlinear functions": 315,
-            "Nonlinear equations in one variable and systems of equations in two variables": 184,
-            "Equivalent expressions": 137,
-            "Ratios, rates, proportional relationships, and units": 99,
-            "Percentages": 97,
-            "One-variable data: Distributions and measures of center and spread": 84,
-            "Two-variable data: Models and scatterplots": 72,
-            "Probability and conditional probability": 49,
-            "Inference from sample statistics and margin of error": 28,
-            "Evaluating statistical claims: Observational studies and experiments": 12,
-            "Area and volume": 110,
-            "Lines, angles, and triangles": 102,
-            "Right triangles and trigonometry": 71,
-            "Circles": 67
+            "Nonlinear functions": 354,
+            "Nonlinear equations in one variable and systems of equations in two variables": 201,
+            "Linear functions": 188,
+            "Equivalent expressions": 157,
+            "Linear equations in two variables": 149,
+            "Area and volume": 137,
+            "Systems of two linear equations in two variables": 136,
+            "Linear equations in one variable": 129,
+            "Lines, angles, and triangles": 127,
+            "Percentages": 120,
+            "Ratios, rates, proportional relationships, and units": 107,
+            "One-variable data: Distributions and measures of center and spread": 97,
+            "Linear inequalities in one or two variables": 95,
+            "Right triangles and trigonometry": 84,
+            "Circles": 80,
+            "Two-variable data: Models and scatterplots": 73,
+            "Probability and conditional probability": 50,
+            "Inference from sample statistics and margin of error": 30,
+            "Evaluating statistical claims: Observational studies and experiments": 12
         }
         for sk, count in expected_math.items():
             self.assertEqual(math_skills[sk], count, f"Math Skill '{sk}' must have exactly {count} questions")
-        self.assertEqual(sum(math_skills.values()), 2086, "Math skills must sum to 2,086 questions")
-        print("✅ Official 10 RW + 19 Math skills exactly match ingested datasets (3,931 total): PASS")
+        self.assertEqual(sum(math_skills.values()), 2326, "Math skills must sum to 2,326 questions")
+        print("✅ Official 10 RW + 19 Math skills exactly match ingested datasets (4,171 total): PASS")
 
     # 13. Skill-Level Filtering Simulation
     def test_skill_level_filtering_simulation(self):
@@ -292,7 +292,7 @@ class TestQBSetupScreen(unittest.TestCase):
 
         # 3. Practice Nonlinear functions only in Math
         nonlinear = [q for q in self.math_questions if norm_s(q.get("skill")) == "Nonlinear functions"]
-        self.assertEqual(len(nonlinear), 315)
+        self.assertEqual(len(nonlinear), 354)
 
         # 4. Empty skill selection produces 0 questions
         empty_sel = [q for q in self.rw_questions if norm_s(q.get("skill")) in set()]

@@ -79,7 +79,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             data1 = json.load(f1)
             data2 = json.load(f2)
             
-        self.assertEqual(len(data1), 2086, "Expected 2,086 Math questions")
+        self.assertEqual(len(data1), 2326, "Expected 2,326 Math questions")
         self.assertEqual(len(data1), len(data2), "Mirrored files must have identical counts")
 
     def test_all_math_svgs_are_valid_xml_with_viewbox(self):
@@ -112,7 +112,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Question {q_id} SVG failed XML parsing: {e}\nSVG: {raw_svg[:200]}")
 
-        self.assertEqual(svg_count, 249, f"Expected 249 SVGs across Math, found {svg_count}")
+        self.assertEqual(svg_count, 274, f"Expected 274 SVGs across Math, found {svg_count}")
 
     def test_spr_and_mcq_classification(self):
         with open(DATA_MATH, "r", encoding="utf-8") as f:
@@ -140,8 +140,8 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 correct = q.get("correct")
                 self.assertIn(correct, ["A", "B", "C", "D"], f"{qid} invalid correct choice {correct}")
 
-        self.assertEqual(spr_count, 528, f"Expected 528 SPR questions, found {spr_count}")
-        self.assertEqual(mcq_count, 1558, f"Expected 1,558 MCQ questions, found {mcq_count}")
+        self.assertEqual(spr_count, 629, f"Expected 629 SPR questions, found {spr_count}")
+        self.assertEqual(mcq_count, 1697, f"Expected 1,697 MCQ questions, found {mcq_count}")
 
     def test_cb_math_334_and_359_restored(self):
         with open(DATA_MATH, "r", encoding="utf-8") as f:
@@ -242,7 +242,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.5.2'", code, f"{p} missing dataVersion 2.5.2")
+            self.assertIn("dataVersion: '2.6.0'", code, f"{p} missing dataVersion 2.6.0")
 
 
 if __name__ == "__main__":
