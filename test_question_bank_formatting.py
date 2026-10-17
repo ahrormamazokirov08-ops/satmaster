@@ -23,8 +23,8 @@ class TestQuestionBankFormatting(unittest.TestCase):
 
     def test_question_counts_and_parity(self):
         """Strict question count and canonical/public mirror parity."""
-        self.assertEqual(len(self.math_q), 1925)
-        self.assertEqual(len(self.pub_math_q), 1925)
+        self.assertEqual(len(self.math_q), 1975)
+        self.assertEqual(len(self.pub_math_q), 1975)
         self.assertEqual(len(self.rw_q), 1845)
         self.assertEqual(len(self.pub_rw_q), 1845)
         self.assertEqual(self.math_q, self.pub_math_q, "Math canonical and public copies must match exactly")
@@ -50,13 +50,13 @@ class TestQuestionBankFormatting(unittest.TestCase):
             self.assertIn("calibrated_difficulty", q)
             self.assertIn(q["calibrated_difficulty"], ["Easy", "Medium", "Hard"])
 
-    def test_math_zero_hard_questions(self):
-        """Asserts that all math questions have been reclassified into Easy or Medium with 0 Hard remaining."""
+    def test_math_hard_questions_count(self):
+        """Asserts that exactly 50 authentic Hard questions are present in Math question bank."""
         math_hard = [q for q in self.math_q if q["difficulty"] == "Hard"]
         math_calibrated_hard = [q for q in self.math_q if q.get("calibrated_difficulty") == "Hard"]
-        self.assertEqual(len(math_hard), 0, "No questions should remain in the Math Hard session")
-        self.assertEqual(len(math_calibrated_hard), 0, "No questions should remain in the Math Hard calibrated difficulty")
-        self.assertEqual(len(self.math_q), 1925, "Math question total must be preserved")
+        self.assertEqual(len(math_hard), 50, "50 questions should be in the Math Hard session")
+        self.assertEqual(len(math_calibrated_hard), 50, "50 questions should be in the Math Hard calibrated difficulty")
+        self.assertEqual(len(self.math_q), 1975, "Math question total must be 1975")
 
 if __name__ == "__main__":
     unittest.main()
