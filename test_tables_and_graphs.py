@@ -116,9 +116,9 @@ class TestTablesAndGraphs(unittest.TestCase):
     def test_dataset_tables_and_svg_counts(self):
         print("\n--- Test 3: Comprehensive Dataset Metrics ---")
         self.assertEqual(len(self.rw_questions), 1845, "Reading & Writing must have exactly 1,845 questions")
-        self.assertEqual(len(self.math_questions), 2030, "Math must have exactly 2,030 questions")
+        self.assertEqual(len(self.math_questions), 2084, "Math must have exactly 2,084 questions")
         self.assertEqual(len(self.pub_rw_questions), 1845, "Mirror RW must have 1,845 questions")
-        self.assertEqual(len(self.pub_math_questions), 2030, "Mirror Math must have 2,030 questions")
+        self.assertEqual(len(self.pub_math_questions), 2084, "Mirror Math must have 2,084 questions")
 
         rw_tables = sum(1 for q in self.rw_questions if "<table" in (q.get("passage", "") + q.get("prompt", "")))
         rw_svgs = sum(1 for q in self.rw_questions if "<svg" in (q.get("passage", "") + q.get("prompt", "")))
