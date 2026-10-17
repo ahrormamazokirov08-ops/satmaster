@@ -112,7 +112,13 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Question {q_id} SVG failed XML parsing: {e}\nSVG: {raw_svg[:200]}")
 
-        self.assertEqual(svg_count, 274, f"Expected 274 SVGs across Math, found {svg_count}")
+        self.assertEqual(svg_count, 275, f"Expected 275 SVGs across Math, found {svg_count}")
+
+        # Verify cb_math_1493 authentic vector SVG bar graph
+        q1493 = next(q for q in questions if q["id"] == "cb_math_1493")
+        self.assertIn("<svg", q1493["prompt"])
+        self.assertIn("Results of Five Quality Control Trials", q1493["prompt"])
+        self.assertNotIn("The figure presents a bar graph", q1493["prompt"])
 
     def test_spr_and_mcq_classification(self):
         with open(DATA_MATH, "r", encoding="utf-8") as f:
