@@ -781,7 +781,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.7.5',
+  dataVersion: '2.7.6',
   currentDataVersion: null,
   _loadingPromise: null,
 

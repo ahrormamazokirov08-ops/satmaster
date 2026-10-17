@@ -86,7 +86,8 @@ class TestMathAssetsIntegrity(unittest.TestCase):
         with open(DATA_MATH, "r", encoding="utf-8") as f:
             questions = json.load(f)
 
-        svg_count = 0
+        prompt_svg_count = 0
+        option_svg_count = 0
         for q in questions:
             passage = q.get("passage", "") or ""
             prompt = q.get("prompt", "") or ""
@@ -94,15 +95,15 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             
             svg_matches = re.findall(r"(<svg[\s\S]*?<\/svg>)", full_text, flags=re.I)
             for raw_svg in svg_matches:
-                svg_count += 1
+                prompt_svg_count += 1
                 q_id = q.get("id")
                 
                 # Check viewBox presence
                 has_viewbox = "viewBox=" in raw_svg or "viewbox=" in raw_svg
-                self.assertTrue(has_viewbox, f"Question {q_id} SVG is missing viewBox!")
+                self.assertTrue(has_viewbox, f"Question {q_id} prompt SVG is missing viewBox!")
 
                 # Check max-w-full responsive class
-                self.assertIn("max-w-full", raw_svg, f"Question {q_id} SVG missing responsive max-w-full class")
+                self.assertIn("max-w-full", raw_svg, f"Question {q_id} prompt SVG missing responsive max-w-full class")
                 self.assertNotIn(r'class=\"', raw_svg, f"Question {q_id} has literal backslash in class")
 
                 # Parse XML cleanly
@@ -110,9 +111,23 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                     root = ET.fromstring(raw_svg)
                     self.assertEqual(root.tag.split("}")[-1], "svg", f"Root tag should be svg in {q_id}")
                 except Exception as e:
-                    self.fail(f"Question {q_id} SVG failed XML parsing: {e}\nSVG: {raw_svg[:200]}")
+                    self.fail(f"Question {q_id} prompt SVG failed XML parsing: {e}\nSVG: {raw_svg[:200]}")
 
-        self.assertEqual(svg_count, 323, f"Expected 323 SVGs across Math, found {svg_count}")
+            opts = q.get("options") or {}
+            for opt_key, opt_val in opts.items():
+                opt_matches = re.findall(r"(<svg[\s\S]*?<\/svg>)", str(opt_val), flags=re.I)
+                for raw_svg in opt_matches:
+                    option_svg_count += 1
+                    has_viewbox = "viewBox=" in raw_svg or "viewbox=" in raw_svg
+                    self.assertTrue(has_viewbox, f"Question {q.get('id')} option {opt_key} SVG missing viewBox!")
+                    try:
+                        root = ET.fromstring(raw_svg)
+                        self.assertEqual(root.tag.split("}")[-1], "svg", f"Root tag should be svg in {q.get('id')} option {opt_key}")
+                    except Exception as e:
+                        self.fail(f"Question {q.get('id')} option {opt_key} SVG failed XML parsing: {e}")
+
+        self.assertEqual(prompt_svg_count, 347, f"Expected 347 prompt SVGs across Math, found {prompt_svg_count}")
+        self.assertEqual(option_svg_count, 48, f"Expected 48 option SVGs across Math, found {option_svg_count}")
 
         # Verify cb_math_1493 authentic vector SVG bar graph
         q1493 = next(q for q in questions if q["id"] == "cb_math_1493")
@@ -248,7 +263,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.7.5'", code, f"{p} missing dataVersion 2.7.5")
+            self.assertIn("dataVersion: '2.7.6'", code, f"{p} missing dataVersion 2.7.6")
 
 
 if __name__ == "__main__":
