@@ -79,7 +79,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             data1 = json.load(f1)
             data2 = json.load(f2)
             
-        self.assertEqual(len(data1), 2326, "Expected 2,326 Math questions")
+        self.assertEqual(len(data1), 2458, "Expected 2,458 Math questions")
         self.assertEqual(len(data1), len(data2), "Mirrored files must have identical counts")
 
     def test_all_math_svgs_are_valid_xml_with_viewbox(self):
@@ -126,7 +126,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                     except Exception as e:
                         self.fail(f"Question {q.get('id')} option {opt_key} SVG failed XML parsing: {e}")
 
-        self.assertEqual(prompt_svg_count, 347, f"Expected 347 prompt SVGs across Math, found {prompt_svg_count}")
+        self.assertEqual(prompt_svg_count, 369, f"Expected 369 prompt SVGs across Math, found {prompt_svg_count}")
         self.assertEqual(option_svg_count, 48, f"Expected 48 option SVGs across Math, found {option_svg_count}")
 
         # Verify cb_math_1493 authentic vector SVG bar graph
@@ -161,8 +161,8 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 correct = q.get("correct")
                 self.assertIn(correct, ["A", "B", "C", "D"], f"{qid} invalid correct choice {correct}")
 
-        self.assertEqual(spr_count, 629, f"Expected 629 SPR questions, found {spr_count}")
-        self.assertEqual(mcq_count, 1697, f"Expected 1,697 MCQ questions, found {mcq_count}")
+        self.assertEqual(spr_count, 678, f"Expected 678 SPR questions, found {spr_count}")
+        self.assertEqual(mcq_count, 1780, f"Expected 1,780 MCQ questions, found {mcq_count}")
 
     def test_cb_math_334_and_359_restored(self):
         with open(DATA_MATH, "r", encoding="utf-8") as f:
@@ -263,7 +263,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.7.8'", code, f"{p} missing dataVersion 2.7.8")
+            self.assertIn("dataVersion: '2.7.9'", code, f"{p} missing dataVersion 2.7.9")
 
     def test_zero_bare_latex_in_options(self):
         """Invariant 11: All LaTeX expressions in options must be wrapped in KaTeX math delimiters."""

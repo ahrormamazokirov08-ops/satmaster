@@ -159,9 +159,9 @@ window.qbEngine = {
     const badgeEl = document.getElementById('qb-detail-subject-badge');
     const subtitleEl = document.getElementById('qb-practice-all-subtitle');
 
-    const mathCount = (this.questionsData.math && this.questionsData.math.length) ? this.questionsData.math.length.toLocaleString() : "2,326";
+    const mathCount = (this.questionsData.math && this.questionsData.math.length) ? this.questionsData.math.length.toLocaleString() : "2,458";
     const rwCount = (this.questionsData.rw && this.questionsData.rw.length) ? this.questionsData.rw.length.toLocaleString() : "1,845";
-    const totalNum = (this.questionsData.math ? this.questionsData.math.length : 2326) + (this.questionsData.rw ? this.questionsData.rw.length : 1845);
+    const totalNum = (this.questionsData.math ? this.questionsData.math.length : 2458) + (this.questionsData.rw ? this.questionsData.rw.length : 1845);
     const totalCount = totalNum.toLocaleString();
 
     if (this.activeSubject === 'rw') {
@@ -781,7 +781,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.7.8',
+  dataVersion: '2.7.9',
   currentDataVersion: null,
   _loadingPromise: null,
 

@@ -15,8 +15,8 @@ class TestMathFormatBugfixes(unittest.TestCase):
 
     def test_01_math_datasets_parity(self):
         """Ensure canonical and public math.json are completely identical."""
-        self.assertEqual(len(self.math_questions), 2326)
-        self.assertEqual(len(self.public_math_questions), 2326)
+        self.assertEqual(len(self.math_questions), 2458)
+        self.assertEqual(len(self.public_math_questions), 2458)
         with open('data/questions/math.json', 'rb') as f1, open('public/data/questions/math.json', 'rb') as f2:
             self.assertEqual(f1.read(), f2.read(), "data/questions/math.json and public/data/questions/math.json must be byte-for-byte identical")
         print("\n✅ Dataset parity verified: PASS")
@@ -93,9 +93,9 @@ class TestMathFormatBugfixes(unittest.TestCase):
         print("✅ Engine and CSS pre-line styling verified across all 4 bundle locations: PASS")
 
     def test_08_hard_math_quality_and_logic(self):
-        """Verify all 401 Hard Math questions meet strict mathematical and schema standards."""
+        """Verify all 533 Hard Math questions meet strict mathematical and schema standards."""
         hard_qs = [q for q in self.math_questions if q.get('difficulty') == 'Hard']
-        self.assertEqual(len(hard_qs), 401, "Expected exactly 401 Hard Math questions")
+        self.assertEqual(len(hard_qs), 533, "Expected exactly 533 Hard Math questions")
 
         # Specific verification for repaired questions
         q2085 = next(q for q in hard_qs if q['id'] == 'cb_math_2085')
@@ -124,7 +124,7 @@ class TestMathFormatBugfixes(unittest.TestCase):
         self.assertIn(r'\$50', q2132['prompt'])
         self.assertIn(r'\$1{,}100', q2132['prompt'])
 
-        # Battery check across all 401 Hard questions
+        # Battery check across all 533 Hard questions
         for q in hard_qs:
             qid = q['id']
             prompt = q.get('prompt', '') or ''
