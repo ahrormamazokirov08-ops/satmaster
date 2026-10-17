@@ -50,5 +50,13 @@ class TestQuestionBankFormatting(unittest.TestCase):
             self.assertIn("calibrated_difficulty", q)
             self.assertIn(q["calibrated_difficulty"], ["Easy", "Medium", "Hard"])
 
+    def test_math_zero_hard_questions(self):
+        """Asserts that all math questions have been reclassified into Easy or Medium with 0 Hard remaining."""
+        math_hard = [q for q in self.math_q if q["difficulty"] == "Hard"]
+        math_calibrated_hard = [q for q in self.math_q if q.get("calibrated_difficulty") == "Hard"]
+        self.assertEqual(len(math_hard), 0, "No questions should remain in the Math Hard session")
+        self.assertEqual(len(math_calibrated_hard), 0, "No questions should remain in the Math Hard calibrated difficulty")
+        self.assertEqual(len(self.math_q), 1925, "Math question total must be preserved")
+
 if __name__ == "__main__":
     unittest.main()

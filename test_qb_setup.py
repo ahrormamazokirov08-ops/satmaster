@@ -169,10 +169,10 @@ class TestQBSetupScreen(unittest.TestCase):
         math_alg = [q for q in self.math_questions if q["domain"] == "Algebra"]
         self.assertEqual(len(math_alg), 616)
 
-        # 5. Simulate Combined Hard filter
+        # 5. Simulate Combined Hard filter (610 RW + 0 Math as all current Math questions reclassified to Easy/Medium)
         combined = self.rw_questions + self.math_questions
         combined_hard = [q for q in combined if q["difficulty"] == "Hard"]
-        self.assertEqual(len(combined_hard), 610 + 610)
+        self.assertEqual(len(combined_hard), 610 + 0)
         print(f"✅ Filter simulation passed: RW={len(self.rw_questions)}, Math={len(self.math_questions)}, Combined={len(combined)}")
 
     # 10. Two-Stage Navigation DOM Structure (Hub vs Detail Views)
