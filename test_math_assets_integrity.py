@@ -248,7 +248,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.7.2'", code, f"{p} missing dataVersion 2.7.2")
+            self.assertIn("dataVersion: '2.7.3'", code, f"{p} missing dataVersion 2.7.3")
 
 
 if __name__ == "__main__":
