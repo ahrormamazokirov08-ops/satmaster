@@ -112,7 +112,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Question {q_id} SVG failed XML parsing: {e}\nSVG: {raw_svg[:200]}")
 
-        self.assertEqual(svg_count, 275, f"Expected 275 SVGs across Math, found {svg_count}")
+        self.assertEqual(svg_count, 282, f"Expected 282 SVGs across Math, found {svg_count}")
 
         # Verify cb_math_1493 authentic vector SVG bar graph
         q1493 = next(q for q in questions if q["id"] == "cb_math_1493")
@@ -248,7 +248,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.6.0'", code, f"{p} missing dataVersion 2.6.0")
+            self.assertIn("dataVersion: '2.7.0'", code, f"{p} missing dataVersion 2.7.0")
 
 
 if __name__ == "__main__":
