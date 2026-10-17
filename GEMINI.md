@@ -10,6 +10,17 @@ When inspecting, generating, modifying, or testing Digital SAT questions (Math a
   3. Strip the descriptive alt-text from the prompt, leaving only the authentic question statement.
 - Wrap all HTML data tables in `<div class="qb-table-wrapper my-4 overflow-x-auto">`.
 
+### 1.1 Geometric Precision Invariant
+- **Exact Coordinate Mathematical Verification**:
+  - For any inscribed polygon (e.g., triangle inscribed in a circle), every vertex stated to lie on the curve MUST satisfy the exact mathematical equation (e.g., $(x - c_x)^2 + (y - c_y)^2 = R^2$ for circles). Vertices must never float inside or outside the curve.
+  - Altitudes, diameters, tangent lines, and chord intersections must be computed using exact vector geometry (e.g., perpendicular vectors $u \cdot v = 0$).
+  - Perpendicular right-angle square markers must align strictly with the unit vectors of their respective legs.
+
+### 1.2 Zero Label Collision & Clearance Invariant
+- Vertex labels ($A, B, C, D, E$), tick labels, and angle values must NEVER overlap, cross, or intersect circle perimeters, polygon edges, or gridlines.
+- Boundary vertex labels must be positioned outside the shape with clear clearance margins (e.g., minimum 10px beyond the perimeter) and appropriate text anchoring (`text-anchor="middle"`, `"start"`, `"end"`).
+
+
 ## 2. Shell & Bash Expansion Protection
 - Never pass LaTeX equations or JSON text through double-quoted shell commands (`bash -c "..."` or inline string interpolation). Bash will expand `$0` to `/bin/zsh` and evaluate `$p`, `$150`, `$300` as empty variables, corrupting questions to "terms of 0" or stripping math variables.
 - Always perform dataset reading, manipulation, and writing using dedicated Python scripts with `json.load()` and `json.dump(..., ensure_ascii=False, indent=2)`.
