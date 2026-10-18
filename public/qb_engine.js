@@ -1,5 +1,5 @@
 // SATMaster Digital SAT Question Bank Engine & Practice Generator
-// Version 2.8.1 (Unified Standard & Latest Exams Engine)
+// Version 2.8.2 (Unified Standard & Latest Exams Engine)
 window.qbEngine = {
   latestExamsData: null,
   activeBankMode: 'standard', // 'standard' | 'latest'
@@ -794,7 +794,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.8.1',
+  dataVersion: '2.8.2',
   currentDataVersion: null,
   _loadingPromise: null,
 
