@@ -2524,7 +2524,7 @@ window.qbEngine = {
     }).join('');
 
     return formatted;
-  }
+  },
 
   async loadLatestExams(force = false) {
     if (!force && Array.isArray(this.latestExamsData) && this.latestExamsData.length > 0) {
@@ -2844,8 +2844,10 @@ window.qbEngine = {
     sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
 
     const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
     const testContainer = document.getElementById('qb-test-container');
     if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
     this.renderCurrentQuestion();
@@ -2924,8 +2926,10 @@ window.qbEngine = {
     sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
 
     const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
     const testContainer = document.getElementById('qb-test-container');
     if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
     this.updateReviewFilterButtonsUI(filter);
