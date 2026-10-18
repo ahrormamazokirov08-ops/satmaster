@@ -17,7 +17,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- Question Bank State Engine Module with Cache-Buster -->
-  <script src="public/qb_engine.js?v=2.8.0"></script>
+  <script src="public/qb_engine.js?v=2.8.1"></script>
   <style>
     /* Design tokens: #0f172a #334155 */
     html, body {
@@ -13580,7 +13580,12 @@
     // =========================================================
     // BLUEBOOK QUESTION BANK STATE ENGINE & PRACTICE GENERATOR
     // =========================================================
-    window.qbEngine = {
+    window.qbEngine = Object.assign(window.qbEngine || {}, {
+  latestExamsData: null,
+  activeBankMode: 'standard', // 'standard' | 'latest'
+  activeLatestSubject: 'combined', // 'combined' | 'rw' | 'math'
+  activeReviewFilter: 'all', // 'all' | 'incorrect' | 'correct'
+  pendingRestartExamId: null,
   activeSubject: 'rw', // 'rw' | 'math' | 'combined'
   activeView: 'hub', // 'hub' | 'detail'
   activeDifficulties: new Set(['Easy', 'Medium', 'Hard']),
@@ -14369,7 +14374,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.8.0',
+  dataVersion: '2.8.1',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -14958,9 +14963,11 @@
 
     // Switch view to #qb-test-container
     const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
     const testContainer = document.getElementById('qb-test-container');
 
     if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
     // Render current question
@@ -15414,12 +15421,16 @@
       ? this.isSPREqual(studentAnswer, q.correct_answer)
       : Boolean(String(studentAnswer).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
     const timeSpent = (session.timeSpent && session.timeSpent[idx]) ? session.timeSpent[idx] : 0;
-    this.recordQuestionSolved(q.id, isCorrect, studentAnswer, {
-      subject: q.subject || session.subject,
-      domain: q.domain,
-      skill: this.normalizeSkill(q.skill),
-      time_spent_seconds: timeSpent
-    });
+    if (session.examId) {
+      this.recordLatestExamAnswer(session.examId, q.id, isCorrect, studentAnswer);
+    } else {
+      this.recordQuestionSolved(q.id, isCorrect, studentAnswer, {
+        subject: q.subject || session.subject,
+        domain: q.domain,
+        skill: this.normalizeSkill(q.skill),
+        time_spent_seconds: timeSpent
+      });
+    }
 
     this.updateChoicesUI();
 
@@ -16160,7 +16171,15 @@
     if (resModal) resModal.classList.add('hidden');
     if (setupView) setupView.classList.remove('hidden');
 
-    if (this.activeView === 'detail') {
+    if (this.activeBankMode === 'latest') {
+      const latestView = document.getElementById('qb-latest-exams-view');
+      const hubView = document.getElementById('qb-hub-view');
+      const detailView = document.getElementById('qb-detail-view');
+      if (latestView) latestView.classList.remove('hidden');
+      if (hubView) hubView.classList.add('hidden');
+      if (detailView) detailView.classList.add('hidden');
+      this.renderLatestExamsHub();
+    } else if (this.activeView === 'detail') {
       this.showDetailView();
     } else {
       this.showHubView();
@@ -16362,6 +16381,494 @@
     }).join('');
 
     return formatted;
+  },
+
+  async loadLatestExams(force = false) {
+    if (!force && Array.isArray(this.latestExamsData) && this.latestExamsData.length > 0) {
+      return this.latestExamsData;
+    }
+    const paths = [
+      'data/questions/latest_exams.json',
+      'public/data/questions/latest_exams.json',
+      '/data/questions/latest_exams.json'
+    ];
+    for (const p of paths) {
+      try {
+        const res = await fetch(`${p}?v=${this.dataVersion || Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            this.latestExamsData = data;
+            return data;
+          }
+        }
+      } catch (e) {}
+    }
+    return [];
+  },
+
+  setBankMode(mode) {
+    const validMode = (mode === 'latest') ? 'latest' : 'standard';
+    this.activeBankMode = validMode;
+
+    const stdDetail = document.getElementById('qb-detail-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
+    const hubView = document.getElementById('qb-hub-view');
+
+    const modeStdBtn = document.getElementById('qb-mode-standard');
+    const modeLatestBtn = document.getElementById('qb-mode-latest');
+    const modeStdBtnLatest = document.getElementById('qb-mode-standard-latest');
+    const modeLatestBtnLatest = document.getElementById('qb-mode-latest-latest');
+
+    if (validMode === 'latest') {
+      if (stdDetail) stdDetail.classList.add('hidden');
+      if (hubView) hubView.classList.add('hidden');
+      if (latestView) latestView.classList.remove('hidden');
+
+      [modeStdBtn, modeStdBtnLatest].forEach(b => {
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer";
+      });
+      [modeLatestBtn, modeLatestBtnLatest].forEach(b => {
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+      });
+
+      this.loadLatestExams().then(() => {
+        this.renderLatestExamsHub();
+      });
+    } else {
+      if (latestView) latestView.classList.add('hidden');
+      if (this.activeView === 'hub') {
+        if (hubView) hubView.classList.remove('hidden');
+        if (stdDetail) stdDetail.classList.add('hidden');
+      } else {
+        if (stdDetail) stdDetail.classList.remove('hidden');
+        if (hubView) hubView.classList.add('hidden');
+      }
+
+      [modeStdBtn, modeStdBtnLatest].forEach(b => {
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+      });
+      [modeLatestBtn, modeLatestBtnLatest].forEach(b => {
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer";
+      });
+    }
+  },
+
+  setLatestSubject(subj) {
+    const s = ['rw', 'math', 'both', 'combined'].includes(subj) ? (subj === 'both' ? 'combined' : subj) : 'combined';
+    this.activeLatestSubject = s;
+
+    ['both', 'combined', 'rw', 'math'].forEach(tabKey => {
+      const btn = document.getElementById(`qb-latest-tab-${tabKey}`);
+      if (btn) {
+        if (tabKey === s || (s === 'combined' && tabKey === 'both')) {
+          btn.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-xs cursor-pointer";
+        } else {
+          btn.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
+        }
+      }
+    });
+
+    this.renderLatestExamsHub();
+  },
+
+  getExamProgress(examId) {
+    if (!examId) return { solved_ids: [], answers: {} };
+    const studentId = this.getCurrentStudentId();
+    const key = `latest_exams_progress_${studentId}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed[examId]) {
+          return {
+            solved_ids: Array.isArray(parsed[examId].solved_ids) ? parsed[examId].solved_ids : [],
+            answers: (typeof parsed[examId].answers === 'object' && parsed[examId].answers) ? parsed[examId].answers : {}
+          };
+        }
+      }
+    } catch (e) {}
+    return { solved_ids: [], answers: {} };
+  },
+
+  recordLatestExamAnswer(examId, questionId, isCorrect, selectedAnswer) {
+    if (!examId || !questionId) return;
+    const studentId = this.getCurrentStudentId();
+    const key = `latest_exams_progress_${studentId}`;
+    let allProgress = {};
+    try {
+      allProgress = JSON.parse(localStorage.getItem(key)) || {};
+    } catch (e) {
+      allProgress = {};
+    }
+
+    if (!allProgress[examId]) {
+      allProgress[examId] = { solved_ids: [], answers: {} };
+    }
+
+    const qidStr = String(questionId).trim();
+    if (!allProgress[examId].solved_ids.includes(qidStr)) {
+      allProgress[examId].solved_ids.push(qidStr);
+    }
+
+    allProgress[examId].answers[qidStr] = {
+      selected_answer: selectedAnswer,
+      is_correct: Boolean(isCorrect),
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem(key, JSON.stringify(allProgress));
+    } catch (e) {}
+  },
+
+  renderLatestExamsHub() {
+    const grid = document.getElementById('qb-latest-exams-grid');
+    if (!grid) return;
+
+    const exams = this.latestExamsData || [];
+    const subjFilter = this.activeLatestSubject || 'combined';
+
+    const filteredExams = exams.filter(e => {
+      if (subjFilter === 'combined') return true;
+      if (subjFilter === 'rw') return (e.subject === 'Reading & Writing' || e.subject.toLowerCase().includes('reading'));
+      if (subjFilter === 'math') return (e.subject === 'Math' || e.subject.toLowerCase().includes('math'));
+      return true;
+    });
+
+    const badgeEl = document.getElementById('qb-latest-exams-count-badge');
+    if (badgeEl) {
+      badgeEl.innerText = `${filteredExams.length} Exam Set${filteredExams.length === 1 ? '' : 's'} Available`;
+    }
+
+    if (filteredExams.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full p-12 text-center bg-slate-50 rounded-3xl border border-slate-200 text-slate-500">
+          <div class="text-4xl mb-2">🔍</div>
+          <h3 class="font-bold text-slate-800 text-sm">No exam collections matching this filter</h3>
+          <p class="text-xs text-slate-400 mt-1">Try selecting 'Both' to view all monthly test question banks.</p>
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    filteredExams.forEach(exam => {
+      const progress = this.getExamProgress(exam.id);
+      const totalQ = (exam.questions && Array.isArray(exam.questions)) ? exam.questions.length : 0;
+      const solvedQ = progress.solved_ids.length;
+      const unsolvedQ = Math.max(0, totalQ - solvedQ);
+
+      const answersList = Object.values(progress.answers || {});
+      const correctCount = answersList.filter(a => a && a.is_correct).length;
+      const accuracyPct = solvedQ > 0 ? Math.round((correctCount / solvedQ) * 100) : 0;
+      const progressPct = totalQ > 0 ? Math.round((solvedQ / totalQ) * 100) : 0;
+
+      const isCompleted = (totalQ > 0 && solvedQ >= totalQ);
+      const isStarted = (solvedQ > 0 && !isCompleted);
+
+      let statusBadge = '';
+      if (isCompleted) {
+        statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">✓ Completed</span>`;
+      } else if (isStarted) {
+        statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">⏳ In Progress</span>`;
+      } else {
+        statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-600 border border-slate-200">○ Not Started</span>`;
+      }
+
+      const isMath = (exam.subject === 'Math');
+      const subjectBadge = isMath
+        ? `<span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">📐 Math</span>`
+        : `<span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">📚 RW</span>`;
+
+      const monthTag = exam.exam_month && exam.exam_year ? `${exam.exam_month} ${exam.exam_year}` : 'Latest SAT';
+
+      let practiceBtnText = "🚀 Practice";
+      let practiceBtnClass = "flex-1 py-3 px-4 rounded-xl font-black text-xs text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98] transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer";
+      if (isCompleted) {
+        practiceBtnText = "✓ All Solved";
+        practiceBtnClass = "flex-1 py-3 px-4 rounded-xl font-black text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 transition-all flex items-center justify-center gap-1.5 cursor-pointer";
+      } else if (isStarted) {
+        practiceBtnText = `🚀 Resume (${unsolvedQ} left)`;
+      }
+
+      const reviewDisabled = (solvedQ === 0);
+      const reviewBtnClass = reviewDisabled
+        ? "py-3 px-4 rounded-xl font-black text-xs border border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed opacity-50 flex items-center justify-center gap-1.5"
+        : "py-3 px-4 rounded-xl font-black text-xs border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98] transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer";
+
+      html += `
+        <div class="group relative p-6 sm:p-7 rounded-3xl bg-white border-2 border-slate-200/90 hover:border-indigo-500/80 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-200 flex flex-col justify-between space-y-6">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-1.5">
+                ${subjectBadge}
+                <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">${monthTag}</span>
+              </div>
+              <div>${statusBadge}</div>
+            </div>
+
+            <div>
+              <h3 class="text-lg sm:text-xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight">
+                ${exam.title}
+              </h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                ${exam.description || 'Authentic test questions with complete rationale and scoring.'}
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-extrabold text-slate-700 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full ${isCompleted ? 'bg-emerald-500' : (isStarted ? 'bg-indigo-500' : 'bg-slate-300')}"></span>
+                  <span>${solvedQ} of ${totalQ} questions solved</span>
+                </span>
+                ${solvedQ > 0 ? `<span class="font-mono font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">${accuracyPct}% Accuracy</span>` : `<span class="font-mono font-medium text-slate-400">Total: ${totalQ}</span>`}
+              </div>
+              <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                <div class="h-full ${isCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'} transition-all duration-300" style="width: ${progressPct}%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-100 flex items-center gap-2">
+            <button type="button" onclick="qbEngine.startLatestExamPractice('${exam.id}')" class="${practiceBtnClass}">
+              <span>${practiceBtnText}</span>
+            </button>
+            <button type="button" ${reviewDisabled ? 'disabled' : `onclick="qbEngine.startLatestExamReview('${exam.id}', 'all')"`} class="${reviewBtnClass}" title="${reviewDisabled ? 'Solve questions first to unlock review' : 'Review solved questions and rationales'}">
+              <span>👁️ Review</span>
+            </button>
+            <button type="button" onclick="qbEngine.promptRestartExam('${exam.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-300 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all shadow-xs cursor-pointer" title="Reset Exam History & Solved Items">
+              <span>🔄</span>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    grid.innerHTML = html;
+  },
+
+  startLatestExamPractice(examId) {
+    const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+    const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+    if (isStudent && !isPub) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+      }
+      return;
+    }
+
+    const exam = (this.latestExamsData || []).find(e => e.id === examId);
+    if (!exam || !exam.questions || exam.questions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("⚠️ Exam Not Found", "Unable to load questions for this exam collection.", "warning");
+      }
+      return;
+    }
+
+    const progress = this.getExamProgress(examId);
+    const solvedSet = new Set(progress.solved_ids || []);
+    let targetQuestions = exam.questions.filter(q => !solvedSet.has(q.id));
+
+    if (targetQuestions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("✓ All Questions Solved!", "You've solved all questions in this collection! Tap 'Review' to inspect your answers or '🔄' to restart.", "info");
+      }
+      return;
+    }
+
+    const activeSession = {
+      questions: targetQuestions,
+      currentIdx: 0,
+      answers: {},
+      timePerQuestion: {},
+      flags: {},
+      strikethroughs: {},
+      checked: {},
+      config: {
+        subject: exam.subject,
+        examId: exam.id,
+        examTitle: exam.title,
+        mode: 'latest_practice'
+      },
+      isReview: false,
+      examId: exam.id,
+      version: this.dataVersion,
+      startedAt: Date.now()
+    };
+
+    sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
+
+    const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
+    const testContainer = document.getElementById('qb-test-container');
+    if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
+    if (testContainer) testContainer.classList.remove('hidden');
+
+    this.renderCurrentQuestion();
+    if (typeof showToast === 'function') {
+      showToast("🚀 Practice Initialized", `${targetQuestions.length} practice questions from ${exam.short_title || exam.title} loaded!`, "success");
+    }
+  },
+
+  startLatestExamReview(examId, filter = 'all') {
+    const exam = (this.latestExamsData || []).find(e => e.id === examId);
+    if (!exam) return;
+
+    const progress = this.getExamProgress(examId);
+    const solvedSet = new Set(progress.solved_ids || []);
+    let solvedQuestions = (exam.questions || []).filter(q => solvedSet.has(q.id));
+
+    if (solvedQuestions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("ℹ️ No Solved Questions", "You haven't solved any questions from this exam yet. Practice some first!", "info");
+      }
+      return;
+    }
+
+    this.activeReviewFilter = filter;
+
+    // Filter questions if requested
+    if (filter === 'incorrect') {
+      solvedQuestions = solvedQuestions.filter(q => {
+        const a = progress.answers && progress.answers[q.id];
+        return a && a.is_correct === false;
+      });
+    } else if (filter === 'correct') {
+      solvedQuestions = solvedQuestions.filter(q => {
+        const a = progress.answers && progress.answers[q.id];
+        return a && a.is_correct === true;
+      });
+    }
+
+    if (solvedQuestions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("ℹ️ No Matching Questions", `No ${filter} questions found in this review.`, "info");
+      }
+      return;
+    }
+
+    const answers = {};
+    const checked = {};
+    solvedQuestions.forEach((q, idx) => {
+      const recorded = (progress.answers && progress.answers[q.id]) ? progress.answers[q.id].selected_answer : null;
+      if (recorded !== null && recorded !== undefined) {
+        answers[idx] = recorded;
+      }
+      checked[idx] = true;
+    });
+
+    const activeSession = {
+      questions: solvedQuestions,
+      currentIdx: 0,
+      answers: answers,
+      timePerQuestion: {},
+      flags: {},
+      strikethroughs: {},
+      checked: checked,
+      config: {
+        subject: exam.subject,
+        examId: exam.id,
+        examTitle: exam.title,
+        mode: 'latest_review'
+      },
+      isReview: true,
+      examId: exam.id,
+      version: this.dataVersion,
+      startedAt: Date.now()
+    };
+
+    sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
+
+    const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
+    const testContainer = document.getElementById('qb-test-container');
+    if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
+    if (testContainer) testContainer.classList.remove('hidden');
+
+    this.updateReviewFilterButtonsUI(filter);
+    this.renderCurrentQuestion();
+    if (typeof showToast === 'function') {
+      showToast("👁️ Review Mode", `Reviewing ${solvedQuestions.length} questions from ${exam.short_title || exam.title}.`, "info");
+    }
+  },
+
+  setReviewFilter(filter) {
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+
+    if (session && session.examId) {
+      this.startLatestExamReview(session.examId, filter);
+    }
+  },
+
+  updateReviewFilterButtonsUI(filter) {
+    ['all', 'incorrect', 'correct'].forEach(f => {
+      const btn = document.getElementById(`qb-rev-filter-${f}`);
+      if (btn) {
+        if (f === filter) {
+          btn.className = "px-3 py-1 rounded-lg transition-all bg-indigo-600 text-white shadow-xs font-bold";
+        } else {
+          btn.className = "px-3 py-1 rounded-lg transition-all text-slate-300 hover:text-white font-medium";
+        }
+      }
+    });
+  },
+
+  promptRestartExam(examId) {
+    const exam = (this.latestExamsData || []).find(e => e.id === examId);
+    this.pendingRestartExamId = examId;
+    const modal = document.getElementById('qb-restart-exam-modal');
+    const titleEl = document.getElementById('qb-restart-modal-title');
+    const descEl = document.getElementById('qb-restart-modal-desc');
+
+    if (titleEl && exam) {
+      titleEl.innerText = `Restart ${exam.short_title || exam.title}?`;
+    }
+    if (descEl && exam) {
+      descEl.innerText = `This will clear your solved history and review answers for "${exam.title}" back to 0. You will be able to practice all ${exam.questions ? exam.questions.length : 0} questions again from the beginning point.`;
+    }
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeRestartExamModal() {
+    this.pendingRestartExamId = null;
+    const modal = document.getElementById('qb-restart-exam-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  confirmRestartExam() {
+    const examId = this.pendingRestartExamId;
+    if (!examId) return;
+    this.resetExamHistory(examId);
+    this.closeRestartExamModal();
+  },
+
+  resetExamHistory(examId) {
+    if (!examId) return;
+    const studentId = this.getCurrentStudentId();
+    const key = `latest_exams_progress_${studentId}`;
+    let allProgress = {};
+    try {
+      allProgress = JSON.parse(localStorage.getItem(key)) || {};
+    } catch (e) {
+      allProgress = {};
+    }
+
+    delete allProgress[examId];
+    try {
+      localStorage.setItem(key, JSON.stringify(allProgress));
+    } catch (e) {}
+
+    this.renderLatestExamsHub();
+    if (typeof showToast === 'function') {
+      showToast("🔄 History Reset", "Exam progress has been successfully reset to the beginning point.", "success");
+    }
   }
 };
 

@@ -1,10 +1,5 @@
-/**
- * public/qb_engine.js
- * Session Generator State Engine for Bluebook Question Bank Practice.
- * Handles question dataset loading, dynamic filter matching,
- * session randomization, and sessionStorage persistence.
- */
-
+// SATMaster Digital SAT Question Bank Engine & Practice Generator
+// Version 2.8.1 (Unified Standard & Latest Exams Engine)
 window.qbEngine = {
   latestExamsData: null,
   activeBankMode: 'standard', // 'standard' | 'latest'
@@ -153,6 +148,11 @@ window.qbEngine = {
 
   backToHub() {
     this.showHubView();
+    if (typeof renderQbHomeworkActiveBanner === 'function') {
+      renderQbHomeworkActiveBanner(null);
+    }
+    window.activeHomeworkAssignment = null;
+    this.activeHomeworkId = null;
     const setupView = document.getElementById('qb-setup-view');
     if (setupView) {
       setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -677,7 +677,7 @@ window.qbEngine = {
   openSetup(subject) {
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-    if (isStudent && !isPub) {
+    if (isStudent && !isPub && !window.activeHomeworkAssignment) {
       if (typeof showToast === 'function') {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
       }
@@ -702,9 +702,12 @@ window.qbEngine = {
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
     if (testContainer) testContainer.classList.add('hidden');
-    if (setupView) setupView.classList.remove('hidden');
+    if (setupView && !window.activeHomeworkAssignment) setupView.classList.remove('hidden');
 
-    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : null;
+    const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
+      ? (window.activeHomeworkAssignment.config.subject === 'all' ? 'combined' : window.activeHomeworkAssignment.config.subject) 
+      : null;
+    const targetSubj = (subject && ['rw', 'math', 'combined'].includes(subject)) ? subject : activeHwSubj;
 
     if (!this.isInitialized) {
       this.init(targetSubj);
@@ -712,12 +715,12 @@ window.qbEngine = {
       this.loadSolvedQuestions();
       if (targetSubj) {
         this.selectSubjectView(targetSubj);
-      } else {
+      } else if (!window.activeHomeworkAssignment) {
         this.backToHub();
       }
     }
 
-    if (setupView) {
+    if (setupView && !window.activeHomeworkAssignment) {
       setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   },
@@ -726,7 +729,7 @@ window.qbEngine = {
     // Check if student lockout is active
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-    if (isStudent && !isPub) {
+    if (isStudent && !isPub && !window.activeHomeworkAssignment) {
       if (typeof showToast === 'function') {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
       }
@@ -744,13 +747,18 @@ window.qbEngine = {
     const hubView = document.getElementById('qbank-hub-view');
     const solverView = document.getElementById('qbank-solver-view');
 
-    if (setupView) setupView.classList.remove('hidden');
+    if (setupView && !window.activeHomeworkAssignment) setupView.classList.remove('hidden');
     if (testContainer) testContainer.classList.add('hidden');
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
 
-    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
-      this.activeSubject = defaultSubj;
+    const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
+      ? (window.activeHomeworkAssignment.config.subject === 'all' ? 'combined' : window.activeHomeworkAssignment.config.subject) 
+      : null;
+    const resolvedSubj = (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) ? defaultSubj : activeHwSubj;
+
+    if (resolvedSubj && ['rw', 'math', 'combined'].includes(resolvedSubj)) {
+      this.activeSubject = resolvedSubj;
     }
 
     // Invalidate stale active session from older versions
@@ -765,15 +773,15 @@ window.qbEngine = {
       this.isInitialized = true;
       this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
-      await this.loadQuestions(false, defaultSubj);
+      await this.loadQuestions(false, resolvedSubj);
       this.loadSolvedQuestions(false);
     } else {
       this.loadSolvedQuestions(false);
     }
 
-    if (defaultSubj && ['rw', 'math', 'combined'].includes(defaultSubj)) {
-      this.selectSubjectView(defaultSubj);
-    } else {
+    if (resolvedSubj && ['rw', 'math', 'combined'].includes(resolvedSubj)) {
+      this.selectSubjectView(resolvedSubj);
+    } else if (!window.activeHomeworkAssignment) {
       this.backToHub();
     }
   },
@@ -786,7 +794,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.8.0',
+  dataVersion: '2.8.1',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -1179,7 +1187,7 @@ window.qbEngine = {
   },
 
   syncCountUI() {
-    const presetCounts = [20, 30, 40, 50, 'all', 'custom'];
+    const presetCounts = [10, 20, 30, 40, 50, 'all', 'custom'];
     presetCounts.forEach(c => {
       const btn = document.getElementById(`qb-count-${c}`);
       if (!btn) return;
@@ -1291,7 +1299,7 @@ window.qbEngine = {
   startPractice() {
     const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
     const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
-    if (isStudent && !isPub) {
+    if (isStudent && !isPub && !window.activeHomeworkAssignment) {
       if (typeof showToast === 'function') {
         showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
       }
@@ -1313,9 +1321,16 @@ window.qbEngine = {
       return;
     }
 
+    const activeHw = window.activeHomeworkAssignment || null;
+    const timeLimitMinutes = activeHw 
+      ? (activeHw.config?.time_limit || (activeHw.duration ? parseInt(activeHw.duration) : 20))
+      : 0;
+
     // Determine target question count
     let targetCount = filtered.length;
-    if (this.isAllCount) {
+    if (activeHw && activeHw.config?.question_count) {
+      targetCount = parseInt(activeHw.config.question_count);
+    } else if (this.isAllCount) {
       targetCount = filtered.length;
     } else if (this.isCustomCount) {
       targetCount = parseInt(document.getElementById('qb-custom-count-input')?.value) || (typeof this.activeCount === 'number' ? this.activeCount : 25);
@@ -1343,12 +1358,22 @@ window.qbEngine = {
       flags: {},
       strikethroughs: {},
       checked: {},
+      timeLimitMinutes: timeLimitMinutes,
+      remainingSeconds: timeLimitMinutes > 0 ? timeLimitMinutes * 60 : 0,
       config: {
         subject: this.activeSubject,
         domains: Array.from(this.getActiveDomains()),
         difficulties: Array.from(this.activeDifficulties),
         requestedCount: targetCount,
-        totalAvailable: filtered.length
+        totalAvailable: filtered.length,
+        homework: activeHw ? {
+          id: activeHw.id,
+          code: activeHw.code,
+          title: activeHw.title,
+          className: activeHw.className,
+          subject: activeHw.config?.subject || this.activeSubject,
+          timeLimitMinutes: timeLimitMinutes
+        } : null
       },
       version: this.dataVersion,
       startedAt: Date.now()
@@ -1358,9 +1383,11 @@ window.qbEngine = {
 
     // Switch view to #qb-test-container
     const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
     const testContainer = document.getElementById('qb-test-container');
 
     if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
     // Render current question
@@ -1386,15 +1413,16 @@ window.qbEngine = {
     let q = session.questions[idx];
     if (!q) return;
 
-    // Self-healing synchronization with fresh questionsData (syncs tables and graphs if session was cached)
+    // Self-healing synchronization with fresh questionsData (syncs tables, graphs, clean prompts, and options)
     if (q && q.id && this.questionsData) {
       const isMath = (q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
       const pool = isMath ? this.questionsData.math : this.questionsData.rw;
       if (pool && Array.isArray(pool)) {
         const freshQ = pool.find(item => item.id === q.id);
-        if (freshQ && freshQ.passage && freshQ.passage !== q.passage) {
+        if (freshQ && (freshQ.passage !== q.passage || freshQ.prompt !== q.prompt)) {
           q.passage = freshQ.passage;
           q.prompt = freshQ.prompt;
+          if (freshQ.options) q.options = freshQ.options;
           session.questions[idx] = q;
           try {
             sessionStorage.setItem('qb_active_session', JSON.stringify(session));
@@ -1402,6 +1430,13 @@ window.qbEngine = {
         }
       }
     }
+
+    // Always reset scroll positions to top when loading any question
+    const qPane = document.getElementById('qb-question-pane');
+    if (qPane) qPane.scrollTop = 0;
+    const pPane = document.getElementById('qb-passage-pane');
+    if (pPane) pPane.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
     // Header updates
     const headerSubj = document.getElementById('qb-header-subject');
@@ -1411,20 +1446,6 @@ window.qbEngine = {
     const flagBtn = document.getElementById('qb-btn-flag');
     const flagIcon = document.getElementById('qb-flag-icon');
     const flagText = document.getElementById('qb-flag-text');
-    const revBanner = document.getElementById('qb-review-mode-banner');
-    const exitBtnText = document.querySelector('#qb-test-header button[onclick="qbEngine.returnToSetup()"] span:nth-child(2)');
-
-    if (session.isReview) {
-      if (revBanner) revBanner.classList.remove('hidden');
-      if (exitBtnText) exitBtnText.innerText = "Exit Review";
-      const revTitle = document.getElementById('qb-review-banner-title');
-      if (revTitle && session.config && session.config.examTitle) {
-        revTitle.innerText = `Review Mode — ${session.config.examTitle}`;
-      }
-    } else {
-      if (revBanner) revBanner.classList.add('hidden');
-      if (exitBtnText) exitBtnText.innerText = "Exit Practice";
-    }
 
     if (headerSubj) headerSubj.innerText = `Section: ${q.subject || 'SAT Practice'}`;
     if (headerDomain) headerDomain.innerText = q.domain || '';
@@ -1444,26 +1465,63 @@ window.qbEngine = {
       }
     }
 
-    // Passage pane handling
+    // Calculator button visibility per SAT exam rules: Math only!
+    const calcBtn = document.getElementById('qb-btn-calculator');
+    const isMathQuestion = Boolean(q.subject === 'Math' || (q.id && q.id.startsWith('cb_math')));
+    if (calcBtn) {
+      if (isMathQuestion) {
+        calcBtn.disabled = false;
+        calcBtn.title = "Open Desmos Graphing Calculator";
+        if (typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen) {
+          calcBtn.className = "flex items-center gap-1.5 bg-blue-600 text-white border border-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm cursor-pointer transition-colors";
+        } else {
+          calcBtn.className = "flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer";
+        }
+      } else {
+        calcBtn.disabled = true;
+        calcBtn.title = "Calculators are only available in the Math section";
+        calcBtn.className = "opacity-40 cursor-not-allowed flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500";
+        if (typeof toggleDesmosCalculator === 'function' && typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen) {
+          toggleDesmosCalculator(false);
+        }
+      }
+    }
+
+    // Passage pane and Docked Calculator handling
     const passagePane = document.getElementById('qb-passage-pane');
     const passageContent = document.getElementById('qb-passage-content');
     const passageSkill = document.getElementById('qb-passage-skill');
     const splitContainer = document.getElementById('qb-split-container');
+    const calcPane = document.getElementById('qb-calculator-pane');
 
-    const hasPassage = Boolean(q.passage && q.passage.trim().length > 0);
+    const hasPassage = Boolean(!isMathQuestion && q.passage && q.passage.trim().length > 0);
+    const isDockedCalc = Boolean(typeof desmosCalcState !== 'undefined' && desmosCalcState.isOpen && !desmosCalcState.isPoppedOut && isMathQuestion);
+
     if (passagePane) {
-      if (hasPassage) {
+      if (hasPassage && !isDockedCalc) {
         passagePane.classList.remove('hidden');
         if (passageSkill) passageSkill.innerText = q.skill || q.domain || 'Passage';
         if (passageContent) passageContent.innerHTML = this.formatQuestionText(q.passage);
-        if (splitContainer) {
-          splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]";
-        }
       } else {
         passagePane.classList.add('hidden');
-        if (splitContainer) {
-          splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
-        }
+      }
+    }
+
+    if (calcPane) {
+      if (isDockedCalc) {
+        calcPane.classList.remove('hidden');
+        calcPane.classList.add('flex');
+      } else {
+        calcPane.classList.add('hidden');
+        calcPane.classList.remove('flex');
+      }
+    }
+
+    if (splitContainer) {
+      if (hasPassage || isDockedCalc) {
+        splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[520px]";
+      } else {
+        splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
       }
     }
 
@@ -1905,20 +1963,6 @@ window.qbEngine = {
     const flagBtn = document.getElementById('qb-btn-flag');
     const flagIcon = document.getElementById('qb-flag-icon');
     const flagText = document.getElementById('qb-flag-text');
-    const revBanner = document.getElementById('qb-review-mode-banner');
-    const exitBtnText = document.querySelector('#qb-test-header button[onclick="qbEngine.returnToSetup()"] span:nth-child(2)');
-
-    if (session.isReview) {
-      if (revBanner) revBanner.classList.remove('hidden');
-      if (exitBtnText) exitBtnText.innerText = "Exit Review";
-      const revTitle = document.getElementById('qb-review-banner-title');
-      if (revTitle && session.config && session.config.examTitle) {
-        revTitle.innerText = `Review Mode — ${session.config.examTitle}`;
-      }
-    } else {
-      if (revBanner) revBanner.classList.add('hidden');
-      if (exitBtnText) exitBtnText.innerText = "Exit Practice";
-    }
 
     if (flagBtn) {
       if (!curr) {
@@ -1948,23 +1992,43 @@ window.qbEngine = {
     const idx = session.currentIdx || 0;
     if (!session.timePerQuestion) session.timePerQuestion = {};
     let currentSec = session.timePerQuestion[idx] || 0;
+    const isCountdown = Boolean(session.timeLimitMinutes && session.timeLimitMinutes > 0);
+    let remainingSec = (typeof session.remainingSeconds === 'number') ? session.remainingSeconds : (isCountdown ? session.timeLimitMinutes * 60 : 0);
 
-    this.updateTimerDisplay(currentSec);
+    this.updateTimerDisplay(isCountdown ? remainingSec : currentSec, isCountdown);
 
     this.timerInterval = setInterval(() => {
       currentSec++;
-      this.updateTimerDisplay(currentSec);
+      if (isCountdown) {
+        remainingSec--;
+        if (remainingSec < 0) remainingSec = 0;
+        this.updateTimerDisplay(remainingSec, true);
+      } else {
+        this.updateTimerDisplay(currentSec, false);
+      }
 
       try {
         const s = JSON.parse(sessionStorage.getItem('qb_active_session')) || session;
         if (!s.timePerQuestion) s.timePerQuestion = {};
         s.timePerQuestion[idx] = currentSec;
+        if (isCountdown) {
+          s.remainingSeconds = remainingSec;
+        }
         sessionStorage.setItem('qb_active_session', JSON.stringify(s));
       } catch (e) {}
+
+      if (isCountdown && remainingSec <= 0) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        if (typeof showToast === 'function') {
+          showToast("⏰ Time's Up!", "Your time limit for this drill has expired. Submitting your answers...", "warning");
+        }
+        this.finishSession();
+      }
     }, 1000);
   },
 
-  updateTimerDisplay(sec) {
+  updateTimerDisplay(sec, isCountdown = false) {
     const el = document.getElementById('qb-timer-display');
     if (!el) return;
 
@@ -1976,6 +2040,11 @@ window.qbEngine = {
     const m = String(Math.floor(sec / 60)).padStart(2, '0');
     const s = String(sec % 60).padStart(2, '0');
     el.innerText = `${m}:${s}`;
+    if (isCountdown && sec <= 60) {
+      el.classList.add('text-rose-600', 'font-black');
+    } else {
+      el.classList.remove('text-rose-600');
+    }
   },
 
   toggleTimerVisibility() {
@@ -1984,8 +2053,11 @@ window.qbEngine = {
     try {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
-    const sec = (session && session.timePerQuestion && session.timePerQuestion[session.currentIdx]) || 0;
-    this.updateTimerDisplay(sec);
+    const isCountdown = Boolean(session && session.timeLimitMinutes && session.timeLimitMinutes > 0);
+    const sec = isCountdown 
+      ? ((session && typeof session.remainingSeconds === 'number') ? session.remainingSeconds : (session.timeLimitMinutes * 60))
+      : ((session && session.timePerQuestion && session.timePerQuestion[session.currentIdx]) || 0);
+    this.updateTimerDisplay(sec, isCountdown);
   },
 
   prevQuestion() {
@@ -2171,14 +2243,63 @@ window.qbEngine = {
     const accuracyPct = Math.round((correctCount / total) * 100);
     const avgSec = Math.round(totalSeconds / total);
 
+    // Homework metadata & Pass/Fail evaluation
+    const activeHw = window.activeHomeworkAssignment || (session.config && session.config.homework) || null;
+    const hwId = this.activeHomeworkId || (activeHw && (activeHw.id || activeHw.code)) || null;
+    const subj = (activeHw && activeHw.config && activeHw.config.subject) || session.config?.subject || this.activeSubject || 'rw';
+    const isMath = (subj === 'math');
+    const isRw = (subj === 'rw');
+    const passThreshold = isMath ? 80 : (isRw ? 70 : 75);
+    const isPassed = (accuracyPct >= passThreshold);
+
+    // Track homework attempts (max 3)
+    const studentId = (typeof currentSession !== 'undefined' && (currentSession.id || currentSession.uid || currentSession.username)) || 'STU_CURRENT';
+    const studentName = (typeof currentSession !== 'undefined' && currentSession.name) || (document.getElementById('student-name-input')?.value.trim()) || 'Student User';
+    const attemptKey = `hw_att_${studentId}_${hwId || 'qb'}`;
+    let attemptCount = parseInt(localStorage.getItem(attemptKey) || '0', 10);
+    if (activeHw) {
+      attemptCount += 1;
+      localStorage.setItem(attemptKey, String(attemptCount));
+    }
+    const attemptsMax = 3;
+    const canRetake = Boolean(activeHw && attemptCount < attemptsMax);
+
     const summaryEl = document.getElementById('qb-results-summary');
     if (summaryEl) {
+      let hwBannerHtml = '';
+      if (activeHw) {
+        const statusClass = isPassed ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-rose-300 bg-rose-50 text-rose-900';
+        const badgeClass = isPassed ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white';
+        const statusTitle = isPassed ? '🎉 PASSED' : '❌ NEEDS IMPROVEMENT';
+        const attemptNotice = attemptCount >= attemptsMax 
+          ? '<span class="text-rose-600 font-bold block mt-1">Maximum attempts reached (3 of 3).</span>'
+          : `<span class="text-slate-600 font-medium block mt-1">${attemptsMax - attemptCount} attempt(s) remaining.</span>`;
+
+        hwBannerHtml = `
+          <div class="w-full p-4 rounded-2xl border-2 ${statusClass} space-y-1.5 text-center mb-3">
+            <div class="flex items-center justify-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${badgeClass}">
+                ${statusTitle}
+              </span>
+              <span class="text-xs font-bold text-slate-700">
+                Attempt ${Math.min(attemptCount, attemptsMax)} of ${attemptsMax}
+              </span>
+            </div>
+            <div class="text-sm font-extrabold">
+              Score: ${correctCount}/${total} (${accuracyPct}%) • Required: ${passThreshold}% for ${isMath ? 'Math' : (isRw ? 'Reading & Writing' : 'Combined')}
+            </div>
+            ${attemptNotice}
+          </div>
+        `;
+      }
+
       summaryEl.innerHTML = `
+        ${hwBannerHtml}
         <div class="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
           ${correctCount} / ${total}
         </div>
         <div class="text-xs sm:text-sm font-bold text-slate-600">
-          Accuracy: <span class="text-emerald-600 font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
+          Accuracy: <span class="${isPassed ? 'text-emerald-600' : 'text-rose-600'} font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
         </div>
       `;
     }
@@ -2224,6 +2345,33 @@ window.qbEngine = {
       this.renderMath(listEl);
     }
 
+    // Configure action buttons inside modal
+    const actionsEl = document.getElementById('qb-results-modal-actions');
+    if (actionsEl) {
+      if (activeHw) {
+        actionsEl.innerHTML = `
+          <button type="button" onclick="qbEngine.closeResultsAndReturnToHomework()" class="flex-1 py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all text-center">
+            ← Return to Homework Portal
+          </button>
+          ${canRetake ? `
+            <button type="button" onclick="qbEngine.retakeHomeworkPractice()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all text-center">
+              🔄 Retake Homework (${attemptsMax - attemptCount} left)
+            </button>
+          ` : `
+            <button type="button" disabled class="flex-1 py-3.5 px-4 rounded-xl bg-slate-200 text-slate-400 font-extrabold text-xs sm:text-sm cursor-not-allowed text-center">
+              Max Attempts Reached (3/3)
+            </button>
+          `}
+        `;
+      } else {
+        actionsEl.innerHTML = `
+          <button type="button" onclick="qbEngine.returnToSetupFromResults()" id="btn-qb-res-practice-again" class="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md shadow-blue-600/20 transition-all">
+            Practice Again / New Session
+          </button>
+        `;
+      }
+    }
+
     // Batch record all answered questions from this session as solved
     try {
       const batchAnswers = [];
@@ -2251,8 +2399,122 @@ window.qbEngine = {
       }
     } catch (e) {}
 
+    // Track homework completion if launched from homework tab
+    if (activeHw && hwId) {
+      if (typeof markHomeworkCompleted === 'function') {
+        markHomeworkCompleted(hwId, {
+          score: correctCount,
+          total: total,
+          scorePct: accuracyPct,
+          passed: isPassed,
+          attempt: Math.min(attemptCount, attemptsMax),
+          maxAttempts: attemptsMax,
+          type: 'qbank',
+          hwCode: activeHw.code,
+          timeSpentSeconds: totalSeconds
+        });
+      }
+
+      // Dispatch rich Telegram report to Teacher & Admin
+      const hwTitle = activeHw.title || 'Digital SAT Question Bank Drill';
+      const hwPin = activeHw.code || activeHw.id || 'N/A';
+      const studentClass = activeHw.className || (typeof currentSession !== 'undefined' ? currentSession.className : 'SAT Prep');
+      const timeLimitMins = activeHw.config?.time_limit || (activeHw.duration ? parseInt(activeHw.duration) : 20);
+      const timeSpentFormatted = `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
+      const repId = `qbrep_${Date.now()}`;
+
+      const statusWord = isPassed ? "PASSED ✅" : "FAILED ❌";
+      const subjDisplay = isMath ? 'Math' : (isRw ? 'Reading & Writing' : 'Combined / All');
+
+      const telegramSummary = [
+        `🎯 DIGITAL SAT QUESTION BANK REPORT`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `👤 Student: ${studentName}`,
+        studentClass ? `🏫 Class: ${studentClass}` : null,
+        `📝 Task: ${hwTitle}`,
+        `📊 Result: ${statusWord} (${accuracyPct}%)`,
+        `⏱️ Time Spent: ${timeSpentFormatted}`,
+        `━━━━━━━━━━━━━━━━━━━━━━`
+      ].filter(Boolean).join("\n");
+
+      const telegramDetails = [
+        `📊 [TEACHER REPORT - DETAILED BREAKDOWN]`,
+        `🎯 DIGITAL SAT QUESTION BANK DRILL`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `👤 Student: ${studentName}`,
+        studentId ? `🆔 ID: #${studentId}` : null,
+        studentClass ? `🏫 Class: ${studentClass}` : null,
+        `📝 Task: ${hwTitle} (PIN: ${hwPin})`,
+        `🔄 Attempt: ${Math.min(attemptCount, attemptsMax)} of ${attemptsMax}`,
+        `🏆 Score: ${correctCount}/${total} (${accuracyPct}%) — ${statusWord} ${statusEmoji}`,
+        `⏱️ Time Taken: ${timeSpentFormatted}`,
+        ``,
+        `📋 QUESTION BREAKDOWN:`
+      ].filter(Boolean);
+
+      session.questions.forEach((q, i) => {
+        const studentAns = session.answers ? session.answers[i] : null;
+        const isSPR = Boolean(q.is_spr || !q.options || Object.keys(q.options || {}).length === 0);
+        const isCorr = isSPR
+          ? this.isSPREqual(studentAns, q.correct_answer)
+          : Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+        const icon = isCorr ? "✅" : "❌";
+        const sec = (session.timePerQuestion && session.timePerQuestion[i]) || 0;
+        telegramDetails.push(`  ${icon} Q${i + 1} [${q.domain || 'Domain'}]: Ans=${studentAns || 'Skipped'} | Key=${q.correct_answer || '-'} (${sec}s)`);
+      });
+
+      const qbReport = {
+        id: repId,
+        type: 'qbank',
+        studentName: studentName,
+        studentId: studentId,
+        studentClass: studentClass,
+        scopeName: hwTitle,
+        hwCode: hwPin,
+        totalQuestions: total,
+        correctCount: correctCount,
+        scorePct: accuracyPct,
+        passed: isPassed,
+        attemptNumber: Math.min(attemptCount, attemptsMax),
+        timeFormatted: timeSpentFormatted,
+        durationSeconds: totalSeconds,
+        date: new Date().toLocaleDateString(),
+        telegramSummaryText: telegramSummary,
+        telegramDetailsText: telegramDetails.join("\n")
+      };
+
+      if (typeof dispatchTelegramReportIfConfigured === 'function') {
+        dispatchTelegramReportIfConfigured(qbReport);
+      }
+    }
+
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
+  },
+
+  closeResultsAndReturnToHomework() {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+    this.saveAllAnsweredQuestionsFromSession();
+    window.activeHomeworkAssignment = null;
+    this.activeHomeworkId = null;
+    sessionStorage.removeItem('qb_active_session');
+    if (typeof renderQbHomeworkActiveBanner === 'function') {
+      renderQbHomeworkActiveBanner(null);
+    }
+    if (typeof switchTab === 'function') {
+      switchTab('student');
+      if (typeof renderAvailableHomeworkForClass === 'function') {
+        renderAvailableHomeworkForClass();
+      }
+    }
+  },
+
+  retakeHomeworkPractice() {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+    sessionStorage.removeItem('qb_active_session');
+    this.startPractice();
   },
 
   isSPREqual(studentVal, correctVal) {
@@ -2290,6 +2552,9 @@ window.qbEngine = {
   },
 
   returnToSetup() {
+    if (typeof toggleDesmosCalculator === 'function') {
+      toggleDesmosCalculator(false);
+    }
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
@@ -2297,6 +2562,18 @@ window.qbEngine = {
 
     // Persist all answered questions from the session immediately
     this.saveAllAnsweredQuestionsFromSession();
+
+    if (window.activeHomeworkAssignment) {
+      window.activeHomeworkAssignment = null;
+      this.activeHomeworkId = null;
+      sessionStorage.removeItem('qb_active_session');
+      const testContainer = document.getElementById('qb-test-container');
+      if (testContainer) testContainer.classList.add('hidden');
+      if (typeof switchTab === 'function') {
+        switchTab('student');
+      }
+      return;
+    }
 
     const testContainer = document.getElementById('qb-test-container');
     const setupView = document.getElementById('qb-setup-view');
@@ -2342,7 +2619,7 @@ window.qbEngine = {
         { left: '\\[', right: '\\]', display: true }
       ],
       ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'svg'],
-      ignoredClasses: ['qb-figure-wrapper'],
+      ignoredClasses: ['qb-figure-wrapper', 'no-math'],
       throwOnError: false
     };
 
@@ -2569,10 +2846,10 @@ window.qbEngine = {
       if (latestView) latestView.classList.remove('hidden');
 
       [modeStdBtn, modeStdBtnLatest].forEach(b => {
-        if (b) b.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900";
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer";
       });
       [modeLatestBtn, modeLatestBtnLatest].forEach(b => {
-        if (b) b.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-xs";
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
       });
 
       this.loadLatestExams().then(() => {
@@ -2589,25 +2866,25 @@ window.qbEngine = {
       }
 
       [modeStdBtn, modeStdBtnLatest].forEach(b => {
-        if (b) b.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-xs border border-slate-200";
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
       });
       [modeLatestBtn, modeLatestBtnLatest].forEach(b => {
-        if (b) b.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900";
+        if (b) b.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer";
       });
     }
   },
 
   setLatestSubject(subj) {
-    const s = ['rw', 'math', 'combined'].includes(subj) ? subj : 'combined';
+    const s = ['rw', 'math', 'both', 'combined'].includes(subj) ? (subj === 'both' ? 'combined' : subj) : 'combined';
     this.activeLatestSubject = s;
 
-    ['combined', 'rw', 'math'].forEach(tabKey => {
+    ['both', 'combined', 'rw', 'math'].forEach(tabKey => {
       const btn = document.getElementById(`qb-latest-tab-${tabKey}`);
       if (btn) {
-        if (tabKey === s) {
-          btn.className = "qb-latest-subj-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-xs";
+        if (tabKey === s || (s === 'combined' && tabKey === 'both')) {
+          btn.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-xs cursor-pointer";
         } else {
-          btn.className = "qb-latest-subj-tab py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900";
+          btn.className = "py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
         }
       }
     });
@@ -2778,11 +3055,11 @@ window.qbEngine = {
             <button type="button" onclick="qbEngine.startLatestExamPractice('${exam.id}')" class="${practiceBtnClass}">
               <span>${practiceBtnText}</span>
             </button>
-            <button type="button" onclick="qbEngine.promptRestartExam('${exam.id}')" title="Restart history for this exam" class="p-3 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-slate-500 hover:text-rose-600 active:scale-95 transition-all shadow-xs cursor-pointer flex items-center justify-center shrink-0">
-              <span class="text-sm">🔄</span>
+            <button type="button" ${reviewDisabled ? 'disabled' : `onclick="qbEngine.startLatestExamReview('${exam.id}', 'all')"`} class="${reviewBtnClass}" title="${reviewDisabled ? 'Solve questions first to unlock review' : 'Review solved questions and rationales'}">
+              <span>👁️ Review</span>
             </button>
-            <button type="button" onclick="${reviewDisabled ? '' : `qbEngine.startLatestExamReview('${exam.id}')`}" class="${reviewBtnClass}" ${reviewDisabled ? 'disabled' : ''}>
-              <span>👁️</span><span>Review (${solvedQ})</span>
+            <button type="button" onclick="qbEngine.promptRestartExam('${exam.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-300 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all shadow-xs cursor-pointer" title="Reset Exam History & Solved Items">
+              <span>🔄</span>
             </button>
           </div>
         </div>
@@ -3012,8 +3289,7 @@ window.qbEngine = {
     if (typeof showToast === 'function') {
       showToast("🔄 History Reset", "Exam progress has been successfully reset to the beginning point.", "success");
     }
-  },
-
+  }
 };
 
 if (typeof window !== 'undefined') {
