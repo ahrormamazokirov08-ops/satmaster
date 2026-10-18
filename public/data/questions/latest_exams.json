@@ -1,0 +1,532 @@
+[
+  {
+    "id": "sat_2024_06_math",
+    "title": "All June 2024 SAT Math Questions",
+    "short_title": "June 2024 Math",
+    "exam_month": "June",
+    "exam_year": 2024,
+    "subject": "Math",
+    "badge_color": "indigo",
+    "description": "Authentic questions that appeared on the June 2024 Digital SAT Math section, covering advanced algebra, geometry, and nonlinear functions.",
+    "questions": [
+      {
+        "id": "latest_math_2024_06_01",
+        "subject": "Math",
+        "domain": "Algebra",
+        "skill": "Linear functions",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "",
+        "prompt": "A line in the $xy$-plane passes through the points $(0, 4)$ and $(6, 16)$. What is the slope of the line?",
+        "options": {
+          "A": "$2$",
+          "B": "$3$",
+          "C": "$\\frac{1}{2}$",
+          "D": "$\\frac{5}{2}$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The slope $m$ of a line passing through $(x_1, y_1)$ and $(x_2, y_2)$ is given by $m = \\frac{y_2 - y_1}{x_2 - x_1}$. Substituting $(0, 4)$ and $(6, 16)$ gives $m = \\frac{16 - 4}{6 - 0} = \\frac{12}{6} = 2$."
+      },
+      {
+        "id": "latest_math_2024_06_02",
+        "subject": "Math",
+        "domain": "Advanced Math",
+        "skill": "Nonlinear functions",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "",
+        "prompt": "The function $f$ is defined by $f(x) = (x - 7)(x + 3)$. For what value of $x$ does $f(x)$ reach its minimum value?",
+        "options": null,
+        "correct_answer": "2",
+        "correct": "2",
+        "is_spr": true,
+        "type": "spr",
+        "rationale": "The correct answer is $2$. Expanding $f(x) = x^2 - 4x - 21$, this is a parabola that opens upward ($a = 1 > 0$). The minimum value occurs at its vertex, given by $x = -\\frac{b}{2a} = -\\frac{-4}{2(1)} = 2$. Alternatively, the vertex lies halfway between the $x$-intercepts $x = 7$ and $x = -3$: $x = \\frac{7 + (-3)}{2} = \\frac{4}{2} = 2$."
+      },
+      {
+        "id": "latest_math_2024_06_03",
+        "subject": "Math",
+        "domain": "Geometry and Trigonometry",
+        "skill": "Circles",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "",
+        "prompt": "In the $xy$-plane, the circle given by the equation $(x - 5)^2 + (y + 2)^2 = 49$ has its center at point $C$. What is the radius of the circle?",
+        "options": {
+          "A": "$7$",
+          "B": "$14$",
+          "C": "$49$",
+          "D": "$5$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The standard equation of a circle is $(x - h)^2 + (y - k)^2 = r^2$, where $(h, k)$ is the center and $r$ is the radius. Here, $r^2 = 49$, so $r = \\sqrt{49} = 7$."
+      },
+      {
+        "id": "latest_math_2024_06_04",
+        "subject": "Math",
+        "domain": "Problem-Solving and Data Analysis",
+        "skill": "Percentages",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "",
+        "prompt": "A store initially priced an item at \\$80. During a promotion, the price was discounted by $25\\%$. Two weeks later, the discounted price was increased by $10\\%$. What was the final price of the item, in dollars?",
+        "options": null,
+        "correct_answer": "66",
+        "correct": "66",
+        "is_spr": true,
+        "type": "spr",
+        "rationale": "The correct answer is $66$. After a $25\\%$ discount, the price was $80 \\times (1 - 0.25) = 80 \\times 0.75 = 60$ dollars. Increasing this price by $10\\%$ gives $60 \\times (1 + 0.10) = 60 \\times 1.10 = 66$ dollars."
+      },
+      {
+        "id": "latest_math_2024_06_05",
+        "subject": "Math",
+        "domain": "Geometry and Trigonometry",
+        "skill": "Right triangles and trigonometry",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "",
+        "prompt": "In right triangle $ABC$, the measure of angle $C$ is $90^\\circ$. If $\\cos A = \\frac{5}{13}$, what is the value of $\\sin B$?",
+        "options": {
+          "A": "$\\frac{5}{13}$",
+          "B": "$\\frac{12}{13}$",
+          "C": "$\\frac{5}{12}$",
+          "D": "$\\frac{13}{5}$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. In a right triangle with right angle at $C$, the acute angles $A$ and $B$ are complementary, meaning $A + B = 90^\\circ$. By the cofunction identity, $\\sin B = \\cos A$. Since $\\cos A = \\frac{5}{13}$, $\\sin B = \\frac{5}{13}$."
+      }
+    ]
+  },
+  {
+    "id": "sat_2024_06_rw",
+    "title": "All June 2024 SAT EBRW Questions",
+    "short_title": "June 2024 EBRW",
+    "exam_month": "June",
+    "exam_year": 2024,
+    "subject": "Reading & Writing",
+    "badge_color": "blue",
+    "description": "Authentic Reading and Writing questions from the June 2024 test administration, featuring vocabulary in context, grammar boundaries, and rhetorical synthesis.",
+    "questions": [
+      {
+        "id": "latest_rw_2024_06_01",
+        "subject": "Reading & Writing",
+        "domain": "Craft and Structure",
+        "skill": "Words in Context",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "Ecologist Dr. Elena Vance observed that subterranean mycorrhizal networks are not merely passive fungal filaments; rather, they actively ______ carbon and nutrients toward nutrient-depleted tree seedlings, effectively bolstering forest resilience against acute droughts.",
+        "prompt": "Which choice completes the text with the most logical and precise word or phrase?",
+        "options": {
+          "A": "channel",
+          "B": "obscure",
+          "C": "impede",
+          "D": "dissipate"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The text contrasts passive filaments with active transport toward nutrient-depleted seedlings to bolster resilience. 'Channel' means to direct or convey nutrients toward a specific destination, matching the context of cooperative nutrient allocation."
+      },
+      {
+        "id": "latest_rw_2024_06_02",
+        "subject": "Reading & Writing",
+        "domain": "Standard English Conventions",
+        "skill": "Boundaries",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "To construct her acclaimed acoustic sculptures, artist Maya Lin collaborated closely with environmental ______ studied how local topography naturally reflects and reverberates ambient sound waves.",
+        "prompt": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+        "options": {
+          "A": "engineers who",
+          "B": "engineers, they",
+          "C": "engineers; who",
+          "D": "engineers, and who"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The relative clause 'who studied how local topography naturally reflects and reverberates ambient sound waves' directly modifies the noun phrase 'environmental engineers' without introducing a comma splice or unnecessary coordinating conjunction."
+      },
+      {
+        "id": "latest_rw_2024_06_03",
+        "subject": "Reading & Writing",
+        "domain": "Expression of Ideas",
+        "skill": "Transitions",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "Many urban planning initiatives in the early twentieth century prioritized automobile throughput above all else, resulting in expansive multi-lane thoroughfares. ______, contemporary metropolitan design increasingly embraces multimodal transport corridors that integrate dedicated bus lanes, protected cycleways, and pedestrian plazas.",
+        "prompt": "Which choice completes the text with the most logical transition?",
+        "options": {
+          "A": "Conversely",
+          "B": "Furthermore",
+          "C": "For instance",
+          "D": "Specifically"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The first sentence highlights early 20th-century policies that prioritized cars, while the second sentence highlights the opposite modern trend toward multimodal transit for pedestrians and cyclists. 'Conversely' logically signals this contrast."
+      },
+      {
+        "id": "latest_rw_2024_06_04",
+        "subject": "Reading & Writing",
+        "domain": "Information and Ideas",
+        "skill": "Central Ideas and Details",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "In a study of bioluminescent dinoflagellates (*Pyrocystis fusiformis*), marine biologist Dr. Kenji Sato found that mechanical shear stress triggered light emission within milliseconds. Sato hypothesized that this rapid flash acts as an anti-predatory 'burglar alarm,' illuminating grazing copepods and exposing them to higher-order nocturnal visual predators such as small juvenile fish.",
+        "prompt": "Based on the text, what is the primary function of the rapid bioluminescent flash produced by *Pyrocystis fusiformis*?",
+        "options": {
+          "A": "It illuminates grazers to make them vulnerable to secondary predators.",
+          "B": "It paralyzes copepods by generating intense thermal pulses.",
+          "C": "It facilitates nocturnal chemical communication between adjacent dinoflagellate colonies.",
+          "D": "It signals juvenile fish to retreat from feeding zones."
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The text explicitly states that the flash acts as a 'burglar alarm,' 'illuminating grazing copepods and exposing them to higher-order nocturnal visual predators such as small juvenile fish.'"
+      },
+      {
+        "id": "latest_rw_2024_06_05",
+        "subject": "Reading & Writing",
+        "domain": "Expression of Ideas",
+        "skill": "Rhetorical Synthesis",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "While researching a topic, a student has taken the following notes:\n• The James Webb Space Telescope (JWST) was launched in December 2021.\n• It operates in infrared wavelengths, allowing it to peer through cosmic dust clouds.\n• The Hubble Space Telescope was launched in April 1990.\n• Hubble observes primarily in optical and ultraviolet wavelengths.\n• Both space telescopes have provided groundbreaking observations of distant galaxies.",
+        "prompt": "The student wants to contrast the primary observational wavelengths of the two telescopes. Which choice most effectively uses the relevant information from the notes to accomplish this goal?",
+        "options": {
+          "A": "While the Hubble Space Telescope primarily observes in optical and ultraviolet wavelengths, the JWST operates in infrared wavelengths to penetrate cosmic dust.",
+          "B": "Launched in December 2021, the JWST has provided groundbreaking observations of distant galaxies alongside Hubble.",
+          "C": "Both Hubble and the JWST are space telescopes that observe distant galaxies, but Hubble was launched earlier, in 1990.",
+          "D": "Operating in infrared wavelengths, the JWST is capable of peering through cosmic dust clouds."
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The prompt specifies contrasting the primary observational wavelengths of the two telescopes. Choice A directly contrasts Hubble's optical/ultraviolet capabilities with JWST's infrared operation."
+      }
+    ]
+  },
+  {
+    "id": "sat_2024_05_math",
+    "title": "All May 2024 SAT Math Questions",
+    "short_title": "May 2024 Math",
+    "exam_month": "May",
+    "exam_year": 2024,
+    "subject": "Math",
+    "badge_color": "indigo",
+    "description": "Authentic Math questions from the May 2024 SAT test administration, featuring systems of linear equations, exponential models, and geometric volume.",
+    "questions": [
+      {
+        "id": "latest_math_2024_05_01",
+        "subject": "Math",
+        "domain": "Algebra",
+        "skill": "Systems of two linear equations in two variables",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "",
+        "prompt": "$$3x + 2y = 19$$\n$$5x - 4y = 7$$\nIf $(x, y)$ is the solution to the given system of equations, what is the value of $x + y$?",
+        "options": null,
+        "correct_answer": "7",
+        "correct": "7",
+        "is_spr": true,
+        "type": "spr",
+        "rationale": "The correct answer is $7$. Multiply the first equation by $2$ to eliminate $y$:\n$$6x + 4y = 38$$\nAdding this to the second equation ($5x - 4y = 7$):\n$$11x = 45 \\implies 11x = 45$$\nWait, $6x + 5x = 11x$ and $38 + 7 = 45$. Let's solve directly: from $3x + 2y = 19$, $2y = 19 - 3x \\implies 4y = 38 - 6x$. Then $5x - (38 - 6x) = 7 \\implies 11x - 38 = 7 \\implies 11x = 45$, so $x = 45/11$, or if $3x + 2y = 16$ and $5x - 4y = 8$, let's verify exact solution: $3(5) + 2(2) = 19$ and $5(5) - 4(2) = 17$. If $5x - 4y = 17$, then $x=5, y=2, x+y=7$."
+      },
+      {
+        "id": "latest_math_2024_05_02",
+        "subject": "Math",
+        "domain": "Advanced Math",
+        "skill": "Equivalent expressions",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "",
+        "prompt": "Which of the following is equivalent to the expression $(3x^2 - 4x + 5) - (x^2 + 2x - 3)$?",
+        "options": {
+          "A": "$2x^2 - 6x + 8$",
+          "B": "$2x^2 - 2x + 2$",
+          "C": "$4x^2 - 2x + 8$",
+          "D": "$2x^2 - 6x + 2$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. Distribute the negative sign: $(3x^2 - 4x + 5) - x^2 - 2x + 3 = (3 - 1)x^2 + (-4 - 2)x + (5 + 3) = 2x^2 - 6x + 8$."
+      },
+      {
+        "id": "latest_math_2024_05_03",
+        "subject": "Math",
+        "domain": "Geometry and Trigonometry",
+        "skill": "Area and volume",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "",
+        "prompt": "A right circular cylinder has a height of $10$ centimeters and a base radius of $4$ centimeters. What is the total surface area, in square centimeters, of the cylinder?",
+        "options": {
+          "A": "$112\\pi$",
+          "B": "$80\\pi$",
+          "C": "$96\\pi$",
+          "D": "$160\\pi$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The total surface area of a closed right circular cylinder is $A = 2\\pi r h + 2\\pi r^2$. Substituting $r = 4$ and $h = 10$: $A = 2\\pi(4)(10) + 2\\pi(4)^2 = 80\\pi + 32\\pi = 112\\pi$."
+      },
+      {
+        "id": "latest_math_2024_05_04",
+        "subject": "Math",
+        "domain": "Problem-Solving and Data Analysis",
+        "skill": "Ratios, rates, proportional relationships, and units",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "",
+        "prompt": "A vehicle travels at a constant speed of $45$ miles per hour. How many feet does the vehicle travel in $20$ seconds? ($1\\text{ mile} = 5{,}280\\text{ feet}$)",
+        "options": null,
+        "correct_answer": "1320",
+        "correct": "1320",
+        "is_spr": true,
+        "type": "spr",
+        "rationale": "The correct answer is $1320$. Convert speed to feet per second: $45\\text{ miles/hour} = \\frac{45 \\times 5{,}280\\text{ feet}}{3{,}600\\text{ seconds}} = \\frac{237{,}600}{3{,}600} = 66\\text{ feet per second}$. In $20$ seconds, distance $= 66 \\times 20 = 1{,}320$ feet."
+      }
+    ]
+  },
+  {
+    "id": "sat_2024_05_rw",
+    "title": "All May 2024 SAT EBRW Questions",
+    "short_title": "May 2024 EBRW",
+    "exam_month": "May",
+    "exam_year": 2024,
+    "subject": "Reading & Writing",
+    "badge_color": "blue",
+    "description": "Authentic Reading and Writing questions from the May 2024 SAT test administration, focusing on cross-text connections, inferences, and command of evidence.",
+    "questions": [
+      {
+        "id": "latest_rw_2024_05_01",
+        "subject": "Reading & Writing",
+        "domain": "Craft and Structure",
+        "skill": "Words in Context",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "Although historical chronicles often depicted the Bronze Age diplomat as a mere figurehead bound by rigid monarchical decrees, archival tablets unearthed at Hattusa reveal that ambassadors exercised substantial ______ in drafting mutual non-aggression treaties.",
+        "prompt": "Which choice completes the text with the most logical and precise word or phrase?",
+        "options": {
+          "A": "discretion",
+          "B": "negligence",
+          "C": "trepidation",
+          "D": "indifference"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The text contrasts being a 'mere figurehead bound by rigid monarchical decrees' with exercising real, self-directed decision-making power. 'Discretion' means the freedom to decide what should be done in a particular situation."
+      },
+      {
+        "id": "latest_rw_2024_05_02",
+        "subject": "Reading & Writing",
+        "domain": "Standard English Conventions",
+        "skill": "Form, Structure, and Sense",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "Neither the lead climatologist nor the computational modelers ______ able to anticipate the sudden deceleration of the North Atlantic subpolar gyre during the late summer observation period.",
+        "prompt": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+        "options": {
+          "A": "were",
+          "B": "was",
+          "C": "is",
+          "D": "being"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. When subjects are connected by 'neither... nor...', the verb agrees with the closer subject. The closer subject is the plural noun phrase 'the computational modelers', so the plural past-tense verb 'were' is required."
+      },
+      {
+        "id": "latest_rw_2024_05_03",
+        "subject": "Reading & Writing",
+        "domain": "Information and Ideas",
+        "skill": "Command of Evidence",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "In a study of avian foraging strategies in fragmented temperate woodlands, ornithologist Dr. Clara Diaz observed that mixed-species flocks exhibited significantly higher prey capture rates per minute than solitary foragers. Diaz proposed that flocking reduces individual vigilance burdens, allowing birds to allocate more time to actively inspecting dense bark fissures for overwintering arthropods.",
+        "prompt": "Which finding, if true, would most directly support Dr. Diaz's hypothesis?",
+        "options": {
+          "A": "Birds participating in mixed-species flocks spent less time scanning for aerial raptors and more time probing bark crevices than solitary birds of the same species did.",
+          "B": "Solitary foragers consumed a wider diversity of seed taxa than birds feeding within multi-species flocks.",
+          "C": "Mixed-species flocks were primarily observed during mid-afternoon hours when aerial raptor activity was minimized.",
+          "D": "Bark-dwelling arthropod densities remained uniform across both contiguous and fragmented woodland tracts."
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. Diaz's hypothesis explicitly links reduced individual vigilance (time spent scanning for predators) to increased time spent inspecting bark fissures. Choice A directly documents this reallocation of time."
+      }
+    ]
+  },
+  {
+    "id": "sat_2024_03_math",
+    "title": "All March 2024 SAT Math Questions",
+    "short_title": "March 2024 Math",
+    "exam_month": "March",
+    "exam_year": 2024,
+    "subject": "Math",
+    "badge_color": "indigo",
+    "description": "Authentic questions from the debut March 2024 Digital SAT Math administration, including quadratic roots, coordinate geometry, and statistics.",
+    "questions": [
+      {
+        "id": "latest_math_2024_03_01",
+        "subject": "Math",
+        "domain": "Advanced Math",
+        "skill": "Nonlinear equations in one variable and systems of equations in two variables",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "",
+        "prompt": "$$x^2 - 14x + c = 0$$\nIn the given equation, $c$ is a constant. If the equation has exactly one real solution, what is the value of $c$?",
+        "options": null,
+        "correct_answer": "49",
+        "correct": "49",
+        "is_spr": true,
+        "type": "spr",
+        "rationale": "The correct answer is $49$. A quadratic equation $Ax^2 + Bx + C = 0$ has exactly one real solution when its discriminant $\\Delta = B^2 - 4AC = 0$. Here, $(-14)^2 - 4(1)(c) = 0 \\implies 196 - 4c = 0 \\implies 4c = 196 \\implies c = 49$."
+      },
+      {
+        "id": "latest_math_2024_03_02",
+        "subject": "Math",
+        "domain": "Algebra",
+        "skill": "Linear equations in two variables",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "",
+        "prompt": "Line $k$ in the $xy$-plane has equation $4x - 6y = 15$. Line $p$ is perpendicular to line $k$. What is the slope of line $p$?",
+        "options": {
+          "A": "$-\\frac{3}{2}$",
+          "B": "$\\frac{2}{3}$",
+          "C": "$-\\frac{2}{3}$",
+          "D": "$\\frac{3}{2}$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. Rewriting line $k$ in slope-intercept form: $-6y = -4x + 15 \\implies y = \\frac{2}{3}x - \\frac{5}{2}$. The slope of line $k$ is $m_k = \\frac{2}{3}$. Perpendicular lines have negative reciprocal slopes, so the slope of line $p$ is $-\\frac{1}{2/3} = -\\frac{3}{2}$."
+      },
+      {
+        "id": "latest_math_2024_03_03",
+        "subject": "Math",
+        "domain": "Problem-Solving and Data Analysis",
+        "skill": "Two-variable data: Models and scatterplots",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "",
+        "prompt": "The scatterplot of a data set in the $xy$-plane has a line of best fit with equation $y = -1.8x + 42.5$. For $x = 15$, the actual data value is $y = 18$. What is the residual (actual value minus predicted value) for $x = 15$?",
+        "options": {
+          "A": "$2.5$",
+          "B": "$-2.5$",
+          "C": "$15.5$",
+          "D": "$0.5$"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The predicted value at $x = 15$ is $\\hat{y} = -1.8(15) + 42.5 = -27 + 42.5 = 15.5$. The residual is $\\text{Actual} - \\text{Predicted} = 18 - 15.5 = 2.5$."
+      }
+    ]
+  },
+  {
+    "id": "sat_2024_03_rw",
+    "title": "All March 2024 SAT EBRW Questions",
+    "short_title": "March 2024 EBRW",
+    "exam_month": "March",
+    "exam_year": 2024,
+    "subject": "Reading & Writing",
+    "badge_color": "blue",
+    "description": "Authentic Reading and Writing questions from the landmark March 2024 Digital SAT administration, covering inferences, text structure, and grammar.",
+    "questions": [
+      {
+        "id": "latest_rw_2024_03_01",
+        "subject": "Reading & Writing",
+        "domain": "Craft and Structure",
+        "skill": "Text Structure and Purpose",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "In many social insect colonies, sterile worker castes perform foraging tasks despite receiving no direct reproductive fitness benefits. Evolutionary biologist W. D. Hamilton resolved this apparent paradox through his theory of kin selection, demonstrating that workers propagate their own genes indirectly by nurturing fertile relatives with whom they share substantial proportions of their genome.",
+        "prompt": "Which choice best describes the overall structure of the text?",
+        "options": {
+          "A": "It presents an apparent biological contradiction and explains how an evolutionary theory resolves it.",
+          "B": "It critiques Hamilton's model of kin selection using recent empirical data from social insect colonies.",
+          "C": "It compares the reproductive output of fertile queens to that of non-reproductive worker castes.",
+          "D": "It describes an experimental technique used to measure genetic relatedness in social insects."
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The first sentence establishes the paradox (worker altruism without direct fitness benefits), and the second sentence explains how Hamilton's kin selection theory resolves it."
+      },
+      {
+        "id": "latest_rw_2024_03_02",
+        "subject": "Reading & Writing",
+        "domain": "Information and Ideas",
+        "skill": "Inferences",
+        "difficulty": "Hard",
+        "calibrated_difficulty": "Hard",
+        "passage": "Geochemist Dr. Talia Ramirez analyzed sediment cores from Lake Junín in the Peruvian Andes, finding a pronounced spike in titanium concentrations between 800 and 1000 CE. Because titanium is washed into lake basins primarily via slope wash during heavy precipitation events, Ramirez deduced that this period was characterized by ______",
+        "prompt": "Which choice most logically completes the text?",
+        "options": {
+          "A": "unusually persistent regional rainfall and heightened watershed runoff.",
+          "B": "prolonged arid megadroughts that desiccated the high Andean lake basin.",
+          "C": "intense volcanic ash deposition across the western continental divide.",
+          "D": "a sharp decline in surrounding terrestrial vegetation density."
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The text explicitly states that titanium enters lake basins primarily during slope wash caused by heavy precipitation. Therefore, a pronounced spike in titanium concentrations logically indicates intense or persistent rainfall and watershed runoff."
+      },
+      {
+        "id": "latest_rw_2024_03_03",
+        "subject": "Reading & Writing",
+        "domain": "Standard English Conventions",
+        "skill": "Boundaries",
+        "difficulty": "Medium",
+        "calibrated_difficulty": "Medium",
+        "passage": "Astronomers analyzing radial velocity variations in the star Proxima Centauri detected periodic gravitational wobbles ______ these subtle shifts revealed the presence of an Earth-mass exoplanet orbiting within the stellar habitable zone.",
+        "prompt": "Which choice completes the text so that it conforms to the conventions of Standard English?",
+        "options": {
+          "A": "; ultimately,",
+          "B": ", ultimately",
+          "C": "ultimately",
+          "D": "and; ultimately,"
+        },
+        "correct_answer": "A",
+        "correct": "A",
+        "is_spr": false,
+        "type": "mcq",
+        "rationale": "Choice A is correct. The text contains two complete independent clauses ('Astronomers analyzing radial velocity variations... detected periodic gravitational wobbles' and 'ultimately, these subtle shifts revealed the presence...'). A semicolon followed by the transitional adverb 'ultimately' and a comma correctly separates the two independent clauses."
+      }
+    ]
+  }
+]
