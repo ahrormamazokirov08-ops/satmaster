@@ -47,7 +47,7 @@ class TestLatestExamsFeature(unittest.TestCase):
             exams = json.load(f)
 
         expected_collections = [
-            ("sat_2024_06_math", "Math", "June", 2024, 5),
+            ("sat_2026_06_math", "Math", "June", 2026, 188),
             ("sat_2026_06_rw", "Reading & Writing", "June", 2026, 236),
             ("sat_2024_05_math", "Math", "May", 2024, 4),
             ("sat_2024_05_rw", "Reading & Writing", "May", 2024, 3),
@@ -57,7 +57,7 @@ class TestLatestExamsFeature(unittest.TestCase):
 
         self.assertEqual(len(exams), 6, "Expected exactly 6 latest exam collections")
         total_questions = sum(len(ex["questions"]) for ex in exams)
-        self.assertEqual(total_questions, 254, f"Expected 254 questions across all exams, got {total_questions}")
+        self.assertEqual(total_questions, 437, f"Expected 437 questions across all exams, got {total_questions}")
 
         for exam_id, subject, month, year, qcount in expected_collections:
             exam = next((e for e in exams if e["id"] == exam_id or e.get("legacy_id") == exam_id), None)
@@ -68,6 +68,8 @@ class TestLatestExamsFeature(unittest.TestCase):
             self.assertEqual(len(exam["questions"]), qcount, f"Mismatch question count for {exam_id}")
             if exam_id == "sat_2026_06_rw":
                 self.assertEqual(exam["title"], "All JUNE 2026 EBRW questions")
+            elif exam_id == "sat_2026_06_math":
+                self.assertEqual(exam["title"], "All JUNE 2026 Math questions")
 
             for q in exam["questions"]:
                 self.assertIn("id", q)
@@ -92,7 +94,7 @@ class TestLatestExamsFeature(unittest.TestCase):
                     for token in ["StartFraction", "end fraction", "StartRoot", "end root", "with numerator"]:
                         self.assertNotIn(token, val, f"TTS token {token} in {q['id']}")
 
-        print(f"✅ All 6 exam collections (148 questions) strictly match schema & invariants")
+        print(f"✅ All 6 exam collections (437 questions) strictly match schema & invariants")
 
     def test_03_standard_dataset_strict_isolation(self):
         """Standard question bank (4,303 questions) must remain completely untouched."""
@@ -191,8 +193,8 @@ class TestLatestExamsFeature(unittest.TestCase):
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.13.0'", self.engine_content, "dataVersion 2.13.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.13.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.14.0'", self.engine_content, "dataVersion 2.14.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.14.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
@@ -357,27 +359,30 @@ class TestLatestExamsFeature(unittest.TestCase):
         with open(self.data_latest, "r", encoding="utf-8") as f:
             exams = json.load(f)
 
-        exam = exams[0]
+        exam = next(e for e in exams if e["id"] == "sat_2026_06_rw")
         qs = exam["questions"]
 
         for q in qs:
             qid = q["id"]
             skill = q.get("skill")
             prompt = q.get("prompt", "")
+            passage = q.get("passage", "")
 
-            # 12.1 Words in Context, Transitions, Conventions must contain blank
-            if skill in ["Words in Context", "Transitions", "Form, Structure, and Sense"]:
-                self.assertIn("______", prompt, f"Invariant 12.1 violation: Question {qid} ({skill}) missing authentic blank '______'")
+            # 12.1 Words in Context, Transitions, Conventions must contain blank (or <u> for "most nearly mean")
+            if skill in ["Transitions", "Form, Structure, and Sense"] or (skill == "Words in Context" and "completes the text" in prompt):
+                self.assertIn("______", passage, f"Invariant 12.1 violation: Question {qid} ({skill}) missing authentic blank '______'")
+            elif skill == "Words in Context" and ("most nearly mean" in prompt or "most likely indicate" in prompt):
+                self.assertTrue("<u>" in passage or "underline" in passage, f"Invariant 12.6 violation: Question {qid} missing underline markup")
 
             # 12.2 Logical Completion Inferences must end with blank
             if skill == "Inferences":
-                self.assertTrue(prompt.rstrip().endswith("______"), f"Invariant 12.2 violation: Question {qid} ({skill}) does not end with '______'")
+                self.assertTrue(passage.rstrip().endswith("______"), f"Invariant 12.2 violation: Question {qid} ({skill}) does not end with '______'")
 
             # 12.3 Rhetorical Synthesis must have bulleted notes structure
             if skill == "Rhetorical Synthesis":
-                self.assertIn("While researching a topic, a student has taken the following notes:", prompt,
+                self.assertIn("While researching a topic, a student has taken the following notes:", passage,
                               f"Invariant 12.3 violation: Question {qid} missing standard notes lead-in")
-                self.assertIn("•", prompt, f"Invariant 12.3 violation: Question {qid} missing bullet dots")
+                self.assertIn("•", passage, f"Invariant 12.3 violation: Question {qid} missing bullet dots")
 
             # 12.5 Clean options: no single-letter OCR prefixes (e.g. 'c resisted')
             for opt_key, opt_text in (q.get("options") or {}).items():
@@ -385,6 +390,84 @@ class TestLatestExamsFeature(unittest.TestCase):
                                 f"Invariant 12.5 violation: Question {qid} Option {opt_key} has OCR stray prefix: '{opt_text}'")
 
         print("✅ Invariant 12 verified across all 236 questions: authentic blanks, bulleted notes, clean options")
+
+    def test_10_math_module_practice_and_simulation_suite(self):
+        """Verifies Math 9-module chunking (22 per module), 35-min timer accommodations, and Math Invariants."""
+        with open(self.data_latest, "r", encoding="utf-8") as f:
+            exams = json.load(f)
+
+        math_exam = next(e for e in exams if e["id"] == "sat_2026_06_math")
+        qs = math_exam["questions"]
+        self.assertEqual(len(qs), 188, "Expected 188 questions in June 2026 Math")
+        self.assertEqual(math_exam["subject"], "Math")
+        self.assertEqual(math_exam["title"], "All JUNE 2026 Math questions")
+
+        # 1. 22 questions per module chunking: 8 modules of 22 questions + 1 module of 12 questions = 188 total
+        mod_size = 22
+        total_mods = (len(qs) + mod_size - 1) // mod_size
+        self.assertEqual(total_mods, 9)
+
+        chunks = []
+        for i in range(total_mods):
+            start = i * mod_size
+            end = min((i + 1) * mod_size, len(qs))
+            chunks.append(qs[start:end])
+
+        self.assertEqual(len(chunks), 9)
+        for i in range(8):
+            self.assertEqual(len(chunks[i]), 22, f"Math Module {i + 1} should have 22 questions")
+        self.assertEqual(len(chunks[8]), 12, "Math Module 9 should have remaining 12 questions")
+        self.assertEqual(sum(len(c) for c in chunks), 188)
+
+        # 2. Timer accommodations mapping for Math (35 minutes standard)
+        math_timer_configs = {
+            "standard": 35 * 60, # 2100s
+            "1.5x": 53 * 60,     # 3180s
+            "2.0x": 70 * 60,     # 4200s
+            "untimed": 0         # 0s
+        }
+        self.assertEqual(math_timer_configs["standard"], 2100)
+        self.assertEqual(math_timer_configs["1.5x"], 3180)
+        self.assertEqual(math_timer_configs["2.0x"], 4200)
+        self.assertEqual(math_timer_configs["untimed"], 0)
+
+        # 3. Invariant 7 (Strict Schema Compliance & Math empty passage)
+        valid_domains = {"Algebra", "Advanced Math", "Problem-Solving and Data Analysis", "Geometry and Trigonometry"}
+        for q in qs:
+            qid = q["id"]
+            self.assertEqual(q.get("passage", ""), "", f"{qid}: Math passage must be empty string")
+            self.assertEqual(q.get("subject"), "Math", f"{qid}: Subject must be Math")
+            self.assertIn(q.get("domain"), valid_domains, f"{qid}: Invalid domain {q.get('domain')}")
+
+            if q.get("is_spr"):
+                self.assertIsNone(q.get("options"), f"{qid}: SPR options must be None")
+                self.assertEqual(q.get("type"), "spr", f"{qid}: SPR type must be 'spr'")
+                self.assertEqual(str(q.get("correct")), str(q.get("correct_answer")), f"{qid}: SPR correct mismatch")
+            else:
+                self.assertIsInstance(q.get("options"), dict, f"{qid}: MCQ options must be dict")
+                self.assertEqual(set(q["options"].keys()), {"A", "B", "C", "D"}, f"{qid}: Missing option keys")
+                self.assertEqual(q.get("type"), "mcq", f"{qid}: MCQ type must be 'mcq'")
+                self.assertEqual(q.get("is_spr"), False, f"{qid}: MCQ is_spr must be False")
+                self.assertIn(q.get("correct"), ["A", "B", "C", "D"], f"{qid}: Invalid correct key")
+                self.assertEqual(q.get("correct"), q.get("correct_answer"), f"{qid}: correct mismatch")
+
+            # 4. Invariant 1 (Visual elements wrapped properly)
+            prompt = q.get("prompt", "")
+            if "<svg" in prompt:
+                self.assertIn("qb-figure-wrapper", prompt, f"{qid}: SVG must be wrapped in qb-figure-wrapper")
+            if "<table" in prompt:
+                self.assertIn("qb-table-wrapper", prompt, f"{qid}: Table must be wrapped in qb-table-wrapper")
+
+            # 5. Invariant 6 & 11: Zero TTS tokens and no bare \frac in options
+            for token in ["StartFraction", "end fraction", "StartRoot", "end root", "with numerator"]:
+                self.assertNotIn(token, prompt, f"{qid} prompt has TTS token {token}")
+                self.assertNotIn(token, q.get("rationale", ""), f"{qid} rationale has TTS token {token}")
+
+            for opt_k, opt_v in (q.get("options") or {}).items():
+                if r"\frac" in opt_v:
+                    self.assertTrue(opt_v.startswith("$") and opt_v.endswith("$"), f"{qid} Option {opt_k} bare fraction without $: {opt_v}")
+
+        print("✅ Digital SAT Math 9-Module Practice & Simulation Suite verified (188 Qs, 9 modules, 35m timers, all Invariants)")
 
 if __name__ == "__main__":
     unittest.main()

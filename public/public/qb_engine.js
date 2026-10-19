@@ -870,7 +870,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.13.0',
+  dataVersion: '2.14.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -3394,8 +3394,18 @@ window.qbEngine = {
         : "px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200";
     }
 
-    const totalMods = Math.ceil(exam.questions.length / 27);
+    const isMath = (exam.subject === 'Math');
+    const modSize = isMath ? 22 : 27;
+    const totalMods = Math.ceil(exam.questions.length / modSize);
     if (countLabel) countLabel.innerText = `${totalMods} official test module${totalMods > 1 ? 's' : ''}`;
+
+    // Update timer button subtitles dynamically based on subject
+    const stdTimeEl = document.querySelector('#qb-timer-btn-standard .font-mono');
+    const x15TimeEl = document.querySelector('#qb-timer-btn-1\\.5x .font-mono');
+    const x20TimeEl = document.querySelector('#qb-timer-btn-2\\.0x .font-mono');
+    if (stdTimeEl) stdTimeEl.innerText = isMath ? '35 min' : '32 min';
+    if (x15TimeEl) x15TimeEl.innerText = isMath ? '53 min' : '48 min';
+    if (x20TimeEl) x20TimeEl.innerText = isMath ? '70 min' : '64 min';
 
     this.selectModuleSetupTab('module');
     this.renderModuleGrid(exam.id);
@@ -3414,6 +3424,15 @@ window.qbEngine = {
 
   getQuestionStageInfo(q) {
     if (!q) return null;
+    const isMath = (q.subject === 'Math' || (q.id && q.id.includes('math')));
+    if (isMath) {
+      const dom = q.domain || '';
+      if (dom.includes('Algebra')) return { stage: 1, totalStages: 4, name: 'Algebra', icon: '📐', colorClass: 'text-blue-700 bg-blue-50 border-blue-200' };
+      if (dom.includes('Advanced')) return { stage: 2, totalStages: 4, name: 'Advanced Math', icon: '⚡', colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
+      if (dom.includes('Data') || dom.includes('Problem-Solving')) return { stage: 3, totalStages: 4, name: 'Problem-Solving & Data Analysis', icon: '📊', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+      if (dom.includes('Geometry')) return { stage: 4, totalStages: 4, name: 'Geometry & Trigonometry', icon: '📏', colorClass: 'text-purple-700 bg-purple-50 border-purple-200' };
+      return { stage: 1, totalStages: 4, name: 'Math Domain', icon: '📐', colorClass: 'text-blue-700 bg-blue-50 border-blue-200' };
+    }
     const skill = q.skill || '';
     if (skill === 'Words in Context') {
       return { stage: 1, totalStages: 5, name: 'Words In Context', icon: '🔤', colorClass: 'text-indigo-700 bg-indigo-50 border-indigo-200' };
@@ -3603,16 +3622,18 @@ window.qbEngine = {
     const grid = document.getElementById('qb-mod-grid');
     if (!exam || !grid) return;
 
+    const isMath = (exam.subject === 'Math');
+    const modSize = isMath ? 22 : 27;
     const totalQ = exam.questions.length;
-    const totalMods = Math.ceil(totalQ / 27);
+    const totalMods = Math.ceil(totalQ / modSize);
     const moduleResults = this.getAllModuleResults(exam.id);
     const progress = this.getExamProgress(exam.id);
     const solvedSet = new Set(progress.solved_ids || []);
 
     let html = '';
     for (let i = 0; i < totalMods; i++) {
-      const startQ = i * 27;
-      const endQ = Math.min((i + 1) * 27, totalQ);
+      const startQ = i * modSize;
+      const endQ = Math.min((i + 1) * modSize, totalQ);
       const modQCount = endQ - startQ;
       const modQuestions = exam.questions.slice(startQ, endQ);
       const modSolvedCount = modQuestions.filter(q => solvedSet.has(q.id)).length;
@@ -3634,11 +3655,36 @@ window.qbEngine = {
         ? "border-blue-600 bg-blue-50/70 shadow-xs ring-2 ring-blue-500/20" 
         : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50";
 
-      const wicCount = modQuestions.filter(q => q.skill === 'Words in Context').length;
-      const rcCount = modQuestions.filter(q => ['Text Structure and Purpose', 'Central Ideas and Details', 'Command of Evidence', 'Inferences'].includes(q.skill)).length;
-      const secCount = modQuestions.filter(q => q.skill === 'Form, Structure, and Sense').length;
-      const traCount = modQuestions.filter(q => q.skill === 'Transitions').length;
-      const notesCount = modQuestions.filter(q => q.skill === 'Rhetorical Synthesis').length;
+      let domainTagsHtml = '';
+      if (isMath) {
+        const algCount = modQuestions.filter(q => (q.domain || '').includes('Algebra')).length;
+        const advCount = modQuestions.filter(q => (q.domain || '').includes('Advanced')).length;
+        const psdaCount = modQuestions.filter(q => (q.domain || '').includes('Data') || (q.domain || '').includes('Problem-Solving')).length;
+        const geomCount = modQuestions.filter(q => (q.domain || '').includes('Geometry')).length;
+        domainTagsHtml = `
+          <div class="flex items-center gap-1 flex-wrap text-[9px] font-bold">
+            <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100" title="Algebra">📐 ${algCount}</span>
+            <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100" title="Advanced Math">⚡ ${advCount}</span>
+            <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100" title="Problem-Solving & Data Analysis">📊 ${psdaCount}</span>
+            <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100" title="Geometry & Trigonometry">📏 ${geomCount}</span>
+          </div>
+        `;
+      } else {
+        const wicCount = modQuestions.filter(q => q.skill === 'Words in Context').length;
+        const rcCount = modQuestions.filter(q => ['Text Structure and Purpose', 'Central Ideas and Details', 'Command of Evidence', 'Inferences'].includes(q.skill)).length;
+        const secCount = modQuestions.filter(q => q.skill === 'Form, Structure, and Sense').length;
+        const traCount = modQuestions.filter(q => q.skill === 'Transitions').length;
+        const notesCount = modQuestions.filter(q => q.skill === 'Rhetorical Synthesis').length;
+        domainTagsHtml = `
+          <div class="flex items-center gap-1 flex-wrap text-[9px] font-bold">
+            <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100" title="Words In Context">🔤 ${wicCount}</span>
+            <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100" title="Reading Comprehension">📖 ${rcCount}</span>
+            <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100" title="Standard English Conventions">✍️ ${secCount}</span>
+            <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100" title="Transitions">🔄 ${traCount}</span>
+            <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100" title="Notes">📝 ${notesCount}</span>
+          </div>
+        `;
+      }
 
       html += `
           <button type="button" onclick="qbEngine.selectModuleCard(${i})" class="p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${activeBorder} flex flex-col justify-between min-h-[110px] space-y-2">
@@ -3646,13 +3692,7 @@ window.qbEngine = {
               <span class="text-xs font-black text-slate-900">Module ${i + 1}</span>
               <span class="text-[10px] font-mono font-bold text-slate-500">${modQCount} Questions</span>
             </div>
-            <div class="flex items-center gap-1 flex-wrap text-[9px] font-bold">
-              <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100" title="Words In Context">🔤 ${wicCount}</span>
-              <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100" title="Reading Comprehension">📖 ${rcCount}</span>
-              <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100" title="Standard English Conventions">✍️ ${secCount}</span>
-              <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100" title="Transitions">🔄 ${traCount}</span>
-              <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100" title="Notes">📝 ${notesCount}</span>
-            </div>
+            ${domainTagsHtml}
             <div class="w-full flex items-center justify-between pt-1 border-t border-slate-100">
               ${badgeHtml}
             </div>
@@ -3707,9 +3747,10 @@ window.qbEngine = {
     const exam = (this.latestExamsData || []).find(e => e.id === this.selectedModuleExamId || e.legacy_id === this.selectedModuleExamId);
     if (!exam) return;
 
+    const modSize = (exam.subject === 'Math') ? 22 : 27;
     if (this.selectedModuleTab === 'module') {
-      const startQ = this.selectedModuleIndex * 27;
-      const endQ = Math.min((this.selectedModuleIndex + 1) * 27, exam.questions.length);
+      const startQ = this.selectedModuleIndex * modSize;
+      const endQ = Math.min((this.selectedModuleIndex + 1) * modSize, exam.questions.length);
       const count = endQ - startQ;
       launchBtn.innerHTML = `<span>🚀 Start Module ${this.selectedModuleIndex + 1} Practice (${count} Questions)</span>`;
     } else if (this.selectedModuleTab === 'types') {
@@ -3726,16 +3767,18 @@ window.qbEngine = {
     const exam = (this.latestExamsData || []).find(e => e.id === this.selectedModuleExamId || e.legacy_id === this.selectedModuleExamId);
     if (!exam) return;
 
+    const isMath = (exam.subject === 'Math');
+    const modSize = isMath ? 22 : 27;
     let targetQuestions = [];
     let isModuleSession = false;
     let moduleIdx = 0;
-    let totalModules = Math.ceil(exam.questions.length / 27);
+    let totalModules = Math.ceil(exam.questions.length / modSize);
 
     if (this.selectedModuleTab === 'module') {
       isModuleSession = true;
       moduleIdx = this.selectedModuleIndex;
-      const startQ = moduleIdx * 27;
-      const endQ = Math.min((moduleIdx + 1) * 27, exam.questions.length);
+      const startQ = moduleIdx * modSize;
+      const endQ = Math.min((moduleIdx + 1) * modSize, exam.questions.length);
       targetQuestions = exam.questions.slice(startQ, endQ);
     } else if (this.selectedModuleTab === 'types') {
       isModuleSession = false;
@@ -3755,11 +3798,11 @@ window.qbEngine = {
 
     let timeLimitMinutes = 0;
     if (this.selectedTimerType === 'standard') {
-      timeLimitMinutes = 32;
+      timeLimitMinutes = isMath ? 35 : 32;
     } else if (this.selectedTimerType === '1.5x') {
-      timeLimitMinutes = 48;
+      timeLimitMinutes = isMath ? 53 : 48;
     } else if (this.selectedTimerType === '2.0x') {
-      timeLimitMinutes = 64;
+      timeLimitMinutes = isMath ? 70 : 64;
     } else {
       timeLimitMinutes = 0;
     }
@@ -3844,8 +3887,9 @@ window.qbEngine = {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
 
-    const startQ = moduleIdx * 27;
-    const endQ = Math.min((moduleIdx + 1) * 27, exam.questions.length);
+    const modSize = (exam.subject === 'Math') ? 22 : 27;
+    const startQ = moduleIdx * modSize;
+    const endQ = Math.min((moduleIdx + 1) * modSize, exam.questions.length);
     const modQuestions = exam.questions.slice(startQ, endQ);
 
     const activeSession = {
