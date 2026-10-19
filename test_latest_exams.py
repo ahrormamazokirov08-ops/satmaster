@@ -133,6 +133,9 @@ class TestLatestExamsFeature(unittest.TestCase):
             'id="qb-rev-filter-correct"',
             'id="qb-module-start-modal"',
             'id="qb-mod-grid"',
+            'id="qb-mod-tab-types"',
+            'id="qb-type-picker-section"',
+            'id="qb-type-grid"',
             'id="qb-timer-btn-standard"',
             'id="qb-timer-btn-1.5x"',
             'id="qb-timer-btn-2.0x"',
@@ -178,13 +181,18 @@ class TestLatestExamsFeature(unittest.TestCase):
             "reviewModuleAnswers(",
             "startNextModule(",
             "sendModuleReportToTelegram(",
+            "getQuestionStageInfo(",
+            "getTypeFilterFn(",
+            "getTypeDisplayName(",
+            "renderQuestionTypeGrid(",
+            "selectQuestionTypeCard(",
         ]
 
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.9.0'", self.engine_content, "dataVersion 2.9.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.9.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.10.0'", self.engine_content, "dataVersion 2.10.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.10.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
@@ -299,6 +307,49 @@ class TestLatestExamsFeature(unittest.TestCase):
         self.assertEqual(sum(d["total"] for d in domain_breakdown.values()), 27)
         self.assertEqual(sum(d["correct"] for d in domain_breakdown.values()), 24)
         print(f"✅ Digital SAT 9-Module Practice & Simulation Suite verified (236 Qs, 9 modules, accommodations, domain breakdown)")
+
+    def test_08_official_module_question_type_ordering(self):
+        """Invariant: Every module must strictly follow College Board 5-stage order:
+        1. Words In Context
+        2. Reading Comprehension (ending strictly with Inferences / Logical Completion)
+        3. Conventions of Standard English (Form, Structure, and Sense)
+        4. Transitions
+        5. Notes (Rhetorical Synthesis)
+        """
+        with open(self.data_latest, "r", encoding="utf-8") as f:
+            exams = json.load(f)
+
+        june_exam = next(e for e in exams if e["id"] == "sat_2026_06_rw")
+        qs = june_exam["questions"]
+        self.assertEqual(len(qs), 236)
+
+        stage_map = {
+            'Words in Context': 1,
+            'Text Structure and Purpose': 2,
+            'Central Ideas and Details': 2,
+            'Command of Evidence': 2,
+            'Inferences': 3,
+            'Form, Structure, and Sense': 4,
+            'Transitions': 5,
+            'Rhetorical Synthesis': 6
+        }
+
+        total_mods = (len(qs) + 26) // 27
+        for m in range(total_mods):
+            batch = qs[m * 27 : min((m + 1) * 27, len(qs))]
+            skills = [q["skill"] for q in batch]
+
+            # 1. Must begin with Words in Context
+            self.assertEqual(skills[0], "Words in Context", f"Module {m + 1} did not begin with Words in Context")
+
+            # 2. Must end with Rhetorical Synthesis (Notes)
+            self.assertEqual(skills[-1], "Rhetorical Synthesis", f"Module {m + 1} did not end with Notes (Rhetorical Synthesis)")
+
+            # 3. Stages must be monotonically non-decreasing
+            stages = [stage_map[s] for s in skills]
+            self.assertEqual(stages, sorted(stages), f"Module {m + 1} violated College Board 5-stage ordering: {skills}")
+
+        print("✅ Official 5-stage College Board question ordering verified across all 9 modules")
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,7 +17,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- Question Bank State Engine Module with Cache-Buster -->
-  <script src="public/qb_engine.js?v=2.9.0"></script>
+  <script src="public/qb_engine.js?v=2.10.0"></script>
   <style>
     /* Design tokens: #0f172a #334155 */
     html, body {
@@ -1504,14 +1504,17 @@
               <button type="button" onclick="qbEngine.closeModuleStartModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-lg cursor-pointer transition-all">✕</button>
             </div>
 
-            <!-- 1. Mode Selector Tabs: Module vs Full Exam -->
+            <!-- 1. Mode Selector Tabs: Module vs Question Types vs Full Exam -->
             <div class="space-y-2">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">1. Practice Mode</label>
-              <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-                <button type="button" id="qb-mod-tab-module" onclick="qbEngine.selectModuleSetupTab('module')" class="py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+                <button type="button" id="qb-mod-tab-module" onclick="qbEngine.selectModuleSetupTab('module')" class="py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer">
                   🎯 Test Modules (27 Qs)
                 </button>
-                <button type="button" id="qb-mod-tab-full" onclick="qbEngine.selectModuleSetupTab('full')" class="py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer">
+                <button type="button" id="qb-mod-tab-types" onclick="qbEngine.selectModuleSetupTab('types')" class="py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer">
+                  🏷️ Question Types (5 Categories)
+                </button>
+                <button type="button" id="qb-mod-tab-full" onclick="qbEngine.selectModuleSetupTab('full')" class="py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer">
                   📚 Full Paper (All Questions)
                 </button>
               </div>
@@ -1525,6 +1528,17 @@
               </div>
               <div id="qb-mod-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <!-- Dynamically populated by qbEngine.renderModuleGrid() -->
+              </div>
+            </div>
+
+            <!-- 2b. Question Type Picker Section (shown when tab is 'types') -->
+            <div id="qb-type-picker-section" class="space-y-2.5 hidden">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">2. Select Question Type to Drill</label>
+                <span class="text-[11px] text-slate-500 font-medium">Official Digital SAT Reading &amp; Writing Breakdown</span>
+              </div>
+              <div id="qb-type-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <!-- Dynamically populated by qbEngine.renderQuestionTypeGrid() -->
               </div>
             </div>
 
@@ -13712,6 +13726,7 @@
   selectedModuleIndex: 0,
   selectedTimerType: 'standard',
   selectedFeedbackStyle: 'instant',
+  selectedTypeKey: 'wic',
 
   skillHierarchy: {
     rw: [
@@ -14484,7 +14499,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.9.0',
+  dataVersion: '2.10.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -15138,7 +15153,16 @@
     const flagText = document.getElementById('qb-flag-text');
 
     if (headerSubj) headerSubj.innerText = `Section: ${q.subject || 'SAT Practice'}`;
-    if (headerDomain) headerDomain.innerText = q.domain || '';
+    const stageInfo = this.getQuestionStageInfo(q);
+    if (headerDomain) {
+      if (stageInfo) {
+        headerDomain.className = `text-[10px] font-bold border px-2.5 py-0.5 rounded-full ${stageInfo.colorClass}`;
+        headerDomain.innerHTML = `<span>Stage ${stageInfo.stage} of ${stageInfo.totalStages}: ${stageInfo.icon} ${stageInfo.name}</span>`;
+      } else {
+        headerDomain.className = "text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full";
+        headerDomain.innerText = q.domain || '';
+      }
+    }
     if (headerQnum) headerQnum.innerText = `Question ${idx + 1} of ${session.questions.length}`;
     if (navBadge) navBadge.innerText = `${idx + 1} of ${session.questions.length}`;
 
@@ -16909,21 +16933,190 @@
     if (modal) modal.classList.add('hidden');
   },
 
+
+  getQuestionStageInfo(q) {
+    if (!q) return null;
+    const skill = q.skill || '';
+    if (skill === 'Words in Context') {
+      return { stage: 1, totalStages: 5, name: 'Words In Context', icon: '🔤', colorClass: 'text-indigo-700 bg-indigo-50 border-indigo-200' };
+    } else if (['Text Structure and Purpose', 'Central Ideas and Details', 'Command of Evidence', 'Inferences'].includes(skill)) {
+      const isLogical = (skill === 'Inferences') || (q.prompt && q.prompt.includes('logically completes the text'));
+      const subLabel = isLogical ? 'Logical Completion' : skill;
+      return { stage: 2, totalStages: 5, name: 'Reading Comp (' + subLabel + ')', icon: '📖', colorClass: 'text-blue-700 bg-blue-50 border-blue-200' };
+    } else if (skill === 'Form, Structure, and Sense') {
+      return { stage: 3, totalStages: 5, name: 'Standard English Conventions', icon: '✍️', colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
+    } else if (skill === 'Transitions') {
+      return { stage: 4, totalStages: 5, name: 'Transitions', icon: '🔄', colorClass: 'text-purple-700 bg-purple-50 border-purple-200' };
+    } else if (skill === 'Rhetorical Synthesis') {
+      return { stage: 5, totalStages: 5, name: 'Notes & Rhetorical Synthesis', icon: '📝', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    }
+    return null;
+  },
+
+  getTypeFilterFn(typeKey) {
+    if (typeKey === 'wic') return q => q.skill === 'Words in Context';
+    if (typeKey === 'rc') return q => ['Text Structure and Purpose', 'Central Ideas and Details', 'Command of Evidence', 'Inferences'].includes(q.skill);
+    if (typeKey === 'sec') return q => q.skill === 'Form, Structure, and Sense';
+    if (typeKey === 'tra') return q => q.skill === 'Transitions';
+    if (typeKey === 'notes') return q => q.skill === 'Rhetorical Synthesis';
+    // Math fallback
+    if (typeKey === 'alg') return q => (q.domain || '').includes('Algebra');
+    if (typeKey === 'adv') return q => (q.domain || '').includes('Advanced');
+    if (typeKey === 'psda') return q => (q.domain || '').includes('Data');
+    if (typeKey === 'geom') return q => (q.domain || '').includes('Geometry');
+    return () => true;
+  },
+
+  getTypeDisplayName(typeKey) {
+    const map = {
+      wic: 'Words In Context',
+      rc: 'Reading Comprehension',
+      sec: 'Standard English Conventions',
+      tra: 'Transitions',
+      notes: 'Notes (Rhetorical Synthesis)',
+      alg: 'Algebra',
+      adv: 'Advanced Math',
+      psda: 'Problem-Solving & Data Analysis',
+      geom: 'Geometry & Trigonometry'
+    };
+    return map[typeKey] || 'Question Type';
+  },
+
   selectModuleSetupTab(tab) {
     this.selectedModuleTab = tab;
     const tabMod = document.getElementById('qb-mod-tab-module');
+    const tabTypes = document.getElementById('qb-mod-tab-types');
     const tabFull = document.getElementById('qb-mod-tab-full');
     const pickerSection = document.getElementById('qb-mod-picker-section');
+    const typeSection = document.getElementById('qb-type-picker-section');
+
+    // Reset tab button styles
+    [tabMod, tabTypes, tabFull].forEach(btn => {
+      if (btn) btn.className = "py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
+    });
 
     if (tab === 'module') {
-      if (tabMod) tabMod.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
-      if (tabFull) tabFull.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
+      if (tabMod) tabMod.className = "py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
       if (pickerSection) pickerSection.classList.remove('hidden');
-    } else {
-      if (tabMod) tabMod.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
-      if (tabFull) tabFull.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
+      if (typeSection) typeSection.classList.add('hidden');
+    } else if (tab === 'types') {
+      if (tabTypes) tabTypes.className = "py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
       if (pickerSection) pickerSection.classList.add('hidden');
+      if (typeSection) typeSection.classList.remove('hidden');
+      this.renderQuestionTypeGrid(this.selectedModuleExamId);
+    } else {
+      if (tabFull) tabFull.className = "py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
+      if (pickerSection) pickerSection.classList.add('hidden');
+      if (typeSection) typeSection.classList.add('hidden');
     }
+    this.updateLaunchButtonText();
+  },
+
+  renderQuestionTypeGrid(examId) {
+    const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
+    const grid = document.getElementById('qb-type-grid');
+    if (!exam || !grid) return;
+
+    const qs = exam.questions || [];
+    const isRW = (exam.subject !== 'Math');
+
+    let types = [];
+    if (isRW) {
+      types = [
+        {
+          key: 'wic',
+          name: 'Words In Context',
+          icon: '🔤',
+          badge: '15–20% of Test',
+          sequence: 'Questions 1–5 in Official Modules',
+          filter: q => q.skill === 'Words in Context',
+          desc: 'Determining the precise meaning of vocabulary words based on contextual cues.'
+        },
+        {
+          key: 'rc',
+          name: 'Reading Comprehension',
+          icon: '📖',
+          badge: '33–38% of Test',
+          sequence: 'Questions 6–16 in Official Modules',
+          filter: q => ['Text Structure and Purpose', 'Central Ideas and Details', 'Command of Evidence', 'Inferences'].includes(q.skill),
+          desc: 'Central ideas, text structure, textual/quantitative evidence, and logical completion inferences.'
+        },
+        {
+          key: 'sec',
+          name: 'Standard English Conventions',
+          icon: '✍️',
+          badge: '22–25% of Test',
+          sequence: 'Questions 17–21 in Official Modules',
+          filter: q => q.skill === 'Form, Structure, and Sense',
+          desc: 'Sentence boundaries, verb tenses, subject-verb agreement, and parallel structure.'
+        },
+        {
+          key: 'tra',
+          name: 'Transitions',
+          icon: '🔄',
+          badge: '7–13% of Test',
+          sequence: 'Questions 22–24 in Official Modules',
+          filter: q => q.skill === 'Transitions',
+          desc: 'Logical connectors expressing contrast, continuation, or cause-and-effect.'
+        },
+        {
+          key: 'notes',
+          name: 'Notes & Rhetorical Synthesis',
+          icon: '📝',
+          badge: '5–15% of Test',
+          sequence: 'Questions 25–27 in Official Modules',
+          filter: q => q.skill === 'Rhetorical Synthesis',
+          desc: 'Achieving a student’s stated goal using relevant facts from bulleted notes.'
+        }
+      ];
+    } else {
+      types = [
+        { key: 'alg', name: 'Algebra', icon: '📐', badge: '35% of Test', sequence: 'Linear Equations & Systems', filter: q => (q.domain || '').includes('Algebra'), desc: 'Linear equations, inequalities, systems, and relationships.' },
+        { key: 'adv', name: 'Advanced Math', icon: '⚡', badge: '35% of Test', sequence: 'Nonlinear Functions', filter: q => (q.domain || '').includes('Advanced'), desc: 'Quadratic, exponential, polynomial, and rational functions.' },
+        { key: 'psda', name: 'Problem-Solving & Data Analysis', icon: '📊', badge: '15% of Test', sequence: 'Statistics & Modeling', filter: q => (q.domain || '').includes('Data'), desc: 'Ratios, rates, percentages, probability, and statistics.' },
+        { key: 'geom', name: 'Geometry & Trigonometry', icon: '📏', badge: '15% of Test', sequence: 'Angles, Triangles & Circles', filter: q => (q.domain || '').includes('Geometry'), desc: 'Perimeter, area, volume, angles, triangles, and trigonometry.' }
+      ];
+    }
+
+    if (!this.selectedTypeKey || !types.some(t => t.key === this.selectedTypeKey)) {
+      this.selectedTypeKey = types[0].key;
+    }
+
+    let html = '';
+    types.forEach(t => {
+      const matchingCount = qs.filter(t.filter).length;
+      const isSelected = (this.selectedTypeKey === t.key);
+      const activeBorder = isSelected
+        ? "border-blue-600 bg-blue-50/70 shadow-xs ring-2 ring-blue-500/20"
+        : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50";
+
+      html += `
+        <button type="button" onclick="qbEngine.selectQuestionTypeCard('${t.key}')" class="p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${activeBorder} flex flex-col justify-between space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">${t.icon}</span>
+              <div>
+                <h4 class="text-xs sm:text-sm font-black text-slate-900">${t.name}</h4>
+                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full inline-block mt-0.5">${t.sequence}</span>
+              </div>
+            </div>
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 shrink-0">${matchingCount} Qs</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-relaxed">${t.desc}</p>
+          <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] text-slate-400 font-semibold">
+            <span>Weight: ${t.badge}</span>
+            <span class="${isSelected ? 'text-blue-600 font-bold' : 'text-slate-400'}">${isSelected ? '● Selected' : '○ Select'}</span>
+          </div>
+        </button>
+      `;
+    });
+
+    grid.innerHTML = html;
+  },
+
+  selectQuestionTypeCard(typeKey) {
+    this.selectedTypeKey = typeKey;
+    this.renderQuestionTypeGrid(this.selectedModuleExamId);
     this.updateLaunchButtonText();
   },
 
@@ -16963,20 +17156,30 @@
         ? "border-blue-600 bg-blue-50/70 shadow-xs ring-2 ring-blue-500/20" 
         : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50";
 
+      const wicCount = modQuestions.filter(q => q.skill === 'Words in Context').length;
+      const rcCount = modQuestions.filter(q => ['Text Structure and Purpose', 'Central Ideas and Details', 'Command of Evidence', 'Inferences'].includes(q.skill)).length;
+      const secCount = modQuestions.filter(q => q.skill === 'Form, Structure, and Sense').length;
+      const traCount = modQuestions.filter(q => q.skill === 'Transitions').length;
+      const notesCount = modQuestions.filter(q => q.skill === 'Rhetorical Synthesis').length;
+
       html += `
-        <button type="button" onclick="qbEngine.selectModuleCard(${i})" class="p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${activeBorder} flex flex-col justify-between h-24">
-          <div class="flex items-center justify-between w-full">
-            <span class="text-xs font-black text-slate-900">Module ${i + 1}</span>
-            <span class="text-[10px] font-mono font-bold text-slate-500">Q${startQ + 1}–${endQ}</span>
-          </div>
-          <div class="text-[11px] text-slate-600 font-medium">
-            ${modQCount} Questions
-          </div>
-          <div class="w-full flex items-center justify-between mt-1">
-            ${badgeHtml}
-          </div>
-        </button>
-      `;
+          <button type="button" onclick="qbEngine.selectModuleCard(${i})" class="p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${activeBorder} flex flex-col justify-between min-h-[110px] space-y-2">
+            <div class="flex items-center justify-between w-full">
+              <span class="text-xs font-black text-slate-900">Module ${i + 1}</span>
+              <span class="text-[10px] font-mono font-bold text-slate-500">${modQCount} Questions</span>
+            </div>
+            <div class="flex items-center gap-1 flex-wrap text-[9px] font-bold">
+              <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100" title="Words In Context">🔤 ${wicCount}</span>
+              <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100" title="Reading Comprehension">📖 ${rcCount}</span>
+              <span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100" title="Standard English Conventions">✍️ ${secCount}</span>
+              <span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100" title="Transitions">🔄 ${traCount}</span>
+              <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100" title="Notes">📝 ${notesCount}</span>
+            </div>
+            <div class="w-full flex items-center justify-between pt-1 border-t border-slate-100">
+              ${badgeHtml}
+            </div>
+          </button>
+        `;
     }
 
     grid.innerHTML = html;
@@ -17031,6 +17234,11 @@
       const endQ = Math.min((this.selectedModuleIndex + 1) * 27, exam.questions.length);
       const count = endQ - startQ;
       launchBtn.innerHTML = `<span>🚀 Start Module ${this.selectedModuleIndex + 1} Practice (${count} Questions)</span>`;
+    } else if (this.selectedModuleTab === 'types') {
+      const filterFn = this.getTypeFilterFn(this.selectedTypeKey);
+      const count = (exam.questions || []).filter(filterFn).length;
+      const typeLabel = this.getTypeDisplayName(this.selectedTypeKey);
+      launchBtn.innerHTML = `<span>🚀 Start ${typeLabel} Drill (${count} Questions)</span>`;
     } else {
       launchBtn.innerHTML = `<span>🚀 Start Full Exam Paper (${exam.questions.length} Questions)</span>`;
     }
@@ -17051,6 +17259,10 @@
       const startQ = moduleIdx * 27;
       const endQ = Math.min((moduleIdx + 1) * 27, exam.questions.length);
       targetQuestions = exam.questions.slice(startQ, endQ);
+    } else if (this.selectedModuleTab === 'types') {
+      isModuleSession = false;
+      const filterFn = this.getTypeFilterFn(this.selectedTypeKey);
+      targetQuestions = (exam.questions || []).filter(filterFn);
     } else {
       isModuleSession = false;
       targetQuestions = [...exam.questions];
