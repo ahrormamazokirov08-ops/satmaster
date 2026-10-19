@@ -263,7 +263,7 @@ class TestMathAssetsIntegrity(unittest.TestCase):
             with open(p, "r", encoding="utf-8") as f:
                 code = f.read()
             self.assertIn("Normalize coordinate points without commas", code, f"{p} missing coordinate normalization")
-            self.assertIn("dataVersion: '2.10.0'", code, f"{p} missing dataVersion 2.10.0")
+            self.assertIn("dataVersion: '2.11.0'", code, f"{p} missing dataVersion 2.11.0")
 
     def test_zero_bare_latex_in_options(self):
         """Invariant 11: All LaTeX expressions in options must be wrapped in KaTeX math delimiters."""

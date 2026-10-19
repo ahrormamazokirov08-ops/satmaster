@@ -14499,7 +14499,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.10.0',
+  dataVersion: '2.11.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -16460,24 +16460,24 @@
         intro = intro.replace(/\s*:?$/, ':');
       }
       const body = match[2].trim();
-      const rawLines = body.split(/\n+/).map(l => l.trim()).filter(Boolean);
+      const rawLines = body.split(/\n\s*\n/).map(l => l.trim()).filter(Boolean);
       if (rawLines.length > 0) {
         const items = rawLines.map(line => {
-          return line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\u2219]\s*/, '').trim();
+          return line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\u2219]\s*/, '').replace(/\s+/g, ' ').trim();
         }).filter(Boolean);
 
         if (items.length > 0) {
           const listItemsHtml = items.map(item => `
             <li class="flex items-start gap-2.5 sm:gap-3 text-slate-800 leading-relaxed text-sm sm:text-base">
-              <span class="text-slate-900 text-base leading-snug flex-shrink-0 select-none font-bold" aria-hidden="true">•</span>
+              <span class="text-blue-600 text-lg leading-none flex-shrink-0 select-none font-black mt-0.5" aria-hidden="true">•</span>
               <span class="flex-1">${item}</span>
             </li>
           `.trim()).join('');
 
           return `
             <div class="qb-notes-wrapper whitespace-normal space-y-3.5 my-1">
-              <p class="text-slate-900 leading-relaxed font-normal">${intro}</p>
-              <ul class="qb-notes-list space-y-3 pl-3 sm:pl-4 list-none m-0 p-0">
+              <p class="text-slate-900 leading-relaxed font-semibold text-sm sm:text-base">${intro}</p>
+              <ul class="qb-notes-list space-y-2.5 pl-1 sm:pl-2 list-none m-0 p-0">
                 ${listItemsHtml}
               </ul>
             </div>
@@ -16488,7 +16488,7 @@
 
     // 2. Check for explicit bullet lines (lines starting with • or bullet characters)
     if (raw.includes('•') || raw.includes('\u2022')) {
-      const lines = raw.split(/\n+/).map(l => l.trim()).filter(Boolean);
+      const lines = raw.split(/\n\s*\n/).map(l => l.trim()).filter(Boolean);
       const bulletLines = lines.filter(l => /^[•\u2022]/.test(l));
       if (bulletLines.length >= 2) {
         const introLines = [];
@@ -16497,29 +16497,29 @@
         lines.forEach(l => {
           if (/^[•\u2022]/.test(l)) {
             inBullets = true;
-            items.push(l.replace(/^[•\u2022]\s*/, '').trim());
+            items.push(l.replace(/^[•\u2022]\s*/, '').replace(/\s+/g, ' ').trim());
           } else if (!inBullets) {
             introLines.push(l);
           } else {
-            items.push(l);
+            items.push(l.replace(/\s+/g, ' ').trim());
           }
         });
 
         const listItemsHtml = items.map(item => `
           <li class="flex items-start gap-2.5 sm:gap-3 text-slate-800 leading-relaxed text-sm sm:text-base">
-            <span class="text-slate-900 text-base leading-snug flex-shrink-0 select-none font-bold" aria-hidden="true">•</span>
+            <span class="text-blue-600 text-lg leading-none flex-shrink-0 select-none font-black mt-0.5" aria-hidden="true">•</span>
             <span class="flex-1">${item}</span>
           </li>
         `.trim()).join('');
 
         const introHtml = introLines.length > 0
-          ? `<p class="text-slate-900 leading-relaxed font-normal mb-3">${introLines.join('<br>')}</p>`
+          ? `<p class="text-slate-900 leading-relaxed font-semibold text-sm sm:text-base mb-3">${introLines.join('<br>')}</p>`
           : '';
 
         return `
           <div class="qb-notes-wrapper whitespace-normal space-y-3.5 my-1">
             ${introHtml}
-            <ul class="qb-notes-list space-y-3 pl-3 sm:pl-4 list-none m-0 p-0">
+            <ul class="qb-notes-list space-y-2.5 pl-1 sm:pl-2 list-none m-0 p-0">
               ${listItemsHtml}
             </ul>
           </div>
@@ -16543,6 +16543,12 @@
     if (notesHtml) {
       return notesHtml;
     }
+
+    // Format SAT Reading & Writing blanks (Invariant 12.1)
+    formatted = formatted.replace(/(?:_{4,}|_{6})/g, '<span class="qb-blank font-mono tracking-widest px-2 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-800 font-bold inline-block select-none shadow-xs mx-1">______</span>');
+
+    // Format underlined text (Invariant 12.6)
+    formatted = formatted.replace(/<u>([\s\S]*?)<\/u>/gi, '<span class="underline decoration-2 underline-offset-4 font-semibold text-slate-900">$1</span>');
 
     // Convert any markdown tables into styled responsive HTML tables
     formatted = formatted.replace(/(?:^|\n)(\|[^\n]+\|\n\|[-:\s|]+\|\n(?:\|[^\n]+\|\n?)+)/g, (match, tableText) => {

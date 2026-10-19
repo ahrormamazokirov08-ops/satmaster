@@ -191,8 +191,8 @@ class TestLatestExamsFeature(unittest.TestCase):
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.10.0'", self.engine_content, "dataVersion 2.10.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.10.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.11.0'", self.engine_content, "dataVersion 2.11.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.11.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
@@ -327,6 +327,7 @@ class TestLatestExamsFeature(unittest.TestCase):
             'Words in Context': 1,
             'Text Structure and Purpose': 2,
             'Central Ideas and Details': 2,
+            'Cross-Text Connections': 2,
             'Command of Evidence': 2,
             'Inferences': 3,
             'Form, Structure, and Sense': 4,
@@ -351,5 +352,40 @@ class TestLatestExamsFeature(unittest.TestCase):
 
         print("✅ Official 5-stage College Board question ordering verified across all 9 modules")
 
+    def test_09_ebrw_structural_authenticity_invariant_12(self):
+        """Invariant 12: EBRW Structural Authenticity (Blanks, Notes, Clean Options, Logical Completion)."""
+        with open(self.data_latest, "r", encoding="utf-8") as f:
+            exams = json.load(f)
+
+        exam = exams[0]
+        qs = exam["questions"]
+
+        for q in qs:
+            qid = q["id"]
+            skill = q.get("skill")
+            prompt = q.get("prompt", "")
+
+            # 12.1 Words in Context, Transitions, Conventions must contain blank
+            if skill in ["Words in Context", "Transitions", "Form, Structure, and Sense"]:
+                self.assertIn("______", prompt, f"Invariant 12.1 violation: Question {qid} ({skill}) missing authentic blank '______'")
+
+            # 12.2 Logical Completion Inferences must end with blank
+            if skill == "Inferences":
+                self.assertTrue(prompt.rstrip().endswith("______"), f"Invariant 12.2 violation: Question {qid} ({skill}) does not end with '______'")
+
+            # 12.3 Rhetorical Synthesis must have bulleted notes structure
+            if skill == "Rhetorical Synthesis":
+                self.assertIn("While researching a topic, a student has taken the following notes:", prompt,
+                              f"Invariant 12.3 violation: Question {qid} missing standard notes lead-in")
+                self.assertIn("•", prompt, f"Invariant 12.3 violation: Question {qid} missing bullet dots")
+
+            # 12.5 Clean options: no single-letter OCR prefixes (e.g. 'c resisted')
+            for opt_key, opt_text in (q.get("options") or {}).items():
+                self.assertFalse(re.match(r'^[a-z]\s+[a-z]', opt_text),
+                                f"Invariant 12.5 violation: Question {qid} Option {opt_key} has OCR stray prefix: '{opt_text}'")
+
+        print("✅ Invariant 12 verified across all 236 questions: authentic blanks, bulleted notes, clean options")
+
 if __name__ == "__main__":
     unittest.main()
+

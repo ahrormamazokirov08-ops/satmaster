@@ -72,3 +72,33 @@ When inspecting, generating, modifying, or testing Digital SAT questions (Math a
 - Never leave bare LaTeX commands un-delimited, as KaTeX will ignore them and render raw text (e.g., `\frac{512p}{3}`).
 - The frontend engine must also provide an automatic fallback in `formatQuestionText` that detects and wraps bare LaTeX expressions in `$...$` before KaTeX rendering.
 
+## 12. Reading & Writing Question Invariants & Structural Authenticity
+
+When inspecting, generating, OCRing, modifying, or formatting Digital SAT Reading & Writing questions, strictly uphold the following 6 structural standards:
+
+### 12.1 Authentic Blank Representation (`______`)
+- For **Words in Context**, **Transitions**, and **Form, Structure, and Sense** (Conventions), the passage MUST contain an explicit blank indicating where the answer belongs.
+- Blanks must always be formatted as standard 6-underscore strings: `______` (never em-dashes `—`, stray underscores `_`, `-\n_`, or blank spaces).
+- The frontend engine must render `______` as a clear, high-contrast visual blank: `<span class="qb-blank font-mono tracking-widest px-1 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-700 font-bold select-none">______</span>`.
+
+### 12.2 Logical Completion Inferences Concluding Blank
+- In **Inferences / Logical Completion** questions (*"Which choice most logically completes the text?"*), the passage must conclude with the leading context followed by the terminating blank `______` (e.g. `since ______`, `suggesting that ______`, `because ______`).
+
+### 12.3 Bulleted Notes & Rhetorical Synthesis Structure
+- Rhetorical Synthesis questions MUST follow authentic College Board formatting:
+  1. Introductory prompt: `While researching a topic, a student has taken the following notes:`
+  2. Each note must be an individual bullet point starting with `\n\n• `.
+  3. Sentences within a note must be cohesive running text, never fragmented by PDF column hard linebreaks (`\n`).
+  4. The frontend engine must render notes as authentic styled bullet items (`•`) with generous line spacing and clean hanging indents.
+
+### 12.4 Running Prose Paragraph Flow
+- Passages must be formatted as continuous, clean prose. Strip all hard line-break wraps (`\n`) within sentences that were introduced by PDF column widths, preserving only authentic paragraph breaks (`\n\n`).
+
+### 12.5 Option Text Cleansing
+- Option values in `"options": {"A": "...", "B": "...", "C": "...", "D": "..."}` must contain purely the answer choice text.
+- Never leave leading option letters, parenthesis, or bullet markers (`A) `, `B. `, `c `, `) `, `• `) in the option strings.
+
+### 12.6 Underlined Function & Text Structure Markup
+- In questions referencing an *"underlined portion"*, *"underlined sentence"*, or *"underlined question"*, the passage must enclose the target text in `<u>...</u>` or `<span class="underline decoration-2 underline-offset-4 font-semibold text-slate-900">...</span>`.
+
+
