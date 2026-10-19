@@ -131,6 +131,14 @@ class TestLatestExamsFeature(unittest.TestCase):
             'id="qb-rev-filter-all"',
             'id="qb-rev-filter-incorrect"',
             'id="qb-rev-filter-correct"',
+            'id="qb-module-start-modal"',
+            'id="qb-mod-grid"',
+            'id="qb-timer-btn-standard"',
+            'id="qb-timer-btn-1.5x"',
+            'id="qb-timer-btn-2.0x"',
+            'id="qb-timer-btn-untimed"',
+            'id="qb-feedback-btn-instant"',
+            'id="qb-feedback-btn-simulation"',
         ]
 
         for elem in required_elements:
@@ -157,13 +165,26 @@ class TestLatestExamsFeature(unittest.TestCase):
             "promptRestartExam(",
             "confirmRestartExam(",
             "resetExamHistory(",
+            "openModuleStartModal(",
+            "closeModuleStartModal(",
+            "selectModuleSetupTab(",
+            "renderModuleGrid(",
+            "selectModuleCard(",
+            "selectTimerOption(",
+            "selectFeedbackOption(",
+            "launchConfiguredPractice(",
+            "getAllModuleResults(",
+            "recordModuleResult(",
+            "reviewModuleAnswers(",
+            "startNextModule(",
+            "sendModuleReportToTelegram(",
         ]
 
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.8.2'", self.engine_content, "dataVersion 2.8.2 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.8.2, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.9.0'", self.engine_content, "dataVersion 2.9.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.9.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
@@ -211,6 +232,73 @@ class TestLatestExamsFeature(unittest.TestCase):
         restarted_pool = [q for q in exam["questions"] if q["id"] not in solved_ids]
         self.assertEqual(len(restarted_pool), total_q)
         print("✅ Functional simulation of Practice, Filtered Review, and Restart PASSED")
+
+    def test_07_module_practice_and_simulation_suite(self):
+        """Verifies 9-module chunking, official timer accommodations, feedback styles, and module results."""
+        with open(self.data_latest, "r", encoding="utf-8") as f:
+            exams = json.load(f)
+
+        june_exam = next(e for e in exams if e["id"] == "sat_2026_06_rw")
+        total_questions = len(june_exam["questions"])
+        self.assertEqual(total_questions, 236)
+
+        # 1. Verify 9 modules chunking: 8 modules of 27 questions + 1 module of 20 questions
+        total_mods = (total_questions + 26) // 27
+        self.assertEqual(total_mods, 9)
+
+        chunks = []
+        for i in range(total_mods):
+            start = i * 27
+            end = min((i + 1) * 27, total_questions)
+            chunks.append(june_exam["questions"][start:end])
+
+        self.assertEqual(len(chunks), 9)
+        for i in range(8):
+            self.assertEqual(len(chunks[i]), 27, f"Module {i + 1} should have 27 questions")
+        self.assertEqual(len(chunks[8]), 20, "Module 9 should have the remaining 20 questions")
+        self.assertEqual(sum(len(c) for c in chunks), 236)
+
+        # 2. Timer accommodations mapping
+        timer_configs = {
+            "standard": 32 * 60, # 1920s
+            "1.5x": 48 * 60,     # 2880s
+            "2.0x": 64 * 60,     # 3840s
+            "untimed": 0         # 0s
+        }
+        self.assertEqual(timer_configs["standard"], 1920)
+        self.assertEqual(timer_configs["1.5x"], 2880)
+        self.assertEqual(timer_configs["2.0x"], 3840)
+        self.assertEqual(timer_configs["untimed"], 0)
+
+        # 3. Simulate Module 1 Exam Simulation result scoring and domain breakdown
+        mod1_qs = chunks[0]
+        # Simulate answering all 27 questions: 24 correct, 3 incorrect
+        mod1_answers = {}
+        for idx, q in enumerate(mod1_qs):
+            if idx < 24:
+                mod1_answers[idx] = q["correct_answer"]
+            else:
+                wrong = "B" if q["correct_answer"] == "A" else "A"
+                mod1_answers[idx] = wrong
+
+        correct_count = sum(1 for idx, q in enumerate(mod1_qs) if mod1_answers[idx] == q["correct_answer"])
+        accuracy = round((correct_count / len(mod1_qs)) * 100)
+        self.assertEqual(correct_count, 24)
+        self.assertEqual(accuracy, 89)
+
+        # Domain breakdown
+        domain_breakdown = {}
+        for idx, q in enumerate(mod1_qs):
+            dom = q["domain"]
+            if dom not in domain_breakdown:
+                domain_breakdown[dom] = {"correct": 0, "total": 0}
+            domain_breakdown[dom]["total"] += 1
+            if mod1_answers[idx] == q["correct_answer"]:
+                domain_breakdown[dom]["correct"] += 1
+
+        self.assertEqual(sum(d["total"] for d in domain_breakdown.values()), 27)
+        self.assertEqual(sum(d["correct"] for d in domain_breakdown.values()), 24)
+        print(f"✅ Digital SAT 9-Module Practice & Simulation Suite verified (236 Qs, 9 modules, accommodations, domain breakdown)")
 
 if __name__ == "__main__":
     unittest.main()

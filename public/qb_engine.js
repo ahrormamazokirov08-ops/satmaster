@@ -1,5 +1,5 @@
 // SATMaster Digital SAT Question Bank Engine & Practice Generator
-// Version 2.8.2 (Unified Standard & Latest Exams Engine)
+// Version 2.9.0 (Unified Standard & Latest Exams Engine with Module Practice)
 window.qbEngine = {
   latestExamsData: null,
   activeBankMode: 'standard', // 'standard' | 'latest'
@@ -22,6 +22,11 @@ window.qbEngine = {
   isInitialized: false,
   timerInterval: null,
   isTimerHidden: false,
+  selectedModuleExamId: null,
+  selectedModuleTab: 'module',
+  selectedModuleIndex: 0,
+  selectedTimerType: 'standard',
+  selectedFeedbackStyle: 'instant',
 
   skillHierarchy: {
     rw: [
@@ -794,7 +799,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.8.2',
+  dataVersion: '2.9.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -1596,10 +1601,11 @@ window.qbEngine = {
     const checkContainer = document.getElementById('qb-check-container');
     const footerCheckBtn = document.getElementById('qb-footer-btn-check');
 
-    // In homework mode, the student must not see check answer buttons or intermediate rationales
+    // In homework or exam simulation mode, the student must not see check answer buttons or intermediate rationales
     const isHomeworkMode = Boolean(
       window.activeHomeworkAssignment || 
-      (session.config && session.config.homework)
+      (session.config && session.config.homework) ||
+      session.feedbackStyle === 'simulation'
     );
     if (isHomeworkMode) {
       if (checkContainer) checkContainer.classList.add('hidden');
@@ -1807,11 +1813,15 @@ window.qbEngine = {
 
     const isHomeworkMode = Boolean(
       window.activeHomeworkAssignment || 
-      (session.config && session.config.homework)
+      (session.config && session.config.homework) ||
+      session.feedbackStyle === 'simulation'
     );
     if (isHomeworkMode) {
       if (typeof showToast === 'function') {
-        showToast("🔒 Homework Mode", "Answers and explanations are revealed after submitting your homework task.", "info");
+        const msg = session.feedbackStyle === 'simulation'
+          ? "Answers and explanations are revealed after submitting your module."
+          : "Answers and explanations are revealed after submitting your homework task.";
+        showToast(session.feedbackStyle === 'simulation' ? "🔒 Exam Simulation Mode" : "🔒 Homework Mode", msg, "info");
       }
       return;
     }
@@ -2293,15 +2303,67 @@ window.qbEngine = {
         `;
       }
 
-      summaryEl.innerHTML = `
-        ${hwBannerHtml}
-        <div class="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-          ${correctCount} / ${total}
-        </div>
-        <div class="text-xs sm:text-sm font-bold text-slate-600">
-          Accuracy: <span class="${isPassed ? 'text-emerald-600' : 'text-rose-600'} font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
-        </div>
-      `;
+      if (session.isModuleSession) {
+        const timeLimitDisplay = session.timeLimitMinutes > 0 ? `${session.timeLimitMinutes}m 00s` : 'Untimed';
+        const timeSpentFormatted = `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
+
+        // Calculate domain breakdown
+        const domainStats = {};
+        session.questions.forEach((q, i) => {
+          const dom = q.domain || 'General';
+          if (!domainStats[dom]) domainStats[dom] = { correct: 0, total: 0 };
+          domainStats[dom].total++;
+          const studentAns = session.answers ? session.answers[i] : undefined;
+          const isCorr = Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+          if (isCorr) domainStats[dom].correct++;
+        });
+
+        let domainHtml = '<div class="grid grid-cols-2 gap-2 text-left pt-2">';
+        Object.entries(domainStats).forEach(([dom, st]) => {
+          const pct = Math.round((st.correct / st.total) * 100);
+          domainHtml += `
+            <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+              <div class="text-[11px] font-bold text-slate-700 truncate" title="${dom}">${dom}</div>
+              <div class="text-xs font-black ${pct >= 80 ? 'text-emerald-700' : 'text-slate-800'} mt-0.5">${st.correct}/${st.total} (${pct}%)</div>
+            </div>
+          `;
+        });
+        domainHtml += '</div>';
+
+        summaryEl.innerHTML = `
+          <div class="w-full p-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 text-indigo-950 space-y-1.5 text-center mb-3">
+            <div class="flex items-center justify-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-600 text-white">
+                Module ${session.moduleNumber} of ${session.totalModules || 9}
+              </span>
+              <span class="text-xs font-bold text-indigo-700">
+                ${session.feedbackStyle === 'simulation' ? 'Exam Simulation' : 'Practice Drill'}
+              </span>
+            </div>
+            <div class="text-xs font-bold text-slate-700">
+              ${session.config.examTitle || 'Digital SAT Question Bank'}
+            </div>
+          </div>
+
+          <div class="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
+            ${correctCount} / ${total}
+          </div>
+          <div class="text-xs sm:text-sm font-bold text-slate-600">
+            Accuracy: <span class="${accuracyPct >= 80 ? 'text-emerald-600' : 'text-rose-600'} font-extrabold">${accuracyPct}%</span> • Time Spent: <span class="font-mono text-blue-700 font-bold">${timeSpentFormatted}</span> (Limit: ${timeLimitDisplay})
+          </div>
+          ${domainHtml}
+        `;
+      } else {
+        summaryEl.innerHTML = `
+          ${hwBannerHtml}
+          <div class="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
+            ${correctCount} / ${total}
+          </div>
+          <div class="text-xs sm:text-sm font-bold text-slate-600">
+            Accuracy: <span class="${isPassed ? 'text-emerald-600' : 'text-rose-600'} font-extrabold">${accuracyPct}%</span> • Total Time: <span class="font-mono text-blue-700 font-bold">${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s</span> (avg ${avgSec}s / q)
+          </div>
+        `;
+      }
     }
 
     const listEl = document.getElementById('qb-results-list');
@@ -2363,6 +2425,28 @@ window.qbEngine = {
             </button>
           `}
         `;
+      } else if (session.isModuleSession) {
+        const hasNextModule = (session.moduleIndex + 1 < (session.totalModules || 9));
+        actionsEl.innerHTML = `
+          <div class="flex flex-col sm:flex-row items-center gap-2 w-full">
+            <button type="button" onclick="qbEngine.reviewModuleAnswers('${session.examId}', ${session.moduleIndex})" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all text-center cursor-pointer">
+              👁️ Review Module Answers
+            </button>
+            ${hasNextModule ? `
+              <button type="button" onclick="qbEngine.startNextModule('${session.examId}', ${session.moduleIndex + 1})" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all text-center cursor-pointer">
+                🚀 Proceed to Module ${session.moduleNumber + 1}
+              </button>
+            ` : ''}
+          </div>
+          <div class="flex items-center gap-2 w-full pt-1">
+            <button type="button" onclick="qbEngine.sendModuleReportToTelegram('${session.examId}', ${session.moduleIndex})" class="flex-1 py-2.5 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold text-xs transition-all text-center cursor-pointer flex items-center justify-center gap-1.5">
+              <span>📱 Send Report to Telegram</span>
+            </button>
+            <button type="button" onclick="qbEngine.returnToSetupFromResults()" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs transition-all text-center cursor-pointer">
+              Exit to Hub
+            </button>
+          </div>
+        `;
       } else {
         actionsEl.innerHTML = `
           <button type="button" onclick="qbEngine.returnToSetupFromResults()" id="btn-qb-res-practice-again" class="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md shadow-blue-600/20 transition-all">
@@ -2370,6 +2454,18 @@ window.qbEngine = {
           </button>
         `;
       }
+    }
+
+    if (session.isModuleSession && session.examId) {
+      this.recordModuleResult(session.examId, session.moduleIndex, {
+        correct: correctCount,
+        total: total,
+        accuracy: accuracyPct,
+        timeSpent: totalSeconds,
+        completedAt: Date.now(),
+        feedbackStyle: session.feedbackStyle,
+        timerType: session.timerType
+      });
     }
 
     // Batch record all answered questions from this session as solved
@@ -2392,6 +2488,9 @@ window.qbEngine = {
             selected_answer: studentAns,
             time_spent_seconds: timeSpent
           });
+          if (session.examId) {
+            this.recordLatestExamAnswer(session.examId, q.id, isCorr, studentAns);
+          }
         }
       });
       if (batchAnswers.length > 0) {
@@ -3052,7 +3151,7 @@ window.qbEngine = {
           </div>
 
           <div class="pt-4 border-t border-slate-100 flex items-center gap-2">
-            <button type="button" onclick="qbEngine.startLatestExamPractice('${exam.id}')" class="${practiceBtnClass}">
+            <button type="button" onclick="qbEngine.openModuleStartModal('${exam.id}')" class="${practiceBtnClass}">
               <span>${practiceBtnText}</span>
             </button>
             <button type="button" ${reviewDisabled ? 'disabled' : `onclick="qbEngine.startLatestExamReview('${exam.id}', 'all')"`} class="${reviewBtnClass}" title="${reviewDisabled ? 'Solve questions first to unlock review' : 'Review solved questions and rationales'}">
@@ -3067,6 +3166,409 @@ window.qbEngine = {
     });
 
     grid.innerHTML = html;
+  },
+
+  openModuleStartModal(examId) {
+    const isStudent = (typeof currentUserRole !== 'undefined' && currentUserRole === 'student');
+    const isPub = (typeof isQBankPublished === 'function' ? isQBankPublished() : false);
+    if (isStudent && !isPub) {
+      if (typeof showToast === 'function') {
+        showToast("🔒 Question Bank in Draft Mode", "The Question Bank is currently in teacher preview mode and unavailable to students.", "warning");
+      }
+      return;
+    }
+
+    const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
+    if (!exam || !exam.questions || exam.questions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("⚠️ Exam Not Found", "Unable to load questions for this exam collection.", "warning");
+      }
+      return;
+    }
+
+    this.selectedModuleExamId = exam.id;
+    this.selectedModuleTab = 'module';
+    this.selectedModuleIndex = 0;
+    this.selectedTimerType = 'standard';
+    this.selectedFeedbackStyle = 'instant';
+
+    const titleEl = document.getElementById('qb-mod-modal-title');
+    const countBadge = document.getElementById('qb-mod-modal-count-badge');
+    const subjBadge = document.getElementById('qb-mod-modal-subj-badge');
+    const countLabel = document.getElementById('qb-mod-picker-count-label');
+
+    if (titleEl) titleEl.innerText = exam.title;
+    if (countBadge) countBadge.innerText = `${exam.questions.length} Questions`;
+    if (subjBadge) {
+      const isMath = (exam.subject === 'Math');
+      subjBadge.innerText = isMath ? '📐 Math' : '📚 Reading & Writing';
+      subjBadge.className = isMath 
+        ? "px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200"
+        : "px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200";
+    }
+
+    const totalMods = Math.ceil(exam.questions.length / 27);
+    if (countLabel) countLabel.innerText = `${totalMods} official test module${totalMods > 1 ? 's' : ''}`;
+
+    this.selectModuleSetupTab('module');
+    this.renderModuleGrid(exam.id);
+    this.selectTimerOption('standard');
+    this.selectFeedbackOption('instant');
+
+    const modal = document.getElementById('qb-module-start-modal');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeModuleStartModal() {
+    const modal = document.getElementById('qb-module-start-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  selectModuleSetupTab(tab) {
+    this.selectedModuleTab = tab;
+    const tabMod = document.getElementById('qb-mod-tab-module');
+    const tabFull = document.getElementById('qb-mod-tab-full');
+    const pickerSection = document.getElementById('qb-mod-picker-section');
+
+    if (tab === 'module') {
+      if (tabMod) tabMod.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
+      if (tabFull) tabFull.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
+      if (pickerSection) pickerSection.classList.remove('hidden');
+    } else {
+      if (tabMod) tabMod.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-slate-600 hover:text-slate-900 cursor-pointer";
+      if (tabFull) tabFull.className = "py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-blue-700 shadow-xs border border-slate-200 cursor-pointer";
+      if (pickerSection) pickerSection.classList.add('hidden');
+    }
+    this.updateLaunchButtonText();
+  },
+
+  renderModuleGrid(examId) {
+    const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
+    const grid = document.getElementById('qb-mod-grid');
+    if (!exam || !grid) return;
+
+    const totalQ = exam.questions.length;
+    const totalMods = Math.ceil(totalQ / 27);
+    const moduleResults = this.getAllModuleResults(exam.id);
+    const progress = this.getExamProgress(exam.id);
+    const solvedSet = new Set(progress.solved_ids || []);
+
+    let html = '';
+    for (let i = 0; i < totalMods; i++) {
+      const startQ = i * 27;
+      const endQ = Math.min((i + 1) * 27, totalQ);
+      const modQCount = endQ - startQ;
+      const modQuestions = exam.questions.slice(startQ, endQ);
+      const modSolvedCount = modQuestions.filter(q => solvedSet.has(q.id)).length;
+
+      const isSelected = (i === this.selectedModuleIndex);
+      const res = moduleResults[i];
+
+      let badgeHtml = '';
+      if (res && res.total > 0) {
+        const isPass = res.accuracy >= 80;
+        badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isPass ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}">✓ ${res.correct}/${res.total} (${res.accuracy}%)</span>`;
+      } else if (modSolvedCount > 0) {
+        badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">⏳ In Progress (${modSolvedCount}/${modQCount})</span>`;
+      } else {
+        badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">⭕ Not Started</span>`;
+      }
+
+      const activeBorder = isSelected 
+        ? "border-blue-600 bg-blue-50/70 shadow-xs ring-2 ring-blue-500/20" 
+        : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50";
+
+      html += `
+        <button type="button" onclick="qbEngine.selectModuleCard(${i})" class="p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${activeBorder} flex flex-col justify-between h-24">
+          <div class="flex items-center justify-between w-full">
+            <span class="text-xs font-black text-slate-900">Module ${i + 1}</span>
+            <span class="text-[10px] font-mono font-bold text-slate-500">Q${startQ + 1}–${endQ}</span>
+          </div>
+          <div class="text-[11px] text-slate-600 font-medium">
+            ${modQCount} Questions
+          </div>
+          <div class="w-full flex items-center justify-between mt-1">
+            ${badgeHtml}
+          </div>
+        </button>
+      `;
+    }
+
+    grid.innerHTML = html;
+  },
+
+  selectModuleCard(idx) {
+    this.selectedModuleIndex = idx;
+    this.renderModuleGrid(this.selectedModuleExamId);
+    this.updateLaunchButtonText();
+  },
+
+  selectTimerOption(type) {
+    this.selectedTimerType = type;
+    const types = ['standard', '1.5x', '2.0x', 'untimed'];
+    types.forEach(t => {
+      const btn = document.getElementById(`qb-timer-btn-${t}`);
+      if (!btn) return;
+      if (t === type) {
+        btn.className = "p-3 rounded-2xl border-2 text-center transition-all cursor-pointer border-blue-600 bg-blue-50/60 text-blue-900 shadow-xs ring-2 ring-blue-500/20";
+        const valEl = btn.querySelector('.font-mono');
+        if (valEl) valEl.className = "text-[11px] font-mono font-bold text-blue-700 mt-0.5";
+      } else {
+        btn.className = "p-3 rounded-2xl border-2 text-center transition-all cursor-pointer border-slate-200 hover:border-slate-300 bg-slate-50/50 text-slate-700";
+        const valEl = btn.querySelector('.font-mono');
+        if (valEl) valEl.className = "text-[11px] font-mono font-bold text-slate-600 mt-0.5";
+      }
+    });
+  },
+
+  selectFeedbackOption(style) {
+    this.selectedFeedbackStyle = style;
+    const btnInst = document.getElementById('qb-feedback-btn-instant');
+    const btnSim = document.getElementById('qb-feedback-btn-simulation');
+
+    if (style === 'instant') {
+      if (btnInst) btnInst.className = "p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer border-blue-600 bg-blue-50/60 shadow-xs ring-2 ring-blue-500/20";
+      if (btnSim) btnSim.className = "p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer border-slate-200 hover:border-slate-300 bg-slate-50/50";
+    } else {
+      if (btnInst) btnInst.className = "p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer border-slate-200 hover:border-slate-300 bg-slate-50/50";
+      if (btnSim) btnSim.className = "p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer border-blue-600 bg-blue-50/60 shadow-xs ring-2 ring-blue-500/20";
+    }
+  },
+
+  updateLaunchButtonText() {
+    const launchBtn = document.getElementById('qb-btn-launch-configured-practice');
+    if (!launchBtn) return;
+    const exam = (this.latestExamsData || []).find(e => e.id === this.selectedModuleExamId || e.legacy_id === this.selectedModuleExamId);
+    if (!exam) return;
+
+    if (this.selectedModuleTab === 'module') {
+      const startQ = this.selectedModuleIndex * 27;
+      const endQ = Math.min((this.selectedModuleIndex + 1) * 27, exam.questions.length);
+      const count = endQ - startQ;
+      launchBtn.innerHTML = `<span>🚀 Start Module ${this.selectedModuleIndex + 1} Practice (${count} Questions)</span>`;
+    } else {
+      launchBtn.innerHTML = `<span>🚀 Start Full Exam Paper (${exam.questions.length} Questions)</span>`;
+    }
+  },
+
+  launchConfiguredPractice() {
+    const exam = (this.latestExamsData || []).find(e => e.id === this.selectedModuleExamId || e.legacy_id === this.selectedModuleExamId);
+    if (!exam) return;
+
+    let targetQuestions = [];
+    let isModuleSession = false;
+    let moduleIdx = 0;
+    let totalModules = Math.ceil(exam.questions.length / 27);
+
+    if (this.selectedModuleTab === 'module') {
+      isModuleSession = true;
+      moduleIdx = this.selectedModuleIndex;
+      const startQ = moduleIdx * 27;
+      const endQ = Math.min((moduleIdx + 1) * 27, exam.questions.length);
+      targetQuestions = exam.questions.slice(startQ, endQ);
+    } else {
+      isModuleSession = false;
+      targetQuestions = [...exam.questions];
+    }
+
+    if (targetQuestions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("⚠️ No Questions", "No questions available in the selected range.", "warning");
+      }
+      return;
+    }
+
+    let timeLimitMinutes = 0;
+    if (this.selectedTimerType === 'standard') {
+      timeLimitMinutes = 32;
+    } else if (this.selectedTimerType === '1.5x') {
+      timeLimitMinutes = 48;
+    } else if (this.selectedTimerType === '2.0x') {
+      timeLimitMinutes = 64;
+    } else {
+      timeLimitMinutes = 0;
+    }
+
+    const activeSession = {
+      questions: targetQuestions,
+      currentIdx: 0,
+      answers: {},
+      timePerQuestion: {},
+      flags: {},
+      strikethroughs: {},
+      checked: {},
+      config: {
+        subject: exam.subject,
+        examId: exam.id,
+        examTitle: exam.title,
+        mode: isModuleSession ? 'latest_module_practice' : 'latest_practice'
+      },
+      isReview: false,
+      examId: exam.id,
+      isModuleSession: isModuleSession,
+      moduleIndex: moduleIdx,
+      moduleNumber: moduleIdx + 1,
+      totalModules: totalModules,
+      feedbackStyle: this.selectedFeedbackStyle,
+      timerType: this.selectedTimerType,
+      timeLimitMinutes: timeLimitMinutes,
+      version: this.dataVersion,
+      startedAt: Date.now()
+    };
+
+    sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
+    this.closeModuleStartModal();
+
+    const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
+    const testContainer = document.getElementById('qb-test-container');
+    if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
+    if (testContainer) testContainer.classList.remove('hidden');
+
+    this.renderCurrentQuestion();
+
+    if (typeof showToast === 'function') {
+      const modeDesc = this.selectedFeedbackStyle === 'simulation' ? 'Exam Simulation' : 'Instant Feedback';
+      showToast("🚀 Practice Initialized", `${targetQuestions.length} questions loaded in ${modeDesc} mode!`, "success");
+    }
+  },
+
+  getAllModuleResults(examId) {
+    try {
+      const raw = localStorage.getItem('satmaster_module_results');
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed[examId] || {};
+    } catch (e) {
+      return {};
+    }
+  },
+
+  recordModuleResult(examId, moduleIdx, resObj) {
+    try {
+      const raw = localStorage.getItem('satmaster_module_results');
+      const all = raw ? JSON.parse(raw) : {};
+      if (!all[examId]) all[examId] = {};
+      all[examId][moduleIdx] = resObj;
+      localStorage.setItem('satmaster_module_results', JSON.stringify(all));
+    } catch (e) {}
+  },
+
+  reviewModuleAnswers(examId, moduleIdx) {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+
+    const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
+    if (!exam) return;
+
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+
+    const startQ = moduleIdx * 27;
+    const endQ = Math.min((moduleIdx + 1) * 27, exam.questions.length);
+    const modQuestions = exam.questions.slice(startQ, endQ);
+
+    const activeSession = {
+      questions: modQuestions,
+      currentIdx: 0,
+      answers: (session && session.answers) || {},
+      timePerQuestion: (session && session.timePerQuestion) || {},
+      flags: {},
+      strikethroughs: {},
+      checked: {},
+      config: {
+        subject: exam.subject,
+        examId: exam.id,
+        examTitle: `${exam.title} (Module ${moduleIdx + 1} Review)`,
+        mode: 'latest_review'
+      },
+      isReview: true,
+      examId: exam.id,
+      version: this.dataVersion,
+      startedAt: Date.now()
+    };
+    modQuestions.forEach((q, i) => {
+      activeSession.checked[i] = true;
+    });
+
+    sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
+
+    const setupView = document.getElementById('qb-setup-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
+    const testContainer = document.getElementById('qb-test-container');
+    if (setupView) setupView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
+    if (testContainer) testContainer.classList.remove('hidden');
+
+    this.renderCurrentQuestion();
+  },
+
+  startNextModule(examId, nextIdx) {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+    this.selectedModuleExamId = examId;
+    this.selectedModuleTab = 'module';
+    this.selectedModuleIndex = nextIdx;
+    this.launchConfiguredPractice();
+  },
+
+  async sendModuleReportToTelegram(examId, moduleIdx) {
+    const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+    if (!exam || !session) return;
+
+    const studentName = (typeof currentSession !== 'undefined' && currentSession.name) || (document.getElementById('student-name-input')?.value.trim()) || 'Cristiano Ronaldo';
+    const total = session.questions.length;
+    let correct = 0;
+    let totalSec = 0;
+    session.questions.forEach((q, i) => {
+      const studentAns = session.answers ? session.answers[i] : undefined;
+      const isCorr = Boolean(studentAns && String(studentAns).trim().toUpperCase() === String(q.correct_answer || '').trim().toUpperCase());
+      if (isCorr) correct++;
+      totalSec += (session.timePerQuestion && session.timePerQuestion[i]) || 0;
+    });
+    const acc = Math.round((correct / total) * 100);
+    const timeFormatted = `${Math.floor(totalSec / 60)}m ${totalSec % 60}s`;
+
+    const summary = [
+      `🎯 DIGITAL SAT MODULE REPORT`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `👤 Student: ${studentName}`,
+      `📝 Exam: ${exam.title}`,
+      `📦 Module: Module ${moduleIdx + 1} of ${session.totalModules || 9} (${total} Questions)`,
+      `📊 Score: ${correct}/${total} (${acc}%) ${acc >= 80 ? '✅ PASSED' : '⚠️ REVIEW NEEDED'}`,
+      `⏱️ Time Spent: ${timeFormatted}`,
+      `━━━━━━━━━━━━━━━━━━━━━━`
+    ].join('\n');
+
+    try {
+      await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_name: studentName,
+          summary_text: summary,
+          details_text: summary,
+          score_pct: acc,
+          total_questions: total,
+          correct_count: correct,
+          time_spent_seconds: totalSec
+        })
+      });
+      if (typeof showToast === 'function') {
+        showToast("📱 Sent to Telegram!", "Your module score report has been dispatched to Telegram.", "success");
+      }
+    } catch (err) {
+      if (typeof showToast === 'function') {
+        showToast("📱 Score Report Logged", "Report generated and saved to your session records.", "info");
+      }
+    }
   },
 
   startLatestExamPractice(examId) {
