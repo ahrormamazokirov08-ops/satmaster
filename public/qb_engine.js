@@ -769,6 +769,7 @@ window.qbEngine = {
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
     if (testContainer) testContainer.classList.add('hidden');
+    this.exitFullscreenTestingMode();
     if (setupView && !window.activeHomeworkAssignment) setupView.classList.remove('hidden');
 
     const activeHwSubj = (window.activeHomeworkAssignment && window.activeHomeworkAssignment.config?.subject) 
@@ -804,6 +805,7 @@ window.qbEngine = {
       const testContainer = document.getElementById('qb-test-container');
       if (setupView) setupView.classList.add('hidden');
       if (testContainer) testContainer.classList.add('hidden');
+      this.exitFullscreenTestingMode();
       if (typeof switchTab === 'function') switchTab('vocab');
       return;
     }
@@ -816,6 +818,7 @@ window.qbEngine = {
 
     if (setupView && !window.activeHomeworkAssignment) setupView.classList.remove('hidden');
     if (testContainer) testContainer.classList.add('hidden');
+    this.exitFullscreenTestingMode();
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
 
@@ -838,6 +841,7 @@ window.qbEngine = {
 
     if (!this.isInitialized) {
       this.isInitialized = true;
+      this.initFullscreenListener();
       this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
       this.syncHubStats();
@@ -845,6 +849,7 @@ window.qbEngine = {
       this.syncHubStats();
       this.loadSolvedQuestions(false);
     } else {
+      this.initFullscreenListener();
       this.syncHubStats();
       this.loadSolvedQuestions(false);
     }
@@ -865,7 +870,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.12.0',
+  dataVersion: '2.13.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -1471,12 +1476,94 @@ window.qbEngine = {
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
+    this.enterFullscreenTestingMode();
+
     // Render current question
     this.renderCurrentQuestion();
 
     if (typeof showToast === 'function') {
       showToast("🚀 Session Initialized", `${selectedQuestions.length} practice questions loaded! Good luck!`, "success");
     }
+  },
+
+  enterFullscreenTestingMode() {
+    const testContainer = document.getElementById('qb-test-container');
+    if (testContainer) {
+      testContainer.classList.remove('hidden');
+    }
+    document.body.classList.add('qb-testing-active');
+    this.requestFullscreenQuietly();
+    if (typeof syncCurrentQuestionLayout === 'function') {
+      syncCurrentQuestionLayout();
+    }
+  },
+
+  exitFullscreenTestingMode() {
+    const testContainer = document.getElementById('qb-test-container');
+    if (testContainer) {
+      testContainer.classList.add('hidden');
+    }
+    document.body.classList.remove('qb-testing-active');
+    this.exitFullscreenIfActive();
+  },
+
+  toggleFullscreen() {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const root = document.documentElement;
+        if (root.requestFullscreen) {
+          root.requestFullscreen().catch(() => {});
+        } else if (root.webkitRequestFullscreen) {
+          root.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    } catch (e) {}
+  },
+
+  requestFullscreenQuietly() {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const root = document.documentElement;
+        if (root.requestFullscreen) {
+          root.requestFullscreen().catch(() => {});
+        } else if (root.webkitRequestFullscreen) {
+          root.webkitRequestFullscreen();
+        }
+      }
+    } catch (e) {}
+  },
+
+  exitFullscreenIfActive() {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    } catch (e) {}
+  },
+
+  initFullscreenListener() {
+    const updateIcon = () => {
+      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      const icon = document.getElementById('qb-fullscreen-icon');
+      const text = document.getElementById('qb-fullscreen-text');
+      if (icon) icon.innerText = isFs ? '🗗' : '⛶';
+      if (text) text.innerText = isFs ? 'Exit Fullscreen' : 'Fullscreen';
+    };
+    try {
+      document.removeEventListener('fullscreenchange', this._fsListener);
+      document.removeEventListener('webkitfullscreenchange', this._fsListener);
+      this._fsListener = updateIcon;
+      document.addEventListener('fullscreenchange', updateIcon);
+      document.addEventListener('webkitfullscreenchange', updateIcon);
+    } catch (e) {}
   },
 
   renderCurrentQuestion() {
@@ -1607,11 +1694,18 @@ window.qbEngine = {
       }
     }
 
+    const questionPane = document.getElementById('qb-question-pane');
     if (splitContainer) {
       if (hasPassage || isDockedCalc) {
-        splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[520px]";
+        splitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-4";
+        if (questionPane) {
+          questionPane.className = "bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+        }
       } else {
-        splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
+        splitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden flex justify-center";
+        if (questionPane) {
+          questionPane.className = "max-w-4xl w-full bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+        }
       }
     }
 
@@ -2753,6 +2847,7 @@ window.qbEngine = {
       sessionStorage.removeItem('qb_active_session');
       const testContainer = document.getElementById('qb-test-container');
       if (testContainer) testContainer.classList.add('hidden');
+      this.exitFullscreenTestingMode();
       if (typeof switchTab === 'function') {
         switchTab('student');
       }
@@ -2768,6 +2863,7 @@ window.qbEngine = {
     const resModal = document.getElementById('qb-results-modal');
 
     if (testContainer) testContainer.classList.add('hidden');
+    this.exitFullscreenTestingMode();
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
     if (navModal) navModal.classList.add('hidden');
@@ -3705,6 +3801,8 @@ window.qbEngine = {
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
+    this.enterFullscreenTestingMode();
+
     this.renderCurrentQuestion();
 
     if (typeof showToast === 'function') {
@@ -3781,6 +3879,8 @@ window.qbEngine = {
     if (setupView) setupView.classList.add('hidden');
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
+
+    this.enterFullscreenTestingMode();
 
     this.renderCurrentQuestion();
   },
@@ -3908,6 +4008,8 @@ window.qbEngine = {
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
+    this.enterFullscreenTestingMode();
+
     this.renderCurrentQuestion();
     if (typeof showToast === 'function') {
       showToast("🚀 Practice Initialized", `${targetQuestions.length} practice questions from ${exam.short_title || exam.title} loaded!`, "success");
@@ -3989,6 +4091,8 @@ window.qbEngine = {
     if (setupView) setupView.classList.add('hidden');
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
+
+    this.enterFullscreenTestingMode();
 
     this.updateReviewFilterButtonsUI(filter);
     this.renderCurrentQuestion();

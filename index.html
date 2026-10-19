@@ -17,13 +17,27 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- Question Bank State Engine Module with Cache-Buster -->
-  <script src="public/qb_engine.js?v=2.10.0"></script>
+  <script src="public/qb_engine.js?v=2.13.0"></script>
   <style>
     /* Design tokens: #0f172a #334155 */
     html, body {
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
       overscroll-behavior-y: none;
+    }
+    body.qb-testing-active {
+      overflow: hidden !important;
+    }
+    body.qb-testing-active #qb-test-container {
+      margin: 0 !important;
+      inset: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+    }
+    body.qb-testing-active header:not(#qb-test-header) {
+      display: none !important;
     }
     button, input, select, textarea, a {
       touch-action: manipulation;
@@ -1607,12 +1621,12 @@
 
 
       <!-- VIEW 3: AUTHENTIC BLUEBOOK TEST-TAKING INTERFACE -->
-      <div id="qb-test-container" class="hidden max-w-6xl mx-auto space-y-3 pb-16 text-slate-800">
+      <div id="qb-test-container" class="hidden fixed inset-0 z-50 !m-0 w-full h-[100dvh] bg-slate-100 flex flex-col overflow-hidden text-slate-800">
         <!-- Backward-compatibility marker for test suites -->
         <span class="hidden" data-step="Ready for Step 3 Interface">Ready for Step 3 Interface</span>
 
         <!-- TOP BLUEBOOK HEADER -->
-        <header id="qb-test-header" class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3 text-slate-800">
+        <header id="qb-test-header" class="shrink-0 bg-white border-b border-slate-200/90 px-4 sm:px-6 py-2.5 sm:py-3 shadow-xs flex flex-wrap items-center justify-between gap-3 text-slate-800">
           <!-- Left: Subject & Section Info -->
           <div class="flex items-center gap-2.5">
             <button type="button" onclick="qbEngine.returnToSetup()" title="Return to Setup" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs">
@@ -1636,7 +1650,7 @@
             </button>
           </div>
 
-          <!-- Right: Per-Question Timer & Desmos Calculator -->
+          <!-- Right: Per-Question Timer & Desmos Calculator & Fullscreen -->
           <div class="flex items-center gap-2 order-2 sm:order-3">
             <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-slate-700 shadow-inner">
               <span class="text-xs">⏱️</span>
@@ -1645,6 +1659,9 @@
                 👁️
               </button>
             </div>
+            <button type="button" id="qb-btn-fullscreen" onclick="qbEngine.toggleFullscreen()" title="Toggle Fullscreen Mode" class="flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer">
+              <span id="qb-fullscreen-icon">⛶</span><span id="qb-fullscreen-text" class="hidden sm:inline">Fullscreen</span>
+            </button>
             <button type="button" id="qb-btn-calculator" onclick="toggleDesmosCalculator()" title="Open Desmos Graphing Calculator" class="flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-xs cursor-pointer">
               <span>🧮</span><span class="hidden sm:inline">Calculator</span>
             </button>
@@ -1652,7 +1669,7 @@
         </header>
 
         <!-- REVIEW MODE BANNER (DISPLAYED WHEN PRACTICING IN REVIEW MODE) -->
-        <div id="qb-review-mode-banner" class="hidden bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 rounded-2xl p-3 sm:p-4 text-white shadow-md flex flex-wrap items-center justify-between gap-3">
+        <div id="qb-review-mode-banner" class="hidden shrink-0 bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 px-4 sm:px-6 py-2.5 text-white shadow-xs flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-2.5">
             <span class="text-xl">🔍</span>
             <div>
@@ -1684,9 +1701,9 @@
         </div>
 
         <!-- SPLIT-SCREEN TESTING CANVAS -->
-        <main id="qb-split-container" class="grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]">
+        <main id="qb-split-container" class="flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
           <!-- Left Pane: Desmos Calculator (Docked Mode) -->
-          <article id="qb-calculator-pane" class="hidden bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-sm flex-col min-h-[540px] max-h-[660px]">
+          <article id="qb-calculator-pane" class="hidden bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-sm flex-col h-full min-h-0">
             <div class="px-4 py-2.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between shrink-0">
               <div class="flex items-center gap-2 text-white">
                 <span class="text-base">🧮</span>
@@ -1707,13 +1724,13 @@
                 </button>
               </div>
             </div>
-            <div class="relative flex-1 w-full bg-white overflow-hidden min-h-[480px]">
+            <div class="relative flex-1 min-h-0 w-full bg-white overflow-hidden">
               <iframe id="qb-desmos-iframe" src="https://www.desmos.com/testing/collegeboard/graphing" title="College Board Digital SAT Desmos Calculator" class="w-full h-full border-0 block" allow="clipboard-read; clipboard-write"></iframe>
             </div>
           </article>
 
           <!-- Left Pane: Passage (if present) -->
-          <article id="qb-passage-pane" class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto max-h-[620px] shadow-sm text-slate-800 text-sm leading-relaxed space-y-4">
+          <article id="qb-passage-pane" class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto h-full min-h-0 shadow-sm text-slate-800 text-sm leading-relaxed space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
               <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <span>📜</span><span>Reading Passage</span>
@@ -1726,7 +1743,7 @@
           </article>
 
           <!-- Right Pane: Prompt, KaTeX Formulas, MCQ / SPR Choices -->
-          <section id="qb-question-pane" class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto max-h-[620px] shadow-sm flex flex-col justify-between space-y-5">
+          <section id="qb-question-pane" class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5">
             <div class="space-y-4">
               <!-- Question metadata header (Difficulty & Question ID & Number Badge) -->
               <div class="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -1809,7 +1826,7 @@
         </main>
 
         <!-- BOTTOM BLUEBOOK NAVIGATION & CONTROLS -->
-        <footer id="qb-test-footer" class="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3.5 shadow-lg flex items-center justify-between gap-3 text-slate-800 mt-3">
+        <footer id="qb-test-footer" class="sticky bottom-0 z-30 shrink-0 bg-white border-t border-slate-200/90 px-4 sm:px-6 py-2.5 sm:py-3 shadow-sm flex items-center justify-between gap-3 text-slate-800">
           <!-- Back button -->
           <button type="button" id="qb-btn-prev" onclick="qbEngine.prevQuestion()" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:pointer-events-none text-slate-700 text-xs sm:text-sm font-bold border border-slate-300 transition-all flex items-center gap-2 shadow-xs">
             <span>←</span><span>Back</span>
@@ -1834,7 +1851,7 @@
         </footer>
 
         <!-- MODAL 1: QUESTION NAVIGATOR DRAWER / POPUP -->
-        <div id="qb-navigator-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div id="qb-navigator-modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl text-slate-800">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -10157,11 +10174,15 @@
 
       // QBank Layout
       if (qbCalcPane && qbSplitContainer) {
+        const qbQuestionPane = document.getElementById('qb-question-pane');
         if (isDocked && isQBank) {
           qbCalcPane.classList.remove('hidden');
           qbCalcPane.classList.add('flex');
           if (qbPassagePane) qbPassagePane.classList.add('hidden');
-          qbSplitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[520px]";
+          qbSplitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-4";
+          if (qbQuestionPane) {
+            qbQuestionPane.className = "bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+          }
         } else {
           qbCalcPane.classList.add('hidden');
           qbCalcPane.classList.remove('flex');
@@ -10169,10 +10190,16 @@
           const hasPassage = Boolean(curQ && curQ.passage && curQ.passage.trim().length > 0);
           if (hasPassage && qbPassagePane) {
             qbPassagePane.classList.remove('hidden');
-            qbSplitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[520px]";
+            qbSplitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-4";
+            if (qbQuestionPane) {
+              qbQuestionPane.className = "bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+            }
           } else {
             if (qbPassagePane) qbPassagePane.classList.add('hidden');
-            qbSplitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
+            qbSplitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden flex justify-center";
+            if (qbQuestionPane) {
+              qbQuestionPane.className = "max-w-4xl w-full bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+            }
           }
         }
       }
@@ -10329,8 +10356,13 @@
         }
       }
       if (tabName !== 'qbank') {
-        if (typeof qbEngine !== 'undefined' && qbEngine.saveAllAnsweredQuestionsFromSession) {
-          qbEngine.saveAllAnsweredQuestionsFromSession();
+        if (typeof qbEngine !== 'undefined') {
+          if (qbEngine.saveAllAnsweredQuestionsFromSession) {
+            qbEngine.saveAllAnsweredQuestionsFromSession();
+          }
+          if (typeof qbEngine.exitFullscreenTestingMode === 'function') {
+            qbEngine.exitFullscreenTestingMode();
+          }
         }
       }
 
@@ -14539,6 +14571,7 @@
 
     if (!this.isInitialized) {
       this.isInitialized = true;
+      this.initFullscreenListener();
       this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
       this.syncHubStats();
@@ -14546,6 +14579,7 @@
       this.syncHubStats();
       this.loadSolvedQuestions(false);
     } else {
+      this.initFullscreenListener();
       this.syncHubStats();
       this.loadSolvedQuestions(false);
     }
@@ -14566,7 +14600,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.12.0',
+  dataVersion: '2.13.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -15172,12 +15206,94 @@
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
+    this.enterFullscreenTestingMode();
+
     // Render current question
     this.renderCurrentQuestion();
 
     if (typeof showToast === 'function') {
       showToast("🚀 Session Initialized", `${selectedQuestions.length} practice questions loaded! Good luck!`, "success");
     }
+  },
+
+  enterFullscreenTestingMode() {
+    const testContainer = document.getElementById('qb-test-container');
+    if (testContainer) {
+      testContainer.classList.remove('hidden');
+    }
+    document.body.classList.add('qb-testing-active');
+    this.requestFullscreenQuietly();
+    if (typeof syncCurrentQuestionLayout === 'function') {
+      syncCurrentQuestionLayout();
+    }
+  },
+
+  exitFullscreenTestingMode() {
+    const testContainer = document.getElementById('qb-test-container');
+    if (testContainer) {
+      testContainer.classList.add('hidden');
+    }
+    document.body.classList.remove('qb-testing-active');
+    this.exitFullscreenIfActive();
+  },
+
+  toggleFullscreen() {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const root = document.documentElement;
+        if (root.requestFullscreen) {
+          root.requestFullscreen().catch(() => {});
+        } else if (root.webkitRequestFullscreen) {
+          root.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    } catch (e) {}
+  },
+
+  requestFullscreenQuietly() {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const root = document.documentElement;
+        if (root.requestFullscreen) {
+          root.requestFullscreen().catch(() => {});
+        } else if (root.webkitRequestFullscreen) {
+          root.webkitRequestFullscreen();
+        }
+      }
+    } catch (e) {}
+  },
+
+  exitFullscreenIfActive() {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    } catch (e) {}
+  },
+
+  initFullscreenListener() {
+    const updateIcon = () => {
+      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      const icon = document.getElementById('qb-fullscreen-icon');
+      const text = document.getElementById('qb-fullscreen-text');
+      if (icon) icon.innerText = isFs ? '🗗' : '⛶';
+      if (text) text.innerText = isFs ? 'Exit Fullscreen' : 'Fullscreen';
+    };
+    try {
+      document.removeEventListener('fullscreenchange', this._fsListener);
+      document.removeEventListener('webkitfullscreenchange', this._fsListener);
+      this._fsListener = updateIcon;
+      document.addEventListener('fullscreenchange', updateIcon);
+      document.addEventListener('webkitfullscreenchange', updateIcon);
+    } catch (e) {}
   },
 
   renderCurrentQuestion() {
@@ -15308,11 +15424,18 @@
       }
     }
 
+    const questionPane = document.getElementById('qb-question-pane');
     if (splitContainer) {
       if (hasPassage || isDockedCalc) {
-        splitContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[520px]";
+        splitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-4";
+        if (questionPane) {
+          questionPane.className = "bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+        }
       } else {
-        splitContainer.className = "grid grid-cols-1 gap-3 min-h-[520px]";
+        splitContainer.className = "flex-1 min-h-0 w-full p-3 sm:p-4 md:p-5 overflow-hidden flex justify-center";
+        if (questionPane) {
+          questionPane.className = "max-w-4xl w-full bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 overflow-y-auto h-full min-h-0 shadow-sm flex flex-col justify-between space-y-5";
+        }
       }
     }
 
@@ -16454,6 +16577,7 @@
       sessionStorage.removeItem('qb_active_session');
       const testContainer = document.getElementById('qb-test-container');
       if (testContainer) testContainer.classList.add('hidden');
+      this.exitFullscreenTestingMode();
       if (typeof switchTab === 'function') {
         switchTab('student');
       }
@@ -16469,6 +16593,7 @@
     const resModal = document.getElementById('qb-results-modal');
 
     if (testContainer) testContainer.classList.add('hidden');
+    this.exitFullscreenTestingMode();
     if (hubView) hubView.classList.add('hidden');
     if (solverView) solverView.classList.add('hidden');
     if (navModal) navModal.classList.add('hidden');
@@ -17406,6 +17531,8 @@
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
+    this.enterFullscreenTestingMode();
+
     this.renderCurrentQuestion();
 
     if (typeof showToast === 'function') {
@@ -17482,6 +17609,8 @@
     if (setupView) setupView.classList.add('hidden');
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
+
+    this.enterFullscreenTestingMode();
 
     this.renderCurrentQuestion();
   },
@@ -17609,6 +17738,8 @@
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
 
+    this.enterFullscreenTestingMode();
+
     this.renderCurrentQuestion();
     if (typeof showToast === 'function') {
       showToast("🚀 Practice Initialized", `${targetQuestions.length} practice questions from ${exam.short_title || exam.title} loaded!`, "success");
@@ -17690,6 +17821,8 @@
     if (setupView) setupView.classList.add('hidden');
     if (latestView) latestView.classList.add('hidden');
     if (testContainer) testContainer.classList.remove('hidden');
+
+    this.enterFullscreenTestingMode();
 
     this.updateReviewFilterButtonsUI(filter);
     this.renderCurrentQuestion();
