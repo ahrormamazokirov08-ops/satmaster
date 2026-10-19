@@ -870,7 +870,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.14.0',
+  dataVersion: '2.15.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -3426,12 +3426,17 @@ window.qbEngine = {
     if (!q) return null;
     const isMath = (q.subject === 'Math' || (q.id && q.id.includes('math')));
     if (isMath) {
-      const dom = q.domain || '';
-      if (dom.includes('Algebra')) return { stage: 1, totalStages: 4, name: 'Algebra', icon: '📐', colorClass: 'text-blue-700 bg-blue-50 border-blue-200' };
-      if (dom.includes('Advanced')) return { stage: 2, totalStages: 4, name: 'Advanced Math', icon: '⚡', colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
-      if (dom.includes('Data') || dom.includes('Problem-Solving')) return { stage: 3, totalStages: 4, name: 'Problem-Solving & Data Analysis', icon: '📊', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
-      if (dom.includes('Geometry')) return { stage: 4, totalStages: 4, name: 'Geometry & Trigonometry', icon: '📏', colorClass: 'text-purple-700 bg-purple-50 border-purple-200' };
-      return { stage: 1, totalStages: 4, name: 'Math Domain', icon: '📐', colorClass: 'text-blue-700 bg-blue-50 border-blue-200' };
+      const isSPR = Boolean(q.is_spr || q.type === 'spr');
+      if (isSPR) {
+        return { stage: 2, totalStages: 2, name: 'Student-Produced Response (Grid-in)', icon: '🔢', colorClass: 'text-purple-700 bg-purple-50 border-purple-200' };
+      } else {
+        const dom = q.domain || '';
+        let icon = '📐';
+        if (dom.includes('Advanced')) icon = '⚡';
+        else if (dom.includes('Data') || dom.includes('Problem')) icon = '📊';
+        else if (dom.includes('Geometry')) icon = '📏';
+        return { stage: 1, totalStages: 2, name: 'Multiple Choice (' + (dom || 'Math') + ')', icon: icon, colorClass: 'text-blue-700 bg-blue-50 border-blue-200' };
+      }
     }
     const skill = q.skill || '';
     if (skill === 'Words in Context') {
@@ -3459,8 +3464,9 @@ window.qbEngine = {
     // Math fallback
     if (typeKey === 'alg') return q => (q.domain || '').includes('Algebra');
     if (typeKey === 'adv') return q => (q.domain || '').includes('Advanced');
-    if (typeKey === 'psda') return q => (q.domain || '').includes('Data');
+    if (typeKey === 'psda') return q => (q.domain || '').includes('Data') || (q.domain || '').includes('Problem');
     if (typeKey === 'geom') return q => (q.domain || '').includes('Geometry');
+    if (typeKey === 'spr') return q => Boolean(q.is_spr || q.type === 'spr');
     return () => true;
   },
 
@@ -3474,7 +3480,8 @@ window.qbEngine = {
       alg: 'Algebra',
       adv: 'Advanced Math',
       psda: 'Problem-Solving & Data Analysis',
-      geom: 'Geometry & Trigonometry'
+      geom: 'Geometry & Trigonometry',
+      spr: 'Student-Produced Response (Grid-in)'
     };
     return map[typeKey] || 'Question Type';
   },
@@ -3568,10 +3575,11 @@ window.qbEngine = {
       ];
     } else {
       types = [
-        { key: 'alg', name: 'Algebra', icon: '📐', badge: '35% of Test', sequence: 'Linear Equations & Systems', filter: q => (q.domain || '').includes('Algebra'), desc: 'Linear equations, inequalities, systems, and relationships.' },
-        { key: 'adv', name: 'Advanced Math', icon: '⚡', badge: '35% of Test', sequence: 'Nonlinear Functions', filter: q => (q.domain || '').includes('Advanced'), desc: 'Quadratic, exponential, polynomial, and rational functions.' },
-        { key: 'psda', name: 'Problem-Solving & Data Analysis', icon: '📊', badge: '15% of Test', sequence: 'Statistics & Modeling', filter: q => (q.domain || '').includes('Data'), desc: 'Ratios, rates, percentages, probability, and statistics.' },
-        { key: 'geom', name: 'Geometry & Trigonometry', icon: '📏', badge: '15% of Test', sequence: 'Angles, Triangles & Circles', filter: q => (q.domain || '').includes('Geometry'), desc: 'Perimeter, area, volume, angles, triangles, and trigonometry.' }
+        { key: 'alg', name: 'Algebra', icon: '📐', badge: '~35% of Test', sequence: 'Linear Equations & Systems', filter: q => (q.domain || '').includes('Algebra'), desc: 'Linear equations, inequalities, systems, and linear relationships.' },
+        { key: 'adv', name: 'Advanced Math', icon: '⚡', badge: '~35% of Test', sequence: 'Nonlinear Functions', filter: q => (q.domain || '').includes('Advanced'), desc: 'Quadratic, exponential, polynomial, and rational functions.' },
+        { key: 'psda', name: 'Problem-Solving & Data Analysis', icon: '📊', badge: '~15% of Test', sequence: 'Statistics & Modeling', filter: q => (q.domain || '').includes('Data') || (q.domain || '').includes('Problem'), desc: 'Ratios, rates, percentages, probability, and statistical data.' },
+        { key: 'geom', name: 'Geometry & Trigonometry', icon: '📏', badge: '~15% of Test', sequence: 'Angles, Triangles & Circles', filter: q => (q.domain || '').includes('Geometry'), desc: 'Area, volume, angles, triangles, circles, and trigonometry.' },
+        { key: 'spr', name: 'Student-Produced Response', icon: '🔢', badge: '~28% of Test', sequence: 'Questions 17–22 in Official Modules', filter: q => Boolean(q.is_spr || q.type === 'spr'), desc: 'Numerical grid-in questions requiring student-entered integers, decimals, or fractions.' }
       ];
     }
 

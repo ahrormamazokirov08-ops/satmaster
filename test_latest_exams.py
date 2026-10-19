@@ -193,8 +193,8 @@ class TestLatestExamsFeature(unittest.TestCase):
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.14.0'", self.engine_content, "dataVersion 2.14.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.14.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.15.0'", self.engine_content, "dataVersion 2.15.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.15.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
@@ -414,10 +414,32 @@ class TestLatestExamsFeature(unittest.TestCase):
             chunks.append(qs[start:end])
 
         self.assertEqual(len(chunks), 9)
+        diff_order = {"Easy": 1, "Medium": 2, "Hard": 3}
         for i in range(8):
             self.assertEqual(len(chunks[i]), 22, f"Math Module {i + 1} should have 22 questions")
+            # Invariant: 16 MCQs (Stage 1) followed by 6 SPRs (Stage 2)
+            mod_mcqs = chunks[i][:16]
+            mod_sprs = chunks[i][16:]
+            self.assertTrue(all(not q.get("is_spr") for q in mod_mcqs), f"Module {i + 1} first 16 must be MCQs")
+            self.assertTrue(all(q.get("is_spr") for q in mod_sprs), f"Module {i + 1} last 6 must be SPRs")
+            # Difficulty progression within each stage
+            mcq_diffs = [diff_order[q["difficulty"]] for q in mod_mcqs]
+            spr_diffs = [diff_order[q["difficulty"]] for q in mod_sprs]
+            self.assertEqual(mcq_diffs, sorted(mcq_diffs), f"Module {i + 1} MCQs not sorted by difficulty: {mcq_diffs}")
+            self.assertEqual(spr_diffs, sorted(spr_diffs), f"Module {i + 1} SPRs not sorted by difficulty: {spr_diffs}")
+
+        # Module 9: 7 MCQs + 5 SPRs
         self.assertEqual(len(chunks[8]), 12, "Math Module 9 should have remaining 12 questions")
+        mod9_mcqs = chunks[8][:7]
+        mod9_sprs = chunks[8][7:]
+        self.assertTrue(all(not q.get("is_spr") for q in mod9_mcqs), "Module 9 first 7 must be MCQs")
+        self.assertTrue(all(q.get("is_spr") for q in mod9_sprs), "Module 9 last 5 must be SPRs")
         self.assertEqual(sum(len(c) for c in chunks), 188)
+
+        # Invariant: Sequential IDs matching module ordering
+        for idx, q in enumerate(qs, start=1):
+            expected_id = f"sat_2026_06_math_{idx:03d}"
+            self.assertEqual(q["id"], expected_id, f"Question at index {idx} has ID {q['id']}, expected {expected_id}")
 
         # 2. Timer accommodations mapping for Math (35 minutes standard)
         math_timer_configs = {
