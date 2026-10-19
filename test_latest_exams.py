@@ -49,15 +49,11 @@ class TestLatestExamsFeature(unittest.TestCase):
         expected_collections = [
             ("sat_2026_06_math", "Math", "June", 2026, 188),
             ("sat_2026_06_rw", "Reading & Writing", "June", 2026, 236),
-            ("sat_2024_05_math", "Math", "May", 2024, 4),
-            ("sat_2024_05_rw", "Reading & Writing", "May", 2024, 3),
-            ("sat_2024_03_math", "Math", "March", 2024, 3),
-            ("sat_2024_03_rw", "Reading & Writing", "March", 2024, 3),
         ]
 
-        self.assertEqual(len(exams), 6, "Expected exactly 6 latest exam collections")
+        self.assertEqual(len(exams), 2, "Expected exactly 2 latest exam collections")
         total_questions = sum(len(ex["questions"]) for ex in exams)
-        self.assertEqual(total_questions, 437, f"Expected 437 questions across all exams, got {total_questions}")
+        self.assertEqual(total_questions, 424, f"Expected 424 questions across all exams, got {total_questions}")
 
         for exam_id, subject, month, year, qcount in expected_collections:
             exam = next((e for e in exams if e["id"] == exam_id or e.get("legacy_id") == exam_id), None)
@@ -94,7 +90,7 @@ class TestLatestExamsFeature(unittest.TestCase):
                     for token in ["StartFraction", "end fraction", "StartRoot", "end root", "with numerator"]:
                         self.assertNotIn(token, val, f"TTS token {token} in {q['id']}")
 
-        print(f"✅ All 6 exam collections (437 questions) strictly match schema & invariants")
+        print(f"✅ All 2 exam collections (424 questions) strictly match schema & invariants")
 
     def test_03_standard_dataset_strict_isolation(self):
         """Standard question bank (4,303 questions) must remain completely untouched."""
@@ -193,8 +189,8 @@ class TestLatestExamsFeature(unittest.TestCase):
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.15.0'", self.engine_content, "dataVersion 2.15.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.15.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.16.0'", self.engine_content, "dataVersion 2.16.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.16.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
