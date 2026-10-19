@@ -408,14 +408,14 @@
                   </span>
                 </div>
                 <p class="text-xs sm:text-sm text-slate-600 mt-0.5">
-                  Total Questions Loaded: 3,770 (1,845 RW | 1,925 Math)
+                  Total Questions Loaded: 4,303 (1,845 RW | 2,458 Math)
                 </p>
               </div>
             </div>
           </div>
 
           <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
-            The official Digital SAT question bank (3,770 questions) is loaded with KaTeX math typesetting, reading passages, and student-produced responses. Solve and inspect questions in the authentic Bluebook simulator in draft mode before publishing to students.
+            The official Digital SAT question bank (4,303 questions) is loaded with KaTeX math typesetting, reading passages, and student-produced responses. Solve and inspect questions in the authentic Bluebook simulator in draft mode before publishing to students.
           </p>
 
           <div class="flex flex-wrap items-center gap-3 pt-1">
@@ -614,14 +614,14 @@
                 </span>
               </div>
               <p class="text-xs sm:text-sm text-slate-600 mt-0.5">
-                Total Questions Loaded: 3,770 (1,845 RW | 1,925 Math)
+                Total Questions Loaded: 4,303 (1,845 RW | 2,458 Math)
               </p>
             </div>
           </div>
         </div>
 
         <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
-          The official Digital SAT question bank (3,770 questions) is loaded with KaTeX math typesetting, reading passages, and student-produced responses. Solve and inspect questions in the authentic Bluebook simulator in draft mode before publishing to students.
+          The official Digital SAT question bank (4,303 questions) is loaded with KaTeX math typesetting, reading passages, and student-produced responses. Solve and inspect questions in the authentic Bluebook simulator in draft mode before publishing to students.
         </p>
 
         <div class="flex flex-wrap items-center gap-3 pt-1">
@@ -650,7 +650,7 @@
         </div>
         <div class="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs">
           <span class="text-xs text-slate-500 font-medium">Question Bank</span>
-          <div class="text-3xl font-black text-purple-600 mt-1" id="stat-question-bank">3,770</div>
+          <div class="text-3xl font-black text-purple-600 mt-1" id="stat-question-bank">4,303</div>
         </div>
       </div>
 
@@ -1093,7 +1093,7 @@
               
               <div class="flex items-center gap-2 self-end sm:self-auto">
                 <span class="text-xs font-semibold text-slate-500">Total Bank Questions:</span>
-                <span class="text-xs font-bold font-mono text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">3,770</span>
+                <span id="qb-hub-total-badge" class="text-xs font-bold font-mono text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">4,303</span>
               </div>
             </div>
 
@@ -1128,7 +1128,7 @@
                     <div class="w-12 h-12 rounded-2xl bg-blue-100/80 border border-blue-200 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
                       📚
                     </div>
-                    <span class="text-xs font-bold font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80">
+                    <span id="qb-hub-rw-count" class="text-xs font-bold font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80">
                       1,845 Questions
                     </span>
                   </div>
@@ -1138,7 +1138,7 @@
                       Master official passages, vocabulary in context, grammar boundaries, and rhetorical synthesis.
                     </p>
                   </div>
-                  <div class="flex flex-wrap gap-1.5 pt-1">
+                  <div id="qb-hub-rw-domains" class="flex flex-wrap gap-1.5 pt-1">
                     <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Craft &amp; Structure (471)</span>
                     <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Info &amp; Ideas (555)</span>
                     <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Conventions (421)</span>
@@ -1158,8 +1158,8 @@
                     <div class="w-12 h-12 rounded-2xl bg-indigo-100/80 border border-indigo-200 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
                       📐
                     </div>
-                    <span class="text-xs font-bold font-mono text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200/80">
-                      1,925 Questions
+                    <span id="qb-hub-math-count" class="text-xs font-bold font-mono text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200/80">
+                      2,458 Questions
                     </span>
                   </div>
                   <div>
@@ -1168,11 +1168,11 @@
                       Target algebra, nonlinear functions, statistics, coordinate geometry, trigonometry, and SPR grid-ins.
                     </p>
                   </div>
-                  <div class="flex flex-wrap gap-1.5 pt-1">
-                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Algebra (616)</span>
-                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Advanced Math (540)</span>
-                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Problem-Solving (421)</span>
-                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Geometry (348)</span>
+                  <div id="qb-hub-math-domains" class="flex flex-wrap gap-1.5 pt-1">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Algebra (715)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Advanced Math (765)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Problem-Solving (508)</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Geometry (470)</span>
                   </div>
                 </div>
                 <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600 group-hover:text-indigo-700">
@@ -2062,7 +2062,7 @@
               <div>
                 <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight drop-shadow-sm">Math</h2>
                 <div class="flex items-center justify-between text-xs font-semibold text-sky-100 mt-2">
-                  <span id="math-stat-label">1,925 questions</span>
+                  <span id="math-stat-label">2,458 questions</span>
                   <span id="math-stat-pct" class="font-bold">Official Bank</span>
                 </div>
                 <div class="w-full h-2.5 bg-black/20 rounded-full mt-2 overflow-hidden backdrop-blur-sm">
@@ -2354,11 +2354,11 @@
                 <span>📖</span><span>Official Question Bank</span>
               </span>
               <span class="text-xs text-slate-400">•</span>
-              <span class="text-xs font-bold text-sky-700 font-mono">3,770 Practice Questions</span>
+              <span class="text-xs font-bold text-sky-700 font-mono">4,303 Practice Questions</span>
             </div>
             <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Digital SAT Self-Study &amp; Manual Practice</h2>
             <p class="text-xs text-slate-600 max-w-2xl leading-relaxed">
-              Build your own custom practice drill to improve individually. Choose Reading &amp; Writing (1,845) or Math (2,326), filter by domain and difficulty, and practice with instant check answer, full step-by-step rationales, and the official Desmos calculator.
+              Build your own custom practice drill to improve individually. Choose Reading &amp; Writing (1,845) or Math (2,458), filter by domain and difficulty, and practice with instant check answer, full step-by-step rationales, and the official Desmos calculator.
             </p>
           </div>
           <div class="flex items-center gap-2.5 shrink-0 w-full sm:w-auto">
@@ -7298,10 +7298,12 @@
     }
 
     function getQBankTotalCount() {
-      if (window.qbEngine && window.qbEngine.questionsData && window.qbEngine.questionsData.rw && window.qbEngine.questionsData.math) {
-        return window.qbEngine.questionsData.rw.length + window.qbEngine.questionsData.math.length;
+      if (window.qbEngine && window.qbEngine.questionsData) {
+        const rw = window.qbEngine.questionsData.rw ? window.qbEngine.questionsData.rw.length : 1845;
+        const math = window.qbEngine.questionsData.math ? window.qbEngine.questionsData.math.length : 2458;
+        return rw + math;
       }
-      return 3770;
+      return 4303;
     }
 
     // =========================================================
@@ -13270,7 +13272,7 @@
     function handleAdminPublishToggle() {
       const isPub = isQBankPublished();
       if (!isPub) {
-        if (confirm("⚠️ Publish Official SAT Question Bank?\n\nThis will expose all 3,770 Digital SAT questions directly to students in their portal. Are you sure you want to publish to students now?")) {
+        if (confirm(`⚠️ Publish Official SAT Question Bank?\n\nThis will expose all ${getQBankTotalCount().toLocaleString()} Digital SAT questions directly to students in their portal. Are you sure you want to publish to students now?`)) {
           togglePublishQBank();
         }
       } else {
@@ -13470,7 +13472,7 @@
       const stats = getQBankStats();
 
       // 1. Reading & Writing Card Progress
-      const rwTotal = 1845;
+      const rwTotal = (window.qbEngine && window.qbEngine.questionsData?.rw?.length) || 1845;
       const rwSolved = stats.rwSolved || 0;
       const rwPct = Math.round((rwSolved / rwTotal) * 100);
       const rwLabel = document.getElementById('rw-stat-label');
@@ -13489,7 +13491,7 @@
       }
 
       // 2. Math Card Progress
-      const mathTotal = 2084;
+      const mathTotal = (window.qbEngine && window.qbEngine.questionsData?.math?.length) || 2458;
       const mathSolved = stats.mathSolved || 0;
       const mathPct = Math.round((mathSolved / mathTotal) * 100);
       const mathLabel = document.getElementById('math-stat-label');
@@ -13827,6 +13829,7 @@
     const detail = document.getElementById('qb-detail-view');
     if (hub) hub.classList.remove('hidden');
     if (detail) detail.classList.add('hidden');
+    this.syncHubStats();
   },
 
   showDetailView() {
@@ -13862,6 +13865,66 @@
     if (setupView) {
       setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  },
+
+  syncHubStats() {
+    const mathQs = Array.isArray(this.questionsData.math) ? this.questionsData.math : [];
+    const rwQs = Array.isArray(this.questionsData.rw) ? this.questionsData.rw : [];
+    const mathCount = mathQs.length > 0 ? mathQs.length : 2458;
+    const rwCount = rwQs.length > 0 ? rwQs.length : 1845;
+    const totalCount = mathCount + rwCount;
+
+    // 1. Total Bank Count Badge in Hub header
+    const totalBadge = document.getElementById('qb-hub-total-badge');
+    if (totalBadge) totalBadge.innerText = totalCount.toLocaleString();
+
+    // 2. RW Count & Domains
+    const rwCountEl = document.getElementById('qb-hub-rw-count');
+    if (rwCountEl) rwCountEl.innerText = `${rwCount.toLocaleString()} Questions`;
+
+    const rwDomainsEl = document.getElementById('qb-hub-rw-domains');
+    if (rwDomainsEl) {
+      const craft = rwQs.length ? rwQs.filter(q => q.domain === 'Craft and Structure').length : 471;
+      const info = rwQs.length ? rwQs.filter(q => q.domain === 'Information and Ideas').length : 555;
+      const conv = rwQs.length ? rwQs.filter(q => q.domain === 'Standard English Conventions').length : 421;
+      const expr = rwQs.length ? rwQs.filter(q => q.domain === 'Expression of Ideas').length : 398;
+      rwDomainsEl.innerHTML = `
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Craft &amp; Structure (${craft})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Info &amp; Ideas (${info})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Conventions (${conv})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Expression (${expr})</span>
+      `.trim();
+    }
+
+    // 3. Math Count & Domains
+    const mathCountEl = document.getElementById('qb-hub-math-count');
+    if (mathCountEl) mathCountEl.innerText = `${mathCount.toLocaleString()} Questions`;
+
+    const mathDomainsEl = document.getElementById('qb-hub-math-domains');
+    if (mathDomainsEl) {
+      const alg = mathQs.length ? mathQs.filter(q => q.domain === 'Algebra').length : 715;
+      const adv = mathQs.length ? mathQs.filter(q => q.domain === 'Advanced Math').length : 765;
+      const ps = mathQs.length ? mathQs.filter(q => q.domain && q.domain.startsWith('Problem-Solving')).length : 508;
+      const geo = mathQs.length ? mathQs.filter(q => q.domain && q.domain.startsWith('Geometry')).length : 470;
+      mathDomainsEl.innerHTML = `
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Algebra (${alg})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Advanced Math (${adv})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Problem-Solving (${ps})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Geometry (${geo})</span>
+      `.trim();
+    }
+
+    // 4. Update Stat Labels & Dashboard Metrics
+    const mathStatLabel = document.getElementById('math-stat-label');
+    if (mathStatLabel && (!mathStatLabel.innerText.includes('solved') || mathStatLabel.innerText.includes('1,925') || mathStatLabel.innerText.includes('2,084'))) {
+      mathStatLabel.innerText = `${mathCount.toLocaleString()} questions`;
+    }
+    const statQBank = document.getElementById('stat-question-bank');
+    if (statQBank) statQBank.innerText = totalCount.toLocaleString();
+
+    // 5. Update student launcher card if present
+    const launcherCount = document.querySelector('#student-qbank-launcher-card .font-mono');
+    if (launcherCount) launcherCount.innerText = `${totalCount.toLocaleString()} Practice Questions`;
   },
 
   syncSubjectDetailHeader() {
@@ -14478,9 +14541,12 @@
       this.isInitialized = true;
       this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
+      this.syncHubStats();
       await this.loadQuestions(false, resolvedSubj);
+      this.syncHubStats();
       this.loadSolvedQuestions(false);
     } else {
+      this.syncHubStats();
       this.loadSolvedQuestions(false);
     }
 
@@ -14493,13 +14559,14 @@
 
   preload() {
     try {
+      this.syncHubStats();
       if (!this.questionsData.rw || !this.questionsData.math) {
         this.loadQuestions(false);
       }
     } catch (e) {}
   },
 
-  dataVersion: '2.11.0',
+  dataVersion: '2.12.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -14511,16 +14578,19 @@
       if (targetSubj === 'math' && hasMath) {
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
         return;
       }
       if (targetSubj === 'rw' && hasRw) {
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
         return;
       }
       if (hasMath && hasRw) {
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
         return;
       }
     }
@@ -14529,6 +14599,7 @@
       await this._loadingPromise;
       this.updateMatchingCount();
       this.syncSubjectDetailHeader();
+      this.syncHubStats();
       return;
     }
 
@@ -14567,6 +14638,7 @@
           this.renderSkillList();
           this.updateMatchingCount();
           this.syncSubjectDetailHeader();
+          this.syncHubStats();
           // Load RW in background
           if (!hasRw) {
             fetchWithFallback('data/questions/reading_writing.json').then(rw => {
@@ -14574,6 +14646,7 @@
               this.renderSkillList();
               this.updateMatchingCount();
               this.syncSubjectDetailHeader();
+              this.syncHubStats();
             }).catch(err => console.warn('[qbEngine] Background RW preload error:', err));
           }
           return;
@@ -14587,6 +14660,7 @@
           this.renderSkillList();
           this.updateMatchingCount();
           this.syncSubjectDetailHeader();
+          this.syncHubStats();
           // Load Math in background
           if (!hasMath) {
             fetchWithFallback('data/questions/math.json').then(m => {
@@ -14594,6 +14668,7 @@
               this.renderSkillList();
               this.updateMatchingCount();
               this.syncSubjectDetailHeader();
+              this.syncHubStats();
             }).catch(err => console.warn('[qbEngine] Background Math preload error:', err));
           }
           return;
@@ -14612,6 +14687,7 @@
         this.renderSkillList();
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
       } catch (err) {
         console.error("[qbEngine] Error loading questions:", err);
         this.isLoading = false;
@@ -14913,6 +14989,7 @@
     this.syncCountUI();
     this.syncCustomUI();
     this.updateToggleDomainsButtonText();
+    this.syncHubStats();
   },
 
   getFilteredQuestions() {

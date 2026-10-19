@@ -100,7 +100,7 @@ class TestAdminStagingAndStudentLockout(unittest.TestCase):
 
         # Required text elements
         self.assertIn("📘 SAT Question Bank (Admin Preview & Staging)", self.html, "Title must match specification")
-        self.assertIn("Total Questions Loaded: 3,770 (1,845 RW | 1,925 Math)", self.html, "Subtitle must display exact question breakdown")
+        self.assertIn("Total Questions Loaded: 4,303 (1,845 RW | 2,458 Math)", self.html, "Subtitle must display exact question breakdown")
         self.assertIn("🧪 Open Full Bluebook Simulator (Draft Mode)", self.html, "Simulator action button must exist")
         self.assertIn("Publish to Student Portal", self.html, "Publish action button must exist")
         self.assertIn("openQBankAdminSimulator", self.html, "Simulator launcher function must exist")
@@ -108,8 +108,8 @@ class TestAdminStagingAndStudentLockout(unittest.TestCase):
 
         # Metric card in teacher dashboard
         self.assertIn('id="stat-question-bank"', self.html, "Question bank metric card must exist")
-        self.assertIn('>3,770<', self.html, "Metric card must show 3,770 questions")
-        print("✅ Admin preview cards and 3,770 metrics verified: PASS")
+        self.assertIn('>4,303<', self.html, "Metric card must show 4,303 questions")
+        print("✅ Admin preview cards and 4,303 metrics verified: PASS")
 
     # 6. Admin Publish Confirmation Guard
     def test_publish_confirmation_dialog(self):

@@ -128,6 +128,7 @@ window.qbEngine = {
     const detail = document.getElementById('qb-detail-view');
     if (hub) hub.classList.remove('hidden');
     if (detail) detail.classList.add('hidden');
+    this.syncHubStats();
   },
 
   showDetailView() {
@@ -163,6 +164,66 @@ window.qbEngine = {
     if (setupView) {
       setupView.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  },
+
+  syncHubStats() {
+    const mathQs = Array.isArray(this.questionsData.math) ? this.questionsData.math : [];
+    const rwQs = Array.isArray(this.questionsData.rw) ? this.questionsData.rw : [];
+    const mathCount = mathQs.length > 0 ? mathQs.length : 2458;
+    const rwCount = rwQs.length > 0 ? rwQs.length : 1845;
+    const totalCount = mathCount + rwCount;
+
+    // 1. Total Bank Count Badge in Hub header
+    const totalBadge = document.getElementById('qb-hub-total-badge');
+    if (totalBadge) totalBadge.innerText = totalCount.toLocaleString();
+
+    // 2. RW Count & Domains
+    const rwCountEl = document.getElementById('qb-hub-rw-count');
+    if (rwCountEl) rwCountEl.innerText = `${rwCount.toLocaleString()} Questions`;
+
+    const rwDomainsEl = document.getElementById('qb-hub-rw-domains');
+    if (rwDomainsEl) {
+      const craft = rwQs.length ? rwQs.filter(q => q.domain === 'Craft and Structure').length : 471;
+      const info = rwQs.length ? rwQs.filter(q => q.domain === 'Information and Ideas').length : 555;
+      const conv = rwQs.length ? rwQs.filter(q => q.domain === 'Standard English Conventions').length : 421;
+      const expr = rwQs.length ? rwQs.filter(q => q.domain === 'Expression of Ideas').length : 398;
+      rwDomainsEl.innerHTML = `
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Craft &amp; Structure (${craft})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Info &amp; Ideas (${info})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Conventions (${conv})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Expression (${expr})</span>
+      `.trim();
+    }
+
+    // 3. Math Count & Domains
+    const mathCountEl = document.getElementById('qb-hub-math-count');
+    if (mathCountEl) mathCountEl.innerText = `${mathCount.toLocaleString()} Questions`;
+
+    const mathDomainsEl = document.getElementById('qb-hub-math-domains');
+    if (mathDomainsEl) {
+      const alg = mathQs.length ? mathQs.filter(q => q.domain === 'Algebra').length : 715;
+      const adv = mathQs.length ? mathQs.filter(q => q.domain === 'Advanced Math').length : 765;
+      const ps = mathQs.length ? mathQs.filter(q => q.domain && q.domain.startsWith('Problem-Solving')).length : 508;
+      const geo = mathQs.length ? mathQs.filter(q => q.domain && q.domain.startsWith('Geometry')).length : 470;
+      mathDomainsEl.innerHTML = `
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Algebra (${alg})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Advanced Math (${adv})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Problem-Solving (${ps})</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Geometry (${geo})</span>
+      `.trim();
+    }
+
+    // 4. Update Stat Labels & Dashboard Metrics
+    const mathStatLabel = document.getElementById('math-stat-label');
+    if (mathStatLabel && (!mathStatLabel.innerText.includes('solved') || mathStatLabel.innerText.includes('1,925') || mathStatLabel.innerText.includes('2,084'))) {
+      mathStatLabel.innerText = `${mathCount.toLocaleString()} questions`;
+    }
+    const statQBank = document.getElementById('stat-question-bank');
+    if (statQBank) statQBank.innerText = totalCount.toLocaleString();
+
+    // 5. Update student launcher card if present
+    const launcherCount = document.querySelector('#student-qbank-launcher-card .font-mono');
+    if (launcherCount) launcherCount.innerText = `${totalCount.toLocaleString()} Practice Questions`;
   },
 
   syncSubjectDetailHeader() {
@@ -779,9 +840,12 @@ window.qbEngine = {
       this.isInitialized = true;
       this.initSelectedSkills(this.activeSubject || 'rw');
       this.syncUI();
+      this.syncHubStats();
       await this.loadQuestions(false, resolvedSubj);
+      this.syncHubStats();
       this.loadSolvedQuestions(false);
     } else {
+      this.syncHubStats();
       this.loadSolvedQuestions(false);
     }
 
@@ -794,13 +858,14 @@ window.qbEngine = {
 
   preload() {
     try {
+      this.syncHubStats();
       if (!this.questionsData.rw || !this.questionsData.math) {
         this.loadQuestions(false);
       }
     } catch (e) {}
   },
 
-  dataVersion: '2.11.0',
+  dataVersion: '2.12.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -812,16 +877,19 @@ window.qbEngine = {
       if (targetSubj === 'math' && hasMath) {
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
         return;
       }
       if (targetSubj === 'rw' && hasRw) {
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
         return;
       }
       if (hasMath && hasRw) {
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
         return;
       }
     }
@@ -830,6 +898,7 @@ window.qbEngine = {
       await this._loadingPromise;
       this.updateMatchingCount();
       this.syncSubjectDetailHeader();
+      this.syncHubStats();
       return;
     }
 
@@ -868,6 +937,7 @@ window.qbEngine = {
           this.renderSkillList();
           this.updateMatchingCount();
           this.syncSubjectDetailHeader();
+          this.syncHubStats();
           // Load RW in background
           if (!hasRw) {
             fetchWithFallback('data/questions/reading_writing.json').then(rw => {
@@ -875,6 +945,7 @@ window.qbEngine = {
               this.renderSkillList();
               this.updateMatchingCount();
               this.syncSubjectDetailHeader();
+              this.syncHubStats();
             }).catch(err => console.warn('[qbEngine] Background RW preload error:', err));
           }
           return;
@@ -888,6 +959,7 @@ window.qbEngine = {
           this.renderSkillList();
           this.updateMatchingCount();
           this.syncSubjectDetailHeader();
+          this.syncHubStats();
           // Load Math in background
           if (!hasMath) {
             fetchWithFallback('data/questions/math.json').then(m => {
@@ -895,6 +967,7 @@ window.qbEngine = {
               this.renderSkillList();
               this.updateMatchingCount();
               this.syncSubjectDetailHeader();
+              this.syncHubStats();
             }).catch(err => console.warn('[qbEngine] Background Math preload error:', err));
           }
           return;
@@ -913,6 +986,7 @@ window.qbEngine = {
         this.renderSkillList();
         this.updateMatchingCount();
         this.syncSubjectDetailHeader();
+        this.syncHubStats();
       } catch (err) {
         console.error("[qbEngine] Error loading questions:", err);
         this.isLoading = false;
@@ -1214,6 +1288,7 @@ window.qbEngine = {
     this.syncCountUI();
     this.syncCustomUI();
     this.updateToggleDomainsButtonText();
+    this.syncHubStats();
   },
 
   getFilteredQuestions() {

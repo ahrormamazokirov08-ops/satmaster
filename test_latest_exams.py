@@ -191,8 +191,8 @@ class TestLatestExamsFeature(unittest.TestCase):
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.11.0'", self.engine_content, "dataVersion 2.11.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.11.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.12.0'", self.engine_content, "dataVersion 2.12.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.12.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""
