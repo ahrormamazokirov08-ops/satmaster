@@ -170,7 +170,7 @@ window.qbEngine = {
     const mathQs = Array.isArray(this.questionsData.math) ? this.questionsData.math : [];
     const rwQs = Array.isArray(this.questionsData.rw) ? this.questionsData.rw : [];
     const mathCount = mathQs.length > 0 ? mathQs.length : 2458;
-    const rwCount = rwQs.length > 0 ? rwQs.length : 1845;
+    const rwCount = rwQs.length > 0 ? rwQs.length : 1989;
     const totalCount = mathCount + rwCount;
 
     // 1. Total Bank Count Badge in Hub header
@@ -233,7 +233,7 @@ window.qbEngine = {
 
     const mathCount = (this.questionsData.math && this.questionsData.math.length) ? this.questionsData.math.length.toLocaleString() : "2,458";
     const rwCount = (this.questionsData.rw && this.questionsData.rw.length) ? this.questionsData.rw.length.toLocaleString() : "1,845";
-    const totalNum = (this.questionsData.math ? this.questionsData.math.length : 2458) + (this.questionsData.rw ? this.questionsData.rw.length : 1845);
+    const totalNum = (this.questionsData.math ? this.questionsData.math.length : 2458) + (this.questionsData.rw ? this.questionsData.rw.length : 1989);
     const totalCount = totalNum.toLocaleString();
 
     if (this.activeSubject === 'rw') {
@@ -870,7 +870,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.16.0',
+  dataVersion: '2.17.0',
   currentDataVersion: null,
   _loadingPromise: null,
 

@@ -100,8 +100,8 @@ class TestLatestExamsFeature(unittest.TestCase):
             rw_qs = json.load(f)
 
         self.assertEqual(len(math_qs), 2458, "Standard math.json altered! Expected 2458.")
-        self.assertEqual(len(rw_qs), 1845, "Standard reading_writing.json altered! Expected 1845.")
-        self.assertEqual(len(math_qs) + len(rw_qs), 4303, "Total standard questions must be 4303.")
+        self.assertEqual(len(rw_qs), 1989, "Standard reading_writing.json altered! Expected 1989.")
+        self.assertEqual(len(math_qs) + len(rw_qs), 4447, "Total standard questions must be 4447.")
         print("✅ Standard question bank data isolation verified (4,303 questions untouched)")
 
     def test_04_html_dom_elements_and_mirror_parity(self):
@@ -189,8 +189,8 @@ class TestLatestExamsFeature(unittest.TestCase):
         for method in required_methods:
             self.assertIn(method, self.engine_content, f"Required method {method} missing in qb_engine.js")
 
-        self.assertIn("dataVersion: '2.16.0'", self.engine_content, "dataVersion 2.16.0 missing in qb_engine.js")
-        print("✅ qb_engine.js methods, version 2.16.0, and 100% mirror parity verified")
+        self.assertIn("dataVersion: '2.17.0'", self.engine_content, "dataVersion 2.16.0 missing in qb_engine.js")
+        print("✅ qb_engine.js methods, version 2.17.0, and 100% mirror parity verified")
 
     def test_06_functional_practice_review_and_restart_simulation(self):
         """Simulates student flow: progress tracking, unsolved practice, review mode with filtering, and restart."""

@@ -25,8 +25,8 @@ class TestQuestionBankFormatting(unittest.TestCase):
         """Strict question count and canonical/public mirror parity."""
         self.assertEqual(len(self.math_q), 2458)
         self.assertEqual(len(self.pub_math_q), 2458)
-        self.assertEqual(len(self.rw_q), 1845)
-        self.assertEqual(len(self.pub_rw_q), 1845)
+        self.assertEqual(len(self.rw_q), 1989)
+        self.assertEqual(len(self.pub_rw_q), 1989)
         self.assertEqual(self.math_q, self.pub_math_q, "Math canonical and public copies must match exactly")
         self.assertEqual(self.rw_q, self.pub_rw_q, "RW canonical and public copies must match exactly")
 

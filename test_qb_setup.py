@@ -157,7 +157,7 @@ class TestQBSetupScreen(unittest.TestCase):
     def test_filter_simulation(self):
         print("\n--- Test 9: Question Filter Simulation on Official Data ---")
         # 1. Total Reading & Writing
-        self.assertEqual(len(self.rw_questions), 1845)
+        self.assertEqual(len(self.rw_questions), 1989)
         # 2. Total Math
         self.assertEqual(len(self.math_questions), 2458)
         
@@ -169,10 +169,10 @@ class TestQBSetupScreen(unittest.TestCase):
         math_alg = [q for q in self.math_questions if q["domain"] == "Algebra"]
         self.assertEqual(len(math_alg), 715)
 
-        # 5. Simulate Combined Hard filter (610 RW + 533 Math authentic hard questions)
+        # 5. Simulate Combined Hard filter (659 RW + 610 Math authentic hard questions)
         combined = self.rw_questions + self.math_questions
         combined_hard = [q for q in combined if q["difficulty"] == "Hard"]
-        self.assertEqual(len(combined_hard), 610 + 533)
+        self.assertEqual(len(combined_hard), 610 + 659)
         print(f"✅ Filter simulation passed: RW={len(self.rw_questions)}, Math={len(self.math_questions)}, Combined={len(combined)}")
 
     # 10. Two-Stage Navigation DOM Structure (Hub vs Detail Views)
@@ -235,14 +235,14 @@ class TestQBSetupScreen(unittest.TestCase):
             "Command of Evidence": 277,
             "Inferences": 140,
             "Central Ideas and Details": 138,
-            "Boundaries": 213,
-            "Form, Structure, and Sense": 208,
+            "Boundaries": 309,
+            "Form, Structure, and Sense": 256,
             "Rhetorical Synthesis": 204,
             "Transitions": 194
         }
         for sk, count in expected_rw.items():
             self.assertEqual(rw_skills[sk], count, f"RW Skill '{sk}' must have exactly {count} questions")
-        self.assertEqual(sum(rw_skills.values()), 1845, "RW skills must sum to 1,845 questions")
+        self.assertEqual(sum(rw_skills.values()), 1989, "RW skills must sum to 1,989 questions")
 
         math_skills = Counter(norm_s(q.get("skill")) for q in self.math_questions)
         self.assertEqual(len(math_skills), 19, "Math dataset must contain exactly 19 skills")

@@ -42,9 +42,9 @@ class TestAdminStagingAndStudentLockout(unittest.TestCase):
         math_len = len(self.math_questions)
         total_len = rw_len + math_len
 
-        self.assertEqual(rw_len, 1845, f"Expected 1,845 Reading & Writing questions, found {rw_len}")
+        self.assertEqual(rw_len, 1989, f"Expected 1,989 Reading & Writing questions, found {rw_len}")
         self.assertEqual(math_len, 2458, f"Expected 2,458 Math questions, found {math_len}")
-        self.assertEqual(total_len, 4303, f"Expected 4,303 total questions, found {total_len}")
+        self.assertEqual(total_len, 4447, f"Expected 4,447 total questions, found {total_len}")
         print(f"✅ Ingested Dataset: {rw_len} RW + {math_len} Math = {total_len} Total Questions: PASS")
 
     # 2. Draft Mode Defaults to False (Hidden from Students)

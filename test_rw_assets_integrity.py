@@ -39,7 +39,7 @@ class TestRWAssetsIntegrity(unittest.TestCase):
             data1 = json.load(f1)
             data2 = json.load(f2)
             
-        self.assertEqual(len(data1), 1845, "Expected 1,845 RW questions")
+        self.assertEqual(len(data1), 1989, "Expected 1,989 RW questions")
         self.assertEqual(len(data1), len(data2), "Mirrored files must have identical counts")
 
     def test_all_rw_svgs_are_valid_xml_with_viewbox(self):
