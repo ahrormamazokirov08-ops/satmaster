@@ -8248,53 +8248,16 @@
 
     async function broadcastHomeworkTelegramNotification(assignment, hwConfig = {}) {
       try {
-        const botToken = "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ";
-        const typeLabel = assignment.type === 'vocab' ? "📚 SAT Vocabulary Practice" : (assignment.type === 'qbank' ? "📖 Digital SAT Question Bank" : "📝 Digital SAT Practice Drill");
-        const rawCount = hwConfig.question_count || assignment.questionCount || (assignment.config && assignment.config.question_count) || 10;
-        const timerVal = assignment.timeLimitMinutes || hwConfig.timeLimitMinutes || (assignment.config && assignment.config.timer) || 15;
-        const timerText = timerVal ? `${timerVal} mins` : "Flexible / No limit";
-        
-        let dlText = "Flexible / No deadline";
-        if (assignment.deadline) {
-          try {
-            dlText = new Date(assignment.deadline).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-          } catch(e) { dlText = String(assignment.deadline); }
-        }
-
-        const groupLabel = assignment.className || "All Students";
-        const notifyText = `🔔 <b>NEW HOMEWORK ON THE WEBSITE!</b>\n━━━━━━━━━━━━━━━━━━━━━━\nYou have new homework on the website. Please move on to it and solve it!\n\n📝 <b>Task:</b> ${assignment.title || 'Digital SAT Drill'}\n📚 <b>Type:</b> ${typeLabel}\n🏫 <b>Class:</b> ${groupLabel}\n🔢 <b>Questions:</b> ${rawCount} questions\n⏳ <b>Time Limit:</b> ${timerText}\n📅 <b>Deadline:</b> ${dlText}\n━━━━━━━━━━━━━━━━━━━━━━\n🔗 <b>Direct Link:</b> https://satmaster-w58j.vercel.app\n<i>Tap the button below to launch your homework on the website:</i>`;
-
-        // Direct chat IDs for student cohort
-        const cohortLow = (groupLabel || '').toLowerCase();
-        let targetCids = [1185684252, 7148077470, 6789834037, 6315515792, 5209814338];
-        if (cohortLow.includes('alpha')) {
-          targetCids = [8874063589];
-        } else if (cohortLow.includes('all') || !cohortLow || cohortLow.includes('everyone')) {
-          targetCids = [8874063589, 1185684252, 7148077470, 6789834037, 6315515792, 5209814338];
-        }
-
-        // Send to each student and admin
-        const allTargets = Array.from(new Set([...targetCids, 7957347033]));
-        console.log(`[Broadcast] Sending Telegram homework notifications to ${allTargets.length} targets:`, allTargets);
-
-        await Promise.allSettled(allTargets.map(cid => {
-          return fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: cid,
-              text: notifyText,
-              parse_mode: 'HTML',
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "🚀 Open Homework on Website", url: "https://satmaster-w58j.vercel.app" }]
-                ]
-              }
-            })
-          }).then(res => res.json()).then(data => {
-            console.log(`[Telegram Broadcast ${cid}]:`, data.ok ? "Delivered" : data.description);
-          }).catch(err => console.warn(`Telegram broadcast error for ${cid}:`, err));
-        }));
+        const res = await fetch('/api/homework/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignment: assignment,
+            hwConfig: hwConfig
+          })
+        });
+        const data = await res.json();
+        console.log("[Broadcast Result]:", data);
       } catch (e) {
         console.warn("Broadcast homework telegram notification error:", e);
       }
@@ -13145,7 +13108,7 @@
     function getStoredTelegramConfig() {
       const DEFAULT_CFG = {
         botUsername: 'Ahrorbek_SAT_bot',
-        botToken: '8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ',
+        botToken: '',
         chatId: '7957347033'
       };
       const stored = localStorage.getItem('satmaster_telegram_config');

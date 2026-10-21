@@ -23,6 +23,23 @@ if PARENT_DIR not in sys.path:
 
 from database import db as rdb
 
+def _load_env_file():
+    env_path = os.path.join(PARENT_DIR, ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k, v = k.strip(), v.strip()
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+_load_env_file()
+
 
 def is_admin_request(headers, query_params=None, body=None):
     """
@@ -595,7 +612,7 @@ class handler(BaseHTTPRequestHandler):
                 print(f"Report sync error: {sync_err}")
 
             # Send Telegram notification if configured
-            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ"
+            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN")
             admin_chat_id = os.environ.get("ADMIN_CHAT_ID") or "7957347033"
             if bot_token and admin_chat_id:
                 try:
@@ -650,7 +667,7 @@ class handler(BaseHTTPRequestHandler):
                 )
 
                 # Send Telegram notification to target students through the bot
-                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ"
+                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN")
 
                 if bot_token:
                     try:
@@ -767,6 +784,81 @@ class handler(BaseHTTPRequestHandler):
                 return self.send_json(201, {"ok": True, "assignment": assignment})
             except Exception as e:
                 return self.send_json(500, {"ok": False, "error": str(e)})
+
+        # 6b. POST /api/homework/broadcast - Secure backend broadcast for homework notifications
+        if clean_path in ("/api/homework/broadcast", "/api/telegram/broadcast"):
+            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN")
+            if not bot_token:
+                return self.send_json(200, {"ok": False, "warning": "TELEGRAM_BOT_TOKEN not configured on server"})
+
+            assignment = body.get("assignment") or body
+            hw_config = body.get("hwConfig") or (assignment.get("config") if isinstance(assignment, dict) else {}) or {}
+            
+            hw_type = assignment.get("type") or "vocab"
+            title = assignment.get("title") or "Digital SAT Drill"
+            group_label = assignment.get("className") or assignment.get("group_name") or "All Students"
+            raw_count = hw_config.get("question_count") or assignment.get("questionCount") or (hw_config.get("count") if isinstance(hw_config, dict) else 10) or 10
+            timer_val = assignment.get("timeLimitMinutes") or hw_config.get("timeLimitMinutes") or (hw_config.get("timer") if isinstance(hw_config, dict) else 15) or 15
+            timer_text = f"{timer_val} mins" if timer_val else "Flexible / No limit"
+            
+            dl_text = "Flexible / No deadline"
+            if assignment.get("deadline"):
+                dl_text = str(assignment.get("deadline"))
+
+            type_label = (
+                "📚 SAT Vocabulary Practice" if hw_type == "vocab"
+                else ("📖 Digital SAT Question Bank" if hw_type == "qbank" else "📝 Digital SAT Practice Drill")
+            )
+            notify_text = (
+                f"🔔 <b>NEW HOMEWORK ON THE WEBSITE!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"You have new homework on the website. Please move on to it and solve it!\n\n"
+                f"📝 <b>Task:</b> {title}\n"
+                f"📚 <b>Type:</b> {type_label}\n"
+                f"🏫 <b>Class:</b> {group_label}\n"
+                f"🔢 <b>Questions:</b> {raw_count} questions\n"
+                f"⏳ <b>Time Limit:</b> {timer_text}\n"
+                f"📅 <b>Deadline:</b> {dl_text}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🔗 <b>Direct Link:</b> https://satmaster-w58j.vercel.app\n"
+                f"<i>Tap the button below to launch your homework on the website:</i>"
+            )
+
+            cohort_low = str(group_label).lower()
+            target_cids = [1185684252, 7148077470, 6789834037, 6315515792, 5209814338]
+            if "alpha" in cohort_low:
+                target_cids = [8874063589]
+            elif "all" in cohort_low or not cohort_low or "everyone" in cohort_low:
+                target_cids = [8874063589, 1185684252, 7148077470, 6789834037, 6315515792, 5209814338]
+
+            admin_cid = int(os.environ.get("ADMIN_CHAT_ID") or 7957347033)
+            all_targets = list(set(target_cids + [admin_cid]))
+
+            sent_count = 0
+            for cid in all_targets:
+                try:
+                    send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                    payload = {
+                        "chat_id": cid,
+                        "text": notify_text,
+                        "parse_mode": "HTML",
+                        "reply_markup": {
+                            "inline_keyboard": [
+                                [{"text": "🚀 Open Homework on Website", "url": "https://satmaster-w58j.vercel.app"}]
+                            ]
+                        }
+                    }
+                    req = urllib.request.Request(
+                        send_url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    urllib.request.urlopen(req, timeout=5)
+                    sent_count += 1
+                except Exception as err:
+                    print(f"[Telegram Broadcast Error for {cid}]: {err}")
+
+            return self.send_json(200, {"ok": True, "sent_count": sent_count, "targets": len(all_targets)})
 
         # 7. POST /api/homework/submit - Record student homework completion
         if clean_path == "/api/homework/submit":

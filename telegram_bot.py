@@ -185,7 +185,7 @@ def cleanup_group_students_and_messages(bot, group_identifier):
         print(f"Cleanup legacy db group error: {e}")
 
 DEFAULT_CONFIG = {
-    "bot_token": "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ",
+    "bot_token": os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN") or "",
     "bot_username": "Ahrorbek_SAT_bot",
     "admin_chat_id": "7957347033",
     "admin_password": "satmaster2026",
@@ -2398,7 +2398,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                 )
 
                 # Send Telegram notification to target students through the bot
-                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8645843963:AAE_UtukrhBqPZL1Ksvnu5rlZOQHuPSn6IQ"
+                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN") or (cfg.get("bot_token") if "cfg" in locals() and isinstance(cfg, dict) else "") or ""
 
                 if bot_token:
                     try:
