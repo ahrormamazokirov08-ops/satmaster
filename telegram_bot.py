@@ -30,6 +30,19 @@ try:
 except ImportError:
     pass
 
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_file):
+    try:
+        with open(_env_file, "r", encoding="utf-8") as _ef:
+            for _line in _ef:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    if _k.strip() not in os.environ:
+                        os.environ[_k.strip()] = _v.strip()
+    except Exception:
+        pass
+
 try:
     from database import db as rdb, _sanitize_student_dict
 except ImportError:
@@ -517,6 +530,9 @@ class TelegramBotClient:
             payload.pop("parse_mode", None)
             res = self.request("editMessageText", payload, timeout=10)
         return res
+
+    def set_my_commands(self, commands):
+        return self.request("setMyCommands", {"commands": commands})
 
 
 def format_vocab_summary_text(report):
@@ -1041,6 +1057,99 @@ def send_teacher_hub(bot, chat_id, teacher_record, config, db):
     keyboard = {"inline_keyboard": t_buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
+MAIN_REPLY_KEYBOARD = {
+    "keyboard": [
+        [
+            {"text": "/start"},
+            {"text": "🌐 Link to Website"}
+        ]
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True
+}
+
+def send_role_website_link(bot, chat_id, user_id, config, db):
+    admin_chat_id = str(config.get("admin_chat_id") or (db.get("admin_chat_id") if isinstance(db, dict) else "") or "7957347033")
+    base_url = config.get("web_app_url", "https://satmaster-w58j.vercel.app/index.html")
+    is_admin = (str(user_id) == admin_chat_id or str(chat_id) == admin_chat_id)
+
+    # 1. Super-Admin
+    if is_admin:
+        admin_link = generate_teacher_link(base_url, "SAT Admin (Owner)") + "&admin=true"
+        msg = (
+            "👑 <b>Super-Admin Platform Portal</b>\n\n"
+            "Here is your direct access link with full management and inspection privileges:\n\n"
+            f"🔗 <a href=\"{admin_link}\">{admin_link}</a>"
+        )
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "👑 Open Admin Portal (One-Click)", "url": admin_link}]
+            ]
+        }
+        bot.send_message(chat_id, msg, reply_markup=keyboard)
+        return
+
+    # 2. Teacher
+    if isinstance(db, dict) and user_id in db.get("teachers", {}):
+        teacher = db["teachers"][user_id]
+        teacher_name = teacher.get("name", "SAT Instructor")
+        teacher_link = generate_teacher_link(base_url, teacher_name)
+        msg = (
+            f"👨‍🏫 <b>Teacher Workspace Portal</b>\n\n"
+            f"Welcome, <b>{html.escape(teacher_name)}</b>!\n"
+            "Here is your direct access link to manage homework, review student scores, and stage assignments:\n\n"
+            f"🔗 <a href=\"{teacher_link}\">{teacher_link}</a>"
+        )
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "👨‍🏫 Open Teacher Workspace (One-Click)", "url": teacher_link}]
+            ]
+        }
+        bot.send_message(chat_id, msg, reply_markup=keyboard)
+        return
+
+    # 3. Student
+    student = rdb.get_student(user_id)
+    if not student and isinstance(db, dict) and user_id in db.get("students", {}):
+        student = db["students"][user_id]
+
+    if student:
+        rec = _sanitize_student_dict(student)
+        name = rec.get("display_name") or rec.get("name") or "Student"
+        student_id = rec.get("id") or rec.get("student_id") or f"TG{user_id}"
+        class_name = rec.get("group_name") or rec.get("class") or ""
+        student_link = generate_student_link(base_url, student_id, name, class_name)
+        msg = (
+            f"🎓 <b>Your Personal SAT Portal</b>\n\n"
+            f"👤 Student: <b>{html.escape(name)}</b>\n"
+            f"🏫 Class: <b>{html.escape(class_name)}</b>\n"
+            f"🆔 Student ID: <code>#{student_id}</code>\n\n"
+            "Here is your personal direct link to launch all practice tests and homework:\n\n"
+            f"🔗 <a href=\"{student_link}\">{student_link}</a>"
+        )
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "🚀 Open My Student Portal (One-Click)", "url": student_link}]
+            ]
+        }
+        bot.send_message(chat_id, msg, reply_markup=keyboard)
+        return
+
+    # 4. Unregistered User
+    msg = (
+        "👋 <b>Welcome to SAT Master!</b>\n\n"
+        f"🔗 <b>Website:</b> <a href=\"{base_url}\">{base_url}</a>\n\n"
+        "⚠️ <b>Account Not Registered Yet:</b>\n"
+        "To link your personal student or teacher account, please tap <b>/start</b> below to select your class group!"
+    )
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "🌐 Visit Website", "url": base_url}],
+            [{"text": "🚀 Register via /start", "callback_data": "cmd_start"}]
+        ]
+    }
+    bot.send_message(chat_id, msg, reply_markup=keyboard)
+
 def handle_update(bot, update, config, db=None):
     if db is None:
         db = load_db()
@@ -1415,9 +1524,21 @@ def handle_update(bot, update, config, db=None):
             bot.send_message(chat_id, "❌ Incorrect password. Usage: <code>/admin &lt;password&gt;</code>")
             return
 
+    # 1b. Website direct link handler (persistent bottom button)
+    clean_text = text.strip().lower()
+    if text in ("🌐 Link to Website", "link to the website", "/website", "Link to Website", "🌐 Open Website") or clean_text in ("website", "link", "link to website", "/link"):
+        send_role_website_link(bot, chat_id, user_id, config, db)
+        return
+
     # 2. Start command - Role differentiated!
-    if text == "/start" or text.startswith("/start"):
+    if text in ("/start", "🔄 /start") or text.startswith("/start"):
         clear_user_state(user_id)
+        # Send persistent bottom menu keyboard first so it is permanently pinned on the user's interface
+        bot.send_message(
+            chat_id,
+            "⚡ <b>Menu Active:</b> Tap <b>/start</b> to refresh or <b>🌐 Link to Website</b> to open your personal portal.",
+            reply_markup=MAIN_REPLY_KEYBOARD
+        )
         if is_admin:
             send_admin_hub(bot, chat_id, config, db)
             return
@@ -2926,6 +3047,14 @@ def main():
     print(f"👉 Students: Open @{bot_username} and send /start")
     print(f"👉 Teacher: Select 'I am a Teacher' or send /admin {config.get('admin_password', 'satmaster2026')}")
     print("=" * 60)
+    try:
+        bot.set_my_commands([
+            {"command": "start", "description": "🔄 Restart Bot & Open Dashboard"},
+            {"command": "website", "description": "🌐 Direct Link to Your Platform Account"}
+        ])
+        print("✅ Registered official Telegram menu commands (/start, /website)")
+    except Exception as cmd_err:
+        print(f"⚠️ Command registration notice: {cmd_err}")
 
     last_offset = None
     executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="tg_worker")
