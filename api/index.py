@@ -41,6 +41,20 @@ def _load_env_file():
 
 _load_env_file()
 
+RECENT_HOMEWORK_NOTIFICATIONS = {}
+
+def should_skip_duplicate_telegram_notification(chat_id, notification_id, window_sec=60):
+    """Prevents duplicate Telegram announcements to the same chat within window_sec."""
+    now_ts = time.time()
+    for k in list(RECENT_HOMEWORK_NOTIFICATIONS.keys()):
+        if now_ts - RECENT_HOMEWORK_NOTIFICATIONS[k] > 180:
+            RECENT_HOMEWORK_NOTIFICATIONS.pop(k, None)
+    key = f"{chat_id}_{notification_id}"
+    if key in RECENT_HOMEWORK_NOTIFICATIONS and (now_ts - RECENT_HOMEWORK_NOTIFICATIONS[key]) < window_sec:
+        return True
+    RECENT_HOMEWORK_NOTIFICATIONS[key] = now_ts
+    return False
+
 
 def is_admin_request(headers, query_params=None, body=None):
     """
@@ -745,6 +759,10 @@ class handler(BaseHTTPRequestHandler):
                         def _send_student_alert(item):
                             cid, s_info = item
                             try:
+                                dedup_id = (assignment.get("id") or assignment.get("code") or title) if isinstance(assignment, dict) else title
+                                if should_skip_duplicate_telegram_notification(cid, dedup_id, 60):
+                                    print(f"[Telegram Notify Skip Duplicate for {cid}]: {dedup_id} already notified within 60s")
+                                    return
                                 s_id = s_info.get("id") or f"TG{cid}"
                                 s_name = s_info.get("display_name") or s_info.get("name") or "Student"
                                 s_group = s_info.get("group_name") or group_name or "SAT Masters 2026"
@@ -843,6 +861,10 @@ class handler(BaseHTTPRequestHandler):
 
             def _send_broadcast(cid):
                 try:
+                    dedup_id = (assignment.get("id") or assignment.get("code") or title) if isinstance(assignment, dict) else title
+                    if should_skip_duplicate_telegram_notification(cid, dedup_id, 60):
+                        print(f"[Telegram Broadcast Skip Duplicate for {cid}]: {dedup_id} already notified within 60s")
+                        return True
                     send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                     payload = {
                         "chat_id": cid,

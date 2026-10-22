@@ -17,7 +17,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <!-- Question Bank State Engine Module with Cache-Buster -->
-  <script src="public/qb_engine.js?v=2.17.0"></script>
+  <script src="public/qb_engine.js?v=2.19.0"></script>
   <style>
     /* Design tokens: #0f172a #334155 */
     html, body {
@@ -7929,10 +7929,6 @@
         assignments.unshift(newAssignment);
         saveAssignments(assignments);
 
-        if (typeof broadcastHomeworkTelegramNotification === 'function') {
-          await broadcastHomeworkTelegramNotification(newAssignment, config);
-        }
-
         showToast("🚀 Homework Assigned!", `"${title}" is LIVE for ${selectedClassName}. Unsolved questions guaranteed!`, "success");
         renderActiveHomeworkGrid();
         closeCreateHomeworkForm();
@@ -8326,8 +8322,9 @@
       assignments.unshift(newAssignment);
       saveAssignments(assignments);
 
+      let backendNotified = false;
       try {
-        await fetch('/api/homework', {
+        const res = await fetch('/api/homework', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -8344,12 +8341,19 @@
             created_by: teacherId
           })
         });
+        if (res.ok) {
+          backendNotified = true;
+        }
       } catch (err) {
         console.warn("Backend /api/homework sync warning:", err);
       }
 
-      // Always guarantee Telegram dispatch to students directly:
-      await broadcastHomeworkTelegramNotification(newAssignment, hwConfig);
+      // If backend /api/homework was not reachable, fallback to direct broadcast
+      if (!backendNotified && typeof broadcastHomeworkTelegramNotification === 'function') {
+        try {
+          await broadcastHomeworkTelegramNotification(newAssignment, hwConfig);
+        } catch (e) {}
+      }
 
       if (typeof updateHomeworkNavBadge === 'function') updateHomeworkNavBadge();
 
@@ -8952,6 +8956,10 @@
         scorePct: resultData.scorePct,
         passed: isPassed,
         type: resultData.type,
+        answers: resultData.answers || {},
+        questions: resultData.questions || [],
+        timePerQuestion: resultData.timePerQuestion || {},
+        assignment: window.activeHomeworkAssignment || null,
         completedAt: new Date().toISOString()
       };
 
@@ -9228,7 +9236,10 @@
                     </div>
                     <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
                   </div>
-                  <button type="button" disabled class="w-full py-2 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[11px] border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                  <button type="button" onclick="handleReviewHomeworkSubmission('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
+                    <span>👁️ Review Mistakes & Answers</span>
+                  </button>
+                  <button type="button" disabled class="w-full py-1.5 px-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[10px] border border-slate-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
                     <span>🔒 Completed (${submission.score}/${submission.total})</span>
                   </button>
                 </div>
@@ -9243,6 +9254,9 @@
                     </div>
                     <span class="font-black font-mono text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
                   </div>
+                  <button type="button" onclick="handleReviewHomeworkSubmission('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
+                    <span>👁️ Review Mistakes & Answers</span>
+                  </button>
                   <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
                     <span>🔄 Practice Again (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
                   </button>
@@ -9268,7 +9282,10 @@
                     </div>
                     <span class="font-black font-mono text-rose-900 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
                   </div>
-                  <button type="button" disabled class="w-full py-2 px-3 rounded-xl bg-rose-50 text-rose-400 font-bold text-[11px] border border-rose-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
+                  <button type="button" onclick="handleReviewHomeworkSubmission('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
+                    <span>👁️ Review Mistakes & Answers</span>
+                  </button>
+                  <button type="button" disabled class="w-full py-1.5 px-3 rounded-xl bg-rose-50 text-rose-400 font-bold text-[10px] border border-rose-200 flex items-center justify-center gap-1.5 cursor-not-allowed">
                     <span>🔒 Failed • Max Attempts Reached (3/3)</span>
                   </button>
                 </div>
@@ -9283,6 +9300,9 @@
                     </div>
                     <span class="font-black font-mono text-rose-900 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded text-[11px]">${submission.score}/${submission.total} (${scorePct}%)</span>
                   </div>
+                  <button type="button" onclick="handleReviewHomeworkSubmission('${hw.code || hw.id}')" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
+                    <span>👁️ Review Mistakes & Answers</span>
+                  </button>
                   <button type="button" onclick="handleStartStudentQuiz('${hw.code || hw.id}')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/20 active:scale-95">
                     <span>🔄 Retake Task (${attemptsLeft} chance${attemptsLeft === 1 ? '' : 's'} left)</span>
                     <span>→</span>
@@ -9450,6 +9470,22 @@
         </div>
       `;
       banner.classList.remove('hidden');
+    }
+
+    function handleReviewHomeworkSubmission(pinOrId) {
+      const pin = (pinOrId || '').trim().toUpperCase();
+      if (!pin) return;
+
+      const assignments = getAssignments();
+      const targetHw = assignments.find(a => (a.code && a.code.toUpperCase() === pin) || a.id === pin || (a.id && a.id.toUpperCase() === pin));
+      if (targetHw) {
+        window.activeHomeworkAssignment = targetHw;
+      }
+
+      if (window.qbEngine && typeof window.qbEngine.reviewHomeworkAnswers === 'function') {
+        switchTab('qbank');
+        window.qbEngine.reviewHomeworkAnswers(pinOrId);
+      }
     }
 
     function handleStartStudentQuiz(presetPin = null) {
@@ -14664,7 +14700,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.18.0',
+  dataVersion: '2.19.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -15202,9 +15238,27 @@
     }
 
     const activeHw = window.activeHomeworkAssignment || null;
-    const timeLimitMinutes = activeHw 
-      ? (activeHw.config?.time_limit || (activeHw.duration ? parseInt(activeHw.duration) : 20))
-      : 0;
+    let timeLimitMinutes = 0;
+    if (activeHw) {
+      if (activeHw.timeLimitMinutes !== undefined && activeHw.timeLimitMinutes !== null && activeHw.timeLimitMinutes !== '') {
+        timeLimitMinutes = parseInt(activeHw.timeLimitMinutes, 10);
+      } else if (activeHw.config?.timeLimitMinutes !== undefined && activeHw.config?.timeLimitMinutes !== null && activeHw.config?.timeLimitMinutes !== '') {
+        timeLimitMinutes = parseInt(activeHw.config.timeLimitMinutes, 10);
+      } else if (activeHw.config?.timer !== undefined && activeHw.config?.timer !== null && activeHw.config?.timer !== '') {
+        timeLimitMinutes = parseInt(activeHw.config.timer, 10);
+      } else if (activeHw.timer !== undefined && activeHw.timer !== null && activeHw.timer !== '') {
+        timeLimitMinutes = parseInt(activeHw.timer, 10);
+      } else if (activeHw.config?.time_limit !== undefined && activeHw.config?.time_limit !== null && activeHw.config?.time_limit !== '') {
+        timeLimitMinutes = parseInt(activeHw.config.time_limit, 10);
+      } else if (activeHw.duration !== undefined && activeHw.duration !== null && activeHw.duration !== '') {
+        timeLimitMinutes = parseInt(activeHw.duration, 10);
+      } else {
+        timeLimitMinutes = 20;
+      }
+      if (isNaN(timeLimitMinutes) || timeLimitMinutes < 0) {
+        timeLimitMinutes = 0;
+      }
+    }
 
     // Determine target question count
     let targetCount = filtered.length;
@@ -15574,11 +15628,11 @@
     const checkContainer = document.getElementById('qb-check-container');
     const footerCheckBtn = document.getElementById('qb-footer-btn-check');
 
-    // In homework or exam simulation mode, the student must not see check answer buttons or intermediate rationales
+    // In homework or exam simulation mode, the student must not see check answer buttons or intermediate rationales unless reviewing
     const isHomeworkMode = Boolean(
-      window.activeHomeworkAssignment || 
+      (window.activeHomeworkAssignment || 
       (session.config && session.config.homework) ||
-      session.feedbackStyle === 'simulation'
+      session.feedbackStyle === 'simulation') && !session.isReview
     );
     if (isHomeworkMode) {
       if (checkContainer) checkContainer.classList.add('hidden');
@@ -15785,9 +15839,9 @@
     if (!session || !session.questions) return;
 
     const isHomeworkMode = Boolean(
-      window.activeHomeworkAssignment || 
+      (window.activeHomeworkAssignment || 
       (session.config && session.config.homework) ||
-      session.feedbackStyle === 'simulation'
+      session.feedbackStyle === 'simulation') && !session.isReview
     );
     if (isHomeworkMode) {
       if (typeof showToast === 'function') {
@@ -16387,18 +16441,25 @@
     if (actionsEl) {
       if (activeHw) {
         actionsEl.innerHTML = `
-          <button type="button" onclick="qbEngine.closeResultsAndReturnToHomework()" class="flex-1 py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all text-center">
-            ← Return to Homework Portal
-          </button>
-          ${canRetake ? `
-            <button type="button" onclick="qbEngine.retakeHomeworkPractice()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all text-center">
-              🔄 Retake Homework (${attemptsMax - attemptCount} left)
+          <div class="flex flex-col sm:flex-row items-center gap-2 w-full">
+            <button type="button" onclick="qbEngine.reviewHomeworkAnswers()" class="flex-1 py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 w-full">
+              <span>👁️</span><span>Review Answers & Mistakes</span>
             </button>
-          ` : `
-            <button type="button" disabled class="flex-1 py-3.5 px-4 rounded-xl bg-slate-200 text-slate-400 font-extrabold text-xs sm:text-sm cursor-not-allowed text-center">
-              Max Attempts Reached (3/3)
+            ${canRetake ? `
+              <button type="button" onclick="qbEngine.retakeHomeworkPractice()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 w-full">
+                <span>🔄</span><span>Retake Homework (${attemptsMax - attemptCount} left)</span>
+              </button>
+            ` : `
+              <button type="button" disabled class="flex-1 py-3.5 px-4 rounded-xl bg-slate-200 text-slate-400 font-extrabold text-xs sm:text-sm cursor-not-allowed text-center flex items-center justify-center gap-1.5 w-full">
+                <span>🔒</span><span>Max Attempts Reached (3/3)</span>
+              </button>
+            `}
+          </div>
+          <div class="w-full pt-1">
+            <button type="button" onclick="qbEngine.closeResultsAndReturnToHomework()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs sm:text-sm transition-all text-center cursor-pointer">
+              ← Return to Homework Portal
             </button>
-          `}
+          </div>
         `;
       } else if (session.isModuleSession) {
         const hasNextModule = (session.moduleIndex + 1 < (session.totalModules || 9));
@@ -16485,7 +16546,10 @@
           maxAttempts: attemptsMax,
           type: 'qbank',
           hwCode: activeHw.code,
-          timeSpentSeconds: totalSeconds
+          timeSpentSeconds: totalSeconds,
+          answers: session.answers || {},
+          questions: session.questions || [],
+          timePerQuestion: session.timePerQuestion || {}
         });
       }
 
@@ -16493,7 +16557,7 @@
       const hwTitle = activeHw.title || 'Digital SAT Question Bank Drill';
       const hwPin = activeHw.code || activeHw.id || 'N/A';
       const studentClass = activeHw.className || (typeof currentSession !== 'undefined' ? currentSession.className : 'SAT Prep');
-      const timeLimitMins = activeHw.config?.time_limit || (activeHw.duration ? parseInt(activeHw.duration) : 20);
+      const timeLimitMins = session.timeLimitMinutes || (activeHw.timeLimitMinutes !== undefined ? parseInt(activeHw.timeLimitMinutes, 10) : (activeHw.config?.timer ? parseInt(activeHw.config.timer, 10) : (activeHw.config?.time_limit ? parseInt(activeHw.config.time_limit, 10) : 0)));
       const timeSpentFormatted = `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
       const repId = `qbrep_${Date.now()}`;
 
@@ -17627,6 +17691,93 @@
       all[examId][moduleIdx] = resObj;
       localStorage.setItem('satmaster_module_results', JSON.stringify(all));
     } catch (e) {}
+  },
+
+  reviewHomeworkAnswers(hwId) {
+    const resultsModal = document.getElementById('qb-results-modal');
+    if (resultsModal) resultsModal.classList.add('hidden');
+
+    let session = null;
+    try {
+      session = JSON.parse(sessionStorage.getItem('qb_active_session'));
+    } catch (e) {}
+
+    let questions = (session && session.questions) || [];
+    let answers = (session && session.answers) || {};
+    let timePerQuestion = (session && session.timePerQuestion) || {};
+    let activeHw = window.activeHomeworkAssignment;
+
+    if ((!questions || questions.length === 0) && hwId) {
+      try {
+        const completedList = JSON.parse(localStorage.getItem('satmaster_completed_homework') || '[]');
+        const target = String(hwId).trim().toUpperCase();
+        const record = completedList.find(it => 
+          (it.hwId && String(it.hwId).trim().toUpperCase() === target) ||
+          (it.hwCode && String(it.hwCode).trim().toUpperCase() === target)
+        );
+        if (record) {
+          questions = record.questions || [];
+          answers = record.answers || {};
+          timePerQuestion = record.timePerQuestion || {};
+          if (record.assignment) activeHw = record.assignment;
+        }
+      } catch (e) {}
+    }
+
+    if (!questions || questions.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("⚠️ Notice", "No questions found to review for this assignment.", "info");
+      }
+      return;
+    }
+
+    const hwTitle = (activeHw && activeHw.title) || 'Homework Assignment';
+    const checkedMap = {};
+    questions.forEach((q, i) => {
+      checkedMap[i] = true;
+    });
+
+    const activeSession = {
+      questions: questions,
+      currentIdx: 0,
+      answers: answers,
+      timePerQuestion: timePerQuestion,
+      flags: {},
+      strikethroughs: {},
+      checked: checkedMap,
+      config: {
+        homework: activeHw || true,
+        subject: (activeHw && activeHw.config?.subject) || 'combined',
+        examTitle: `${hwTitle} (Mistakes Review)`,
+        mode: 'homework_review'
+      },
+      isReview: true,
+      timeLimitMinutes: 0,
+      remainingSeconds: 0,
+      version: this.dataVersion,
+      startedAt: Date.now()
+    };
+
+    sessionStorage.setItem('qb_active_session', JSON.stringify(activeSession));
+
+    const hubView = document.getElementById('qbank-hub-view');
+    const setupView = document.getElementById('qb-setup-view');
+    const detailView = document.getElementById('qb-detail-view');
+    const latestView = document.getElementById('qb-latest-exams-view');
+    const testContainer = document.getElementById('qb-test-container');
+    if (hubView) hubView.classList.add('hidden');
+    if (setupView) setupView.classList.add('hidden');
+    if (detailView) detailView.classList.add('hidden');
+    if (latestView) latestView.classList.add('hidden');
+    if (testContainer) testContainer.classList.remove('hidden');
+
+    this.enterFullscreenTestingMode();
+    this.renderCurrentQuestion();
+    this.initTimer();
+
+    if (typeof showToast === 'function') {
+      showToast("👁️ Mistakes Review", "Reviewing all questions, your answers, correct keys, and explanations.", "info");
+    }
   },
 
   reviewModuleAnswers(examId, moduleIdx) {
