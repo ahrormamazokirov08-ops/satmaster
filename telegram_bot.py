@@ -23,6 +23,7 @@ import traceback
 import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from datetime import datetime
+import collections
 
 try:
     from dotenv import load_dotenv
@@ -413,51 +414,12 @@ class TelegramBotClient:
     def __init__(self, token):
         self.token = token
         self.base_url = f"https://api.telegram.org/bot{token}"
-        self._conn = None
-        self._conn_lock = threading.Lock()
 
-    def _get_conn(self, timeout=8):
-        with self._conn_lock:
-            if self._conn is None:
-                ctx = ssl.create_default_context()
-                self._conn = http.client.HTTPSConnection("api.telegram.org", 443, context=ctx, timeout=timeout)
-            return self._conn
-
-    def _close_conn(self):
-        with self._conn_lock:
-            if self._conn is not None:
-                try:
-                    self._conn.close()
-                except Exception:
-                    pass
-                self._conn = None
-
-    def request(self, method, payload=None, timeout=6):
-        url_path = f"/bot{self.token}/{method}"
-        data = json.dumps(payload).encode("utf-8") if payload else None
-        headers = {
-            "Content-Type": "application/json",
-            "Connection": "keep-alive"
-        }
-
-        # Fast-path: Reuse persistent HTTPS connection (keep-alive avoids 200-400ms TLS handshake)
-        for attempt in range(2):
-            try:
-                conn = self._get_conn(timeout=timeout)
-                conn.request("POST" if data else "GET", url_path, body=data, headers=headers)
-                resp = conn.getresponse()
-                res_data = resp.read().decode("utf-8")
-                parsed = json.loads(res_data)
-                return parsed
-            except Exception:
-                self._close_conn()
-                if attempt == 0:
-                    continue
-                break
-
-        # Reliable fallback: urllib
+    def request(self, method, payload=None, timeout=10):
         url = f"{self.base_url}/{method}"
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        data = json.dumps(payload).encode("utf-8") if payload else None
+        headers = {"Content-Type": "application/json"}
+        req = urllib.request.Request(url, data=data, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 res_data = resp.read().decode("utf-8")
@@ -466,11 +428,9 @@ class TelegramBotClient:
             err = e.read().decode("utf-8")
             try:
                 parsed = json.loads(err)
-                print(f"❌ Telegram HTTP Error {e.code}: {parsed.get('description', err)}")
                 return parsed
             except Exception:
-                print(f"❌ Telegram HTTP Error {e.code}: {err}")
-                return {"ok": False, "description": err}
+                return {"ok": False, "description": err, "error_code": e.code}
         except Exception as e:
             return {"ok": False, "description": str(e)}
 
@@ -494,8 +454,9 @@ class TelegramBotClient:
         if reply_markup:
             payload["reply_markup"] = reply_markup
         res = self.request("sendMessage", payload, timeout=10)
-        if not res.get("ok") and parse_mode:
-            # If HTML parsing failed, retry immediately as plain text!
+        desc = str(res.get("description", "")).lower()
+        if not res.get("ok") and parse_mode and ("can't parse entities" in desc or "entity" in desc):
+            # Only retry as plain text if Telegram specifically rejected malformed HTML tags
             payload.pop("parse_mode", None)
             res = self.request("sendMessage", payload, timeout=10)
         if not res.get("ok"):
@@ -1057,6 +1018,12 @@ def send_teacher_hub(bot, chat_id, teacher_record, config, db):
     keyboard = {"inline_keyboard": t_buttons}
     bot.send_message(chat_id, msg, reply_markup=keyboard)
 
+PROCESSED_UPDATE_IDS = collections.deque(maxlen=3000)
+PROCESSED_LOCK = threading.Lock()
+
+LAST_USER_CLICKS = {}
+CLICK_LOCK = threading.Lock()
+
 MAIN_REPLY_KEYBOARD = {
     "keyboard": [
         [
@@ -1533,12 +1500,6 @@ def handle_update(bot, update, config, db=None):
     # 2. Start command - Role differentiated!
     if text in ("/start", "🔄 /start") or text.startswith("/start"):
         clear_user_state(user_id)
-        # Send persistent bottom menu keyboard first so it is permanently pinned on the user's interface
-        bot.send_message(
-            chat_id,
-            "⚡ <b>Menu Active:</b> Tap <b>/start</b> to refresh or <b>🌐 Link to Website</b> to open your personal portal.",
-            reply_markup=MAIN_REPLY_KEYBOARD
-        )
         if is_admin:
             send_admin_hub(bot, chat_id, config, db)
             return
@@ -3065,7 +3026,14 @@ def main():
             if updates_res.get("ok"):
                 results = updates_res.get("result", [])
                 for upd in results:
-                    last_offset = upd["update_id"] + 1
+                    upd_id = upd.get("update_id")
+                    if upd_id is not None:
+                        last_offset = upd_id + 1
+                        with PROCESSED_LOCK:
+                            if upd_id in PROCESSED_UPDATE_IDS:
+                                continue
+                            PROCESSED_UPDATE_IDS.append(upd_id)
+
                     def _safe_handle(u=upd):
                         try:
                             handle_update(bot, u, config, db)
