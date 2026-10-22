@@ -2555,7 +2555,8 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
 
                         print(f"[Telegram Notify] Sending new homework alert to {len(student_map)} student(s): {list(student_map.keys())}")
 
-                        for cid, s_info in student_map.items():
+                        def _send_student_alert(item):
+                            cid, s_info = item
                             try:
                                 s_id = s_info.get("id") or f"TG{cid}"
                                 s_name = s_info.get("display_name") or s_info.get("name") or "Student"
@@ -2584,7 +2585,7 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                                     data=json.dumps(payload).encode("utf-8"),
                                     headers={"Content-Type": "application/json"}
                                 )
-                                with urllib.request.urlopen(req, timeout=5) as t_resp:
+                                with urllib.request.urlopen(req, timeout=4) as t_resp:
                                     res_raw = t_resp.read().decode("utf-8")
                                     print(f"[Telegram Notify Success for {cid}]: {res_raw[:100]}")
                             except urllib.error.HTTPError as h_err:
@@ -2592,6 +2593,11 @@ class SATMasterHandler(SimpleHTTPRequestHandler):
                                 print(f"[Telegram Notify HTTPError {h_err.code} for {cid}]: {err_details}")
                             except Exception as send_err:
                                 print(f"[Telegram Notify Error for {cid}]: {send_err}")
+
+                        if student_map:
+                            max_workers = min(len(student_map), 8)
+                            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                                executor.map(_send_student_alert, student_map.items())
                     except Exception as notify_err:
                         print(f"[Telegram Batch Notify Error]: {notify_err}")
 

@@ -15,6 +15,7 @@ from datetime import datetime
 import urllib.parse
 import urllib.request
 import urllib.error
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -741,7 +742,8 @@ class handler(BaseHTTPRequestHandler):
 
                         print(f"[Telegram Notify] Sending new homework alert to {len(student_map)} student(s): {list(student_map.keys())}")
 
-                        for cid, s_info in student_map.items():
+                        def _send_student_alert(item):
+                            cid, s_info = item
                             try:
                                 s_id = s_info.get("id") or f"TG{cid}"
                                 s_name = s_info.get("display_name") or s_info.get("name") or "Student"
@@ -770,7 +772,7 @@ class handler(BaseHTTPRequestHandler):
                                     data=json.dumps(payload).encode("utf-8"),
                                     headers={"Content-Type": "application/json"}
                                 )
-                                with urllib.request.urlopen(req, timeout=5) as t_resp:
+                                with urllib.request.urlopen(req, timeout=4) as t_resp:
                                     res_raw = t_resp.read().decode("utf-8")
                                     print(f"[Telegram Notify Success for {cid}]: {res_raw[:100]}")
                             except urllib.error.HTTPError as h_err:
@@ -778,6 +780,11 @@ class handler(BaseHTTPRequestHandler):
                                 print(f"[Telegram Notify HTTPError {h_err.code} for {cid}]: {err_details}")
                             except Exception as send_err:
                                 print(f"[Telegram Notify Error for {cid}]: {send_err}")
+
+                        if student_map:
+                            max_workers = min(len(student_map), 8)
+                            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                                executor.map(_send_student_alert, student_map.items())
                     except Exception as notify_err:
                         print(f"[Telegram Batch Notify Error]: {notify_err}")
 
@@ -834,8 +841,7 @@ class handler(BaseHTTPRequestHandler):
             admin_cid = int(os.environ.get("ADMIN_CHAT_ID") or 7957347033)
             all_targets = list(set(target_cids + [admin_cid]))
 
-            sent_count = 0
-            for cid in all_targets:
+            def _send_broadcast(cid):
                 try:
                     send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                     payload = {
@@ -853,10 +859,18 @@ class handler(BaseHTTPRequestHandler):
                         data=json.dumps(payload).encode("utf-8"),
                         headers={"Content-Type": "application/json"}
                     )
-                    urllib.request.urlopen(req, timeout=5)
-                    sent_count += 1
+                    urllib.request.urlopen(req, timeout=4)
+                    return True
                 except Exception as err:
                     print(f"[Telegram Broadcast Error for {cid}]: {err}")
+                    return False
+
+            sent_count = 0
+            if all_targets:
+                max_w = min(len(all_targets), 8)
+                with ThreadPoolExecutor(max_workers=max_w) as executor:
+                    results = list(executor.map(_send_broadcast, all_targets))
+                sent_count = sum(1 for r in results if r)
 
             return self.send_json(200, {"ok": True, "sent_count": sent_count, "targets": len(all_targets)})
 

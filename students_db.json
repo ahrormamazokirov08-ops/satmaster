@@ -2,13 +2,31 @@
   "admin_chat_id": "7957347033",
   "groups": [
     {
-      "id": "grp_group_a",
-      "name": "Group A",
-      "code": "GRP-A",
-      "schedule": "SAT Preparation Cohort",
-      "teacher_id": "7957347033",
-      "teacher_name": "Ahrorbek Mamazokirov",
-      "created_at": "2026-09-30T14:35:00.000000"
+      "id": "d68ef9db-0260-4f43-8e19-58456df3469a",
+      "name": "SAT Masters 2026",
+      "code": "GRP-D68EF9",
+      "schedule": "",
+      "teacher_name": "SAT Admin",
+      "student_count": 5,
+      "created_at": "2026-10-08T10:36:55.125778+00:00"
+    },
+    {
+      "id": "ee9d4008-1355-488d-9d36-4cfc0a618924",
+      "name": "SAT_Alpha_1",
+      "code": "GRP-EE9D40",
+      "schedule": "",
+      "teacher_name": "SAT Admin",
+      "student_count": 1,
+      "created_at": "2026-10-08T10:38:24.790983+00:00"
+    },
+    {
+      "id": "ae28426a-fae7-43f3-b321-560dee05b9f3",
+      "name": "SAT for beginners",
+      "code": "GRP-AE2842",
+      "schedule": "",
+      "teacher_name": "SAT Admin",
+      "student_count": 0,
+      "created_at": "2026-10-08T12:54:29.713901+00:00"
     }
   ],
   "students": {

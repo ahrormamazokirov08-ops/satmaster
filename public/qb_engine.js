@@ -870,7 +870,7 @@ window.qbEngine = {
     } catch (e) {}
   },
 
-  dataVersion: '2.17.0',
+  dataVersion: '2.18.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -2396,6 +2396,8 @@ window.qbEngine = {
   },
 
   finishSession() {
+    if (this.isFinishingSession) return;
+    this.isFinishingSession = true;
     this.closeReviewSubmitModal();
 
     if (this.timerInterval) {
@@ -2618,7 +2620,7 @@ window.qbEngine = {
             ` : ''}
           </div>
           <div class="flex items-center gap-2 w-full pt-1">
-            <button type="button" onclick="qbEngine.sendModuleReportToTelegram('${session.examId}', ${session.moduleIndex})" class="flex-1 py-2.5 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold text-xs transition-all text-center cursor-pointer flex items-center justify-center gap-1.5">
+            <button type="button" onclick="qbEngine.sendModuleReportToTelegram('${session.examId}', ${session.moduleIndex}, this)" class="flex-1 py-2.5 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold text-xs transition-all text-center cursor-pointer flex items-center justify-center gap-1.5">
               <span>📱 Send Report to Telegram</span>
             </button>
             <button type="button" onclick="qbEngine.returnToSetupFromResults()" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs transition-all text-center cursor-pointer">
@@ -2768,6 +2770,7 @@ window.qbEngine = {
 
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
+    this.isFinishingSession = false;
   },
 
   closeResultsAndReturnToHomework() {
@@ -3946,13 +3949,34 @@ window.qbEngine = {
     this.launchConfiguredPractice();
   },
 
-  async sendModuleReportToTelegram(examId, moduleIdx) {
+  async sendModuleReportToTelegram(examId, moduleIdx, btnElement) {
+    const btn = btnElement || (window.event && (window.event.currentTarget || window.event.target));
+    if (btn) {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.classList.add('opacity-75', 'cursor-wait', 'pointer-events-none');
+      btn.innerHTML = `
+        <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-sky-700 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Sending to Telegram...</span>
+      `;
+    }
+
     const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
     let session = null;
     try {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
-    if (!exam || !session) return;
+    if (!exam || !session) {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
+        btn.innerHTML = `<span>📱 Send Report to Telegram</span>`;
+      }
+      return;
+    }
 
     const studentName = (typeof currentSession !== 'undefined' && currentSession.name) || (document.getElementById('student-name-input')?.value.trim()) || 'Cristiano Ronaldo';
     const total = session.questions.length;
@@ -3995,9 +4019,19 @@ window.qbEngine = {
       if (typeof showToast === 'function') {
         showToast("📱 Sent to Telegram!", "Your module score report has been dispatched to Telegram.", "success");
       }
+      if (btn) {
+        btn.innerHTML = `<span>✅ Sent to Telegram</span>`;
+        btn.classList.remove('cursor-wait', 'opacity-75');
+        btn.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-300');
+      }
     } catch (err) {
       if (typeof showToast === 'function') {
         showToast("📱 Score Report Logged", "Report generated and saved to your session records.", "info");
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
+        btn.innerHTML = `<span>📱 Send Report to Telegram</span>`;
       }
     }
   },

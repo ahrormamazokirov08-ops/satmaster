@@ -8135,11 +8135,27 @@
         };
       }
 
+      let isDispatchingHomework = false;
+
       const publishBtn = document.getElementById('btn-direct-assign-homework');
+      const addDoneBtn = document.getElementById('btn-add-done-homework');
+      const addAnotherBtn = document.getElementById('btn-add-another-homework');
+
       if (publishBtn) {
         publishBtn.disabled = true;
-        publishBtn.innerHTML = `<span>⏳ Assigning & Notifying...</span>`;
+        publishBtn.classList.add('opacity-75', 'cursor-wait', 'pointer-events-none');
+        publishBtn.innerHTML = `
+          <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Assigning & Notifying Class...</span>
+        `;
       }
+      if (addDoneBtn) { addDoneBtn.disabled = true; addDoneBtn.classList.add('opacity-50', 'pointer-events-none'); }
+      if (addAnotherBtn) { addAnotherBtn.disabled = true; addAnotherBtn.classList.add('opacity-50', 'pointer-events-none'); }
+
+      showToast("🚀 Assigning Homework...", "Creating drill and dispatching Telegram alerts...", "info");
 
       try {
         const stagedItem = {
@@ -8168,14 +8184,18 @@
       } finally {
         if (publishBtn) {
           publishBtn.disabled = false;
+          publishBtn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
           publishBtn.innerHTML = `<span>🚀</span><span>Assign & Notify Class Now</span>`;
         }
+        if (addDoneBtn) { addDoneBtn.disabled = false; addDoneBtn.classList.remove('opacity-50', 'pointer-events-none'); }
+        if (addAnotherBtn) { addAnotherBtn.disabled = false; addAnotherBtn.classList.remove('opacity-50', 'pointer-events-none'); }
       }
     }
 
     function renderStagingQueue() {
       const listEl = document.getElementById('creator-staging-list');
       const badgeEl = document.getElementById('staged-count-badge');
+      const sendBtn = document.getElementById('btn-send-selected-staged');
       if (!listEl) return;
 
       const staged = getStagedHomework();
@@ -8184,6 +8204,18 @@
         badgeEl.className = staged.length > 0 
           ? 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800'
           : 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500';
+      }
+
+      if (sendBtn) {
+        if (staged.length === 0) {
+          sendBtn.disabled = true;
+          sendBtn.classList.add('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+          sendBtn.classList.remove('hover:bg-blue-500', 'active:scale-95');
+        } else {
+          sendBtn.disabled = false;
+          sendBtn.classList.remove('opacity-40', 'cursor-not-allowed', 'pointer-events-none');
+          sendBtn.classList.add('hover:bg-blue-500', 'active:scale-95');
+        }
       }
 
       if (staged.length === 0) {
@@ -8222,7 +8254,7 @@
             <div class="flex items-center gap-3 shrink-0">
               <span class="text-[11px] text-slate-500 font-medium hidden md:inline-block">${qCount} Qs • ${timerText}</span>
               <span class="text-[11px] text-slate-400 font-medium hidden sm:inline-block">📅 ${deadlineText}</span>
-              <button type="button" onclick="handleSendSingleStagedHomework('${item.id}')" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all flex items-center gap-1 shadow-xs active:scale-95">
+              <button type="button" id="btn-send-single-${item.id}" onclick="handleSendSingleStagedHomework('${item.id}', this)" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all flex items-center gap-1 shadow-xs active:scale-95">
                 <span>🚀</span><span>Send</span>
               </button>
               <button type="button" onclick="handleDeleteStagedHomework('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs" title="Remove from queue">
@@ -8324,20 +8356,60 @@
       return newAssignment;
     }
 
-    async function handleSendSingleStagedHomework(stagedId) {
+    let isDispatchingHomework = false;
+
+    async function handleSendSingleStagedHomework(stagedId, btnElement) {
+      if (isDispatchingHomework) return;
       let staged = getStagedHomework();
       const item = staged.find(it => it.id === stagedId);
       if (!item) return;
 
-      await dispatchAssignmentObject(item);
-      staged = staged.filter(it => it.id !== stagedId);
-      saveStagedHomework(staged);
+      isDispatchingHomework = true;
+      const btn = btnElement || document.getElementById(`btn-send-single-${stagedId}`);
+      const batchBtn = document.getElementById('btn-send-selected-staged');
+      const allRowActions = document.querySelectorAll('[id^="btn-send-single-"], .staged-hw-checkbox');
 
-      renderActiveHomeworkGrid();
-      showToast("🚀 Assignment Sent!", `"${item.title}" is now LIVE for ${item.className}.`, "success");
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-wait', 'pointer-events-none');
+        btn.innerHTML = `
+          <svg class="animate-spin -ml-0.5 mr-1 h-3.5 w-3.5 text-blue-700 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Sending...</span>
+        `;
+      }
+      if (batchBtn) {
+        batchBtn.disabled = true;
+        batchBtn.classList.add('opacity-50', 'pointer-events-none');
+      }
+      allRowActions.forEach(el => {
+        el.disabled = true;
+        el.classList.add('pointer-events-none');
+      });
+
+      showToast("🚀 Sending Assignment...", `Dispatching "${item.title}" to ${item.className} and sending Telegram alerts...`, "info");
+
+      try {
+        await dispatchAssignmentObject(item);
+        staged = staged.filter(it => it.id !== stagedId);
+        saveStagedHomework(staged);
+
+        renderActiveHomeworkGrid();
+        showToast("🚀 Assignment Sent!", `"${item.title}" is now LIVE for ${item.className}.`, "success");
+      } catch (err) {
+        console.error("Single dispatch error:", err);
+        showToast("⚠️ Error", "An error occurred while sending this assignment.", "error");
+      } finally {
+        isDispatchingHomework = false;
+        renderStagingQueue();
+      }
     }
 
     async function handleSendSelectedHomework() {
+      if (isDispatchingHomework) return;
+
       const checkboxes = Array.from(document.querySelectorAll('.staged-hw-checkbox:checked'));
       const selectedIds = new Set(checkboxes.map(cb => cb.getAttribute('data-staged-id')));
 
@@ -8346,16 +8418,42 @@
         return;
       }
 
+      isDispatchingHomework = true;
       const sendBtn = document.getElementById('btn-send-selected-staged');
+      const allRowActions = document.querySelectorAll('[id^="btn-send-single-"], .staged-hw-checkbox');
+
       if (sendBtn) {
         sendBtn.disabled = true;
-        sendBtn.innerHTML = `<span>⏳ Sending ${selectedIds.size} Drills...</span>`;
+        sendBtn.classList.add('opacity-75', 'cursor-wait', 'pointer-events-none');
+        sendBtn.innerHTML = `
+          <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Sending ${selectedIds.size} Drill${selectedIds.size > 1 ? 's' : ''}...</span>
+        `;
       }
+      allRowActions.forEach(el => {
+        el.disabled = true;
+        el.classList.add('opacity-50', 'pointer-events-none');
+      });
+
+      showToast("🚀 Sending Homework...", `Dispatching ${selectedIds.size} assignment(s) and notifying students on Telegram...`, "info");
 
       try {
         let staged = getStagedHomework();
         const toSend = staged.filter(it => selectedIds.has(it.id));
-        for (const item of toSend) {
+        for (let i = 0; i < toSend.length; i++) {
+          const item = toSend[i];
+          if (sendBtn) {
+            sendBtn.innerHTML = `
+              <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span>Sending ${i + 1} of ${toSend.length}...</span>
+            `;
+          }
           await dispatchAssignmentObject(item);
         }
 
@@ -8368,10 +8466,13 @@
         console.error("Batch dispatch error:", err);
         showToast("⚠️ Error", "An error occurred while sending selected homework.", "error");
       } finally {
+        isDispatchingHomework = false;
         if (sendBtn) {
           sendBtn.disabled = false;
+          sendBtn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
           sendBtn.innerHTML = `<span>🚀</span><span>Send Selected to Students</span>`;
         }
+        renderStagingQueue();
       }
     }
 
@@ -14563,7 +14664,7 @@
     } catch (e) {}
   },
 
-  dataVersion: '2.17.0',
+  dataVersion: '2.18.0',
   currentDataVersion: null,
   _loadingPromise: null,
 
@@ -16089,6 +16190,8 @@
   },
 
   finishSession() {
+    if (this.isFinishingSession) return;
+    this.isFinishingSession = true;
     this.closeReviewSubmitModal();
 
     if (this.timerInterval) {
@@ -16311,7 +16414,7 @@
             ` : ''}
           </div>
           <div class="flex items-center gap-2 w-full pt-1">
-            <button type="button" onclick="qbEngine.sendModuleReportToTelegram('${session.examId}', ${session.moduleIndex})" class="flex-1 py-2.5 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold text-xs transition-all text-center cursor-pointer flex items-center justify-center gap-1.5">
+            <button type="button" onclick="qbEngine.sendModuleReportToTelegram('${session.examId}', ${session.moduleIndex}, this)" class="flex-1 py-2.5 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold text-xs transition-all text-center cursor-pointer flex items-center justify-center gap-1.5">
               <span>📱 Send Report to Telegram</span>
             </button>
             <button type="button" onclick="qbEngine.returnToSetupFromResults()" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs transition-all text-center cursor-pointer">
@@ -16461,6 +16564,7 @@
 
     const resultsModal = document.getElementById('qb-results-modal');
     if (resultsModal) resultsModal.classList.remove('hidden');
+    this.isFinishingSession = false;
   },
 
   closeResultsAndReturnToHomework() {
@@ -17587,13 +17691,34 @@
     this.launchConfiguredPractice();
   },
 
-  async sendModuleReportToTelegram(examId, moduleIdx) {
+  async sendModuleReportToTelegram(examId, moduleIdx, btnElement) {
+    const btn = btnElement || (window.event && (window.event.currentTarget || window.event.target));
+    if (btn) {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.classList.add('opacity-75', 'cursor-wait', 'pointer-events-none');
+      btn.innerHTML = `
+        <svg class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-sky-700 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Sending to Telegram...</span>
+      `;
+    }
+
     const exam = (this.latestExamsData || []).find(e => e.id === examId || e.legacy_id === examId);
     let session = null;
     try {
       session = JSON.parse(sessionStorage.getItem('qb_active_session'));
     } catch (e) {}
-    if (!exam || !session) return;
+    if (!exam || !session) {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
+        btn.innerHTML = `<span>📱 Send Report to Telegram</span>`;
+      }
+      return;
+    }
 
     const studentName = (typeof currentSession !== 'undefined' && currentSession.name) || (document.getElementById('student-name-input')?.value.trim()) || 'Cristiano Ronaldo';
     const total = session.questions.length;
@@ -17636,9 +17761,19 @@
       if (typeof showToast === 'function') {
         showToast("📱 Sent to Telegram!", "Your module score report has been dispatched to Telegram.", "success");
       }
+      if (btn) {
+        btn.innerHTML = `<span>✅ Sent to Telegram</span>`;
+        btn.classList.remove('cursor-wait', 'opacity-75');
+        btn.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-300');
+      }
     } catch (err) {
       if (typeof showToast === 'function') {
         showToast("📱 Score Report Logged", "Report generated and saved to your session records.", "info");
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
+        btn.innerHTML = `<span>📱 Send Report to Telegram</span>`;
       }
     }
   },
