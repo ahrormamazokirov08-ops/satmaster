@@ -5,6 +5,7 @@ node_modules/
 
 # Build and Production
 .next/
+_unimportant_archive/
 out/
 build/
 dist/
